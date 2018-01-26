@@ -22,7 +22,8 @@ public interface InboundStream extends Startable, Stoppable {
           final int port,
           final AddressType addressType,
           final String inboundName,
-          final int maxMessageSize)
+          final int maxMessageSize,
+          final long probeInterval)
   throws Exception {
     
     final InboundReader reader =
@@ -31,7 +32,7 @@ public interface InboundStream extends Startable, Stoppable {
     final Definition definition =
             Definition.has(
                     InboundStreamActor.class,
-                    Definition.parameters(interest, addressType, reader),
+                    Definition.parameters(interest, addressType, reader, probeInterval),
                     inboundName + "-inbound");
     
     final InboundStream inboundStream = stage.actorFor(definition, InboundStream.class);

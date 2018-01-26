@@ -21,16 +21,19 @@ public class InboundStreamActor extends Actor implements InboundReaderConsumer, 
   private final AddressType addressType;
   private Cancellable cancellable;
   private final InboundStreamInterest interest;
+  private final long probeInterval;
   private final InboundReader reader;
   private final InboundStream self;
 
   public InboundStreamActor(
           final InboundStreamInterest interest,
           final AddressType addressType,
-          final InboundReader reader) {
+          final InboundReader reader,
+          final long probeInterval) {
     this.interest = interest;
     this.addressType = addressType;
     this.reader = reader;
+    this.probeInterval = probeInterval;
     this.self = selfAs(InboundStream.class);
   }
 
@@ -73,7 +76,7 @@ public class InboundStreamActor extends Actor implements InboundReaderConsumer, 
       throw new IllegalStateException(e.getMessage(), e);
     }
     
-    cancellable = this.stage().scheduler().schedule(selfAs(Scheduled.class), null, 0, 100L);
+    cancellable = this.stage().scheduler().schedule(selfAs(Scheduled.class), null, 0, probeInterval);
   }
 
   //=========================================

@@ -53,7 +53,7 @@ public class InboundStreamTest extends AbstractMessageTool {
     final Definition definition =
             Definition.has(
                     InboundStreamActor.class,
-                    Definition.parameters(interest, AddressType.OP, reader),
+                    Definition.parameters(interest, AddressType.OP, reader, 10),
                     "cluster-test-inbound");
     
     inboundStream = world.actorFor(definition, InboundStream.class);
