@@ -23,11 +23,12 @@ public interface InboundStream extends Startable, Stoppable {
           final AddressType addressType,
           final String inboundName,
           final int maxMessageSize,
-          final long probeInterval)
+          final long probeInterval,
+          final long probeTimeout)
   throws Exception {
     
     final InboundReader reader =
-            new SocketChannelInboundReader(port, inboundName, maxMessageSize, stage.world().defaultLogger());
+            new SocketChannelInboundReader(port, inboundName, maxMessageSize, probeTimeout, stage.world().defaultLogger());
     
     final Definition definition =
             Definition.has(

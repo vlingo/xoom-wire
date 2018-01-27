@@ -95,8 +95,8 @@ public class InboundSocketChannelTest extends AbstractMessageTool {
     final Logger logger = JDKLogger.testInstance();
     opChannel = new ManagedOutboundSocketChannel(node, node.operationalAddress(), logger);
     appChannel = new ManagedOutboundSocketChannel(node, node.applicationAddress(), logger);
-    opReader = new SocketChannelInboundReader(node.operationalAddress().port(), "test-op", 1024, logger);
-    appReader = new SocketChannelInboundReader(node.applicationAddress().port(), "test-app", 1024, logger);
+    opReader = new SocketChannelInboundReader(node.operationalAddress().port(), "test-op", 1024, 10, logger);
+    appReader = new SocketChannelInboundReader(node.applicationAddress().port(), "test-app", 1024, 10, logger);
   }
   
   @After

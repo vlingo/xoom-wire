@@ -28,13 +28,15 @@ public class SocketChannelInboundReader implements InboundReader {
   private final Logger logger;
   private final int maxMessageSize;
   private final int port;
+  private final long probeTimeout;
   private final Selector selector;
 
-  public SocketChannelInboundReader(final int port, final String inboundName, final int maxMessageSize, final Logger logger) throws Exception {
+  public SocketChannelInboundReader(final int port, final String inboundName, final int maxMessageSize, final long probeTimeout, final Logger logger) throws Exception {
     this.port = port;
     this.inboundName = inboundName;
     this.channel = ServerSocketChannel.open();
     this.maxMessageSize = maxMessageSize;
+    this.probeTimeout = probeTimeout;
     this.logger = logger;
     this.selector = Selector.open();
   }
@@ -83,7 +85,7 @@ public class SocketChannelInboundReader implements InboundReader {
     if (closed) return;
     
     try {
-      if (selector.select(10L) > 0) {
+      if (selector.select(probeTimeout) > 0) {
         final Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
 
         while (iterator.hasNext()) {
