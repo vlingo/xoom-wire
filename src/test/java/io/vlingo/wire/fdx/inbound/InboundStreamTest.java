@@ -17,13 +17,14 @@ import org.junit.Test;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.testkit.TestActor;
 import io.vlingo.actors.testkit.TestWorld;
+import io.vlingo.wire.channel.MockChannelReader;
 import io.vlingo.wire.message.AbstractMessageTool;
 import io.vlingo.wire.node.AddressType;
 
 public class InboundStreamTest extends AbstractMessageTool {
   private TestActor<InboundStream> inboundStream;
   private MockInboundStreamInterest interest;
-  private MockInboundReader reader;
+  private MockChannelReader reader;
   private TestWorld world;
   
   @Test
@@ -35,11 +36,10 @@ public class InboundStreamTest extends AbstractMessageTool {
     int count = 0;
     for (final String message : interest.messages) {
       ++count;
-      assertEquals(MockInboundReader.MessagePrefix + count, message);
+      assertEquals(MockChannelReader.MessagePrefix + count, message);
     }
     
     assertEquals(count, reader.probeChannelCount);
-    assertEquals(count, reader.inboundClientChannelWriteCount);
   }
 
   @Before
@@ -48,13 +48,13 @@ public class InboundStreamTest extends AbstractMessageTool {
     
     interest = new MockInboundStreamInterest();
     
-    reader = new MockInboundReader();
+    reader = new MockChannelReader();
     
     final Definition definition =
             Definition.has(
                     InboundStreamActor.class,
                     Definition.parameters(interest, AddressType.OP, reader, 10),
-                    "cluster-test-inbound");
+                    "test-inbound");
     
     inboundStream = world.actorFor(definition, InboundStream.class);
   }

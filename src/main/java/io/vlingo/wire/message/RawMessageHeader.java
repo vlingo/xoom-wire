@@ -99,7 +99,7 @@ public final class RawMessageHeader {
 
   public final RawMessageHeader read(final ByteBuffer buffer) {
     final short headerId = buffer.getShort();
-
+    
     if (headerId != HEADER_ID) {
       throw new IllegalArgumentException("Invalid raw message header.");
     }

@@ -35,8 +35,15 @@ public class RawMessage {
     return message;
   }
 
-  public static RawMessage from(final ByteBuffer buffer) {
+  public static RawMessage readFromWithHeader(final ByteBuffer buffer) {
     final RawMessageHeader header = RawMessageHeader.from(buffer);
+    final RawMessage message = new RawMessage(header, header.length());
+    message.putRemaining(buffer);
+    return message;
+  }
+
+  public static RawMessage readFromWithoutHeader(final ByteBuffer buffer) {
+    final RawMessageHeader header = RawMessageHeader.from(0, 0, buffer.limit());
     final RawMessage message = new RawMessage(header, header.length());
     message.putRemaining(buffer);
     return message;
@@ -87,6 +94,12 @@ public class RawMessage {
   public void copyBytesTo(final ByteBuffer buffer) {
     header.copyBytesTo(buffer);
     buffer.put(bytes);
+  }
+
+  public RawMessage from(final ByteBuffer buffer) {
+    headerFrom(buffer);
+    putRemaining(buffer);
+    return this;
   }
 
   public final RawMessageHeader header() {

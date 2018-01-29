@@ -17,6 +17,8 @@ import org.junit.Test;
 
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.plugin.logging.jdk.JDKLogger;
+import io.vlingo.wire.channel.ChannelReader;
+import io.vlingo.wire.channel.MockChannelReaderConsumer;
 import io.vlingo.wire.fdx.outbound.ManagedOutboundSocketChannel;
 import io.vlingo.wire.message.AbstractMessageTool;
 import io.vlingo.wire.message.RawMessage;
@@ -30,14 +32,14 @@ public class InboundSocketChannelTest extends AbstractMessageTool {
   private static final String OpMessage = "OP TEST ";
   
   private ManagedOutboundSocketChannel appChannel;
-  private InboundReader appReader;
+  private ChannelReader appReader;
   private ManagedOutboundSocketChannel opChannel;
-  private InboundReader opReader;
+  private ChannelReader opReader;
   private Node node;
   
   @Test
   public void testOpInboundChannel() throws Exception {
-    final MockInboundReaderConsumer consumer = new MockInboundReaderConsumer();
+    final MockChannelReaderConsumer consumer = new MockChannelReaderConsumer();
     
     opReader.openFor(consumer);
     
@@ -64,7 +66,7 @@ public class InboundSocketChannelTest extends AbstractMessageTool {
   
   @Test
   public void testAppInboundChannel() throws Exception {
-    final MockInboundReaderConsumer consumer = new MockInboundReaderConsumer();
+    final MockChannelReaderConsumer consumer = new MockChannelReaderConsumer();
     
     appReader.openFor(consumer);
     
@@ -107,7 +109,7 @@ public class InboundSocketChannelTest extends AbstractMessageTool {
     appReader.close();
   }
 
-  private void probeUntilConsumed(final InboundReader reader, final MockInboundReaderConsumer consumer) {
+  private void probeUntilConsumed(final ChannelReader reader, final MockChannelReaderConsumer consumer) {
     final int currentConsumedCount = consumer.consumeCount;
     
     for (int idx = 0; idx < 100; ++idx) {

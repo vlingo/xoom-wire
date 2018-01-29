@@ -9,7 +9,6 @@ package io.vlingo.wire.fdx.inbound;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -17,23 +16,32 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 
 import io.vlingo.actors.Logger;
-import io.vlingo.wire.message.RawMessage;
+import io.vlingo.wire.channel.ChannelMessageDispatcher;
+import io.vlingo.wire.channel.ChannelReader;
+import io.vlingo.wire.channel.ChannelReaderConsumer;
+import io.vlingo.wire.channel.SocketChannelSelectionReader;
 import io.vlingo.wire.message.RawMessageBuilder;
 
-public class SocketChannelInboundReader implements InboundReader {
+public class SocketChannelInboundReader implements ChannelReader, ChannelMessageDispatcher {
   private final ServerSocketChannel channel;
   private boolean closed;
-  private InboundReaderConsumer consumer;
-  private final String inboundName;
+  private ChannelReaderConsumer consumer;
   private final Logger logger;
   private final int maxMessageSize;
+  private final String name;
   private final int port;
   private final long probeTimeout;
   private final Selector selector;
 
-  public SocketChannelInboundReader(final int port, final String inboundName, final int maxMessageSize, final long probeTimeout, final Logger logger) throws Exception {
+  public SocketChannelInboundReader(
+          final int port,
+          final String name,
+          final int maxMessageSize,
+          final long probeTimeout,
+          final Logger logger)
+  throws Exception {
     this.port = port;
-    this.inboundName = inboundName;
+    this.name = name;
     this.channel = ServerSocketChannel.open();
     this.maxMessageSize = maxMessageSize;
     this.probeTimeout = probeTimeout;
@@ -54,23 +62,23 @@ public class SocketChannelInboundReader implements InboundReader {
     try {
       selector.close();
     } catch (Exception e) {
-      logger.log("Failed to close selctor for: '" + inboundName + "'", e);
+      logger.log("Failed to close selctor for: '" + name + "'", e);
     }
     
     try {
       channel.close();
     } catch (Exception e) {
-      logger.log("Failed to close channel for: '" + inboundName + "'", e);
+      logger.log("Failed to close channel for: '" + name + "'", e);
     }
   }
 
   @Override
-  public String inboundName() {
-    return inboundName;
+  public String name() {
+    return name;
   }
 
   @Override
-  public void openFor(final InboundReaderConsumer consumer) throws IOException {
+  public void openFor(final ChannelReaderConsumer consumer) throws IOException {
     if (closed) return; // for some tests it's possible to receive close() before start()
     
     this.consumer = consumer;
@@ -96,15 +104,32 @@ public class SocketChannelInboundReader implements InboundReader {
             if (key.isAcceptable()) {
               accept(key);
             } else if (key.isReadable()) {
-              read(key);
+              new SocketChannelSelectionReader(this, key).read();
             }
           }
         }
       }
     } catch (IOException e) {
-      logger.log("Failed to read channel selector for: '" + inboundName + "'", e);
+      logger.log("Failed to read channel selector for: '" + name + "'", e);
     }
   }
+
+
+  //=========================================
+  // ChannelMessageDispatcher
+  //=========================================
+
+  @Override
+  public ChannelReaderConsumer consumer() {
+    return consumer;
+  }
+
+  @Override
+  public Logger logger() {
+    return logger;
+  }
+
+  // public String name(); is implemented above by InboundReader
 
   //=========================================
   // internal implementation
@@ -120,84 +145,13 @@ public class SocketChannelInboundReader implements InboundReader {
   
       final SelectionKey clientChannelKey = clientChannel.register(selector, SelectionKey.OP_READ);
   
-      clientChannelKey.attach(new InboundChannelInfo(new RawMessageBuilder(maxMessageSize)));
-  
+      clientChannelKey.attach(new RawMessageBuilder(maxMessageSize));
+
       logger.log(
               "Accepted new connection for '"
-              + inboundName
+              + name
               + "' from: "
               + clientChannel.getRemoteAddress());
-    }
-  }
-
-  private void closeClient(final SocketChannel clientChannel, final SelectionKey key) throws IOException {
-    clientChannel.close();
-    key.cancel();
-  }
-
-  private void dispatchMessages(final RawMessageBuilder builder, final SocketChannel clientChannel) {
-    if (!builder.hasContent()) {
-      return;
-    }
-
-    builder.prepareContent().sync();
-
-    while (builder.isCurrentMessageComplete()) {
-      try {
-        final RawMessage message = builder.currentRawMessage();
-        consumer.consume(message, new InboundClientSocketChannel(clientChannel));
-      } catch (Exception e) {
-        // TODO: deal with this
-        logger.log("Cannot dispatch message for: '" + inboundName + "'", e);
-      }
-
-      builder.prepareForNextMessage();
-
-      if (builder.hasContent()) {
-        builder.sync();
-      }
-    }
-  }
-
-  private void read(final SelectionKey key) throws IOException {
-    final SocketChannel clientChannel = (SocketChannel) key.channel();
-    final InboundChannelInfo info = (InboundChannelInfo) key.attachment();
-    final RawMessageBuilder builder = info.builder();
-    
-    final boolean continueReading = read(clientChannel, builder);
-    
-    dispatchMessages(builder, clientChannel);
-    
-    if (!continueReading) {
-      logger.log("Inbound client stream closed: for '" + inboundName + "'");
-      closeClient(clientChannel, key);
-    }
-  }
-
-  private boolean read(
-          final SocketChannel clientChannel,
-          final RawMessageBuilder builder)
-  throws IOException {
-    
-    int bytesRead = clientChannel.read(builder.workBuffer());
-
-    while (bytesRead > 0) {
-      bytesRead = clientChannel.read(builder.workBuffer());
-    }
-
-    return bytesRead != -1;
-  }
-
-  private class InboundClientSocketChannel implements InboundClientChannel {
-    private final SocketChannel clientChannel;
-    
-    InboundClientSocketChannel(final SocketChannel clientChannel) {
-      this.clientChannel = clientChannel;
-    }
-
-    @Override
-    public void writeBackResponse(ByteBuffer buffer) throws Exception {
-      clientChannel.write(buffer);
     }
   }
 }

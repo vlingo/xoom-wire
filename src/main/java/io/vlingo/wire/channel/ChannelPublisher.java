@@ -5,10 +5,13 @@
 // was not distributed with this file, You can obtain
 // one at https://mozilla.org/MPL/2.0/.
 
-package io.vlingo.wire.fdx.inbound;
+package io.vlingo.wire.channel;
 
-import java.nio.ByteBuffer;
+import io.vlingo.wire.message.RawMessage;
 
-public interface InboundClientChannel {
-  void writeBackResponse(final ByteBuffer buffer) throws Exception;
+public interface ChannelPublisher {
+  void close();
+  void processChannel();
+  void sendAvailability();
+  void send(final RawMessage message);
 }

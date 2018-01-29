@@ -7,48 +7,30 @@
 
 package io.vlingo.wire.fdx.inbound;
 
-import java.nio.ByteBuffer;
-
 import io.vlingo.actors.Actor;
 import io.vlingo.actors.Cancellable;
 import io.vlingo.actors.Scheduled;
-import io.vlingo.actors.Startable;
-import io.vlingo.actors.Stoppable;
+import io.vlingo.wire.channel.ChannelReader;
+import io.vlingo.wire.channel.ChannelReaderConsumer;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.AddressType;
 
-public class InboundStreamActor extends Actor implements InboundReaderConsumer, InboundStream, Scheduled, Startable, Stoppable {
+public class InboundStreamActor extends Actor implements InboundStream, ChannelReaderConsumer, Scheduled {
   private final AddressType addressType;
   private Cancellable cancellable;
   private final InboundStreamInterest interest;
   private final long probeInterval;
-  private final InboundReader reader;
-  private final InboundStream self;
+  private final ChannelReader reader;
 
   public InboundStreamActor(
           final InboundStreamInterest interest,
           final AddressType addressType,
-          final InboundReader reader,
+          final ChannelReader reader,
           final long probeInterval) {
     this.interest = interest;
     this.addressType = addressType;
     this.reader = reader;
     this.probeInterval = probeInterval;
-    this.self = selfAs(InboundStream.class);
-  }
-
-  //=========================================
-  // InboundStream
-  //=========================================
-
-  @Override
-  public void respondWith(final InboundClientReference clientReference, final ByteBuffer buffer) {
-    try {
-      final InboundClientChannel channel = clientReference.reference();
-      channel.writeBackResponse(buffer);
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Exception on client reference channel because: " + e.getMessage(), e);
-    }
   }
   
   //=========================================
@@ -68,7 +50,7 @@ public class InboundStreamActor extends Actor implements InboundReaderConsumer, 
   public void start() {
     if (isStopped()) return;
     
-    logger().log("Inbound stream listening: for '" + reader.inboundName() + "'");
+    logger().log("Inbound stream listening: for '" + reader.name() + "'");
     
     try {
       reader.openFor(this);
@@ -102,7 +84,7 @@ public class InboundStreamActor extends Actor implements InboundReaderConsumer, 
   //=========================================
   
   @Override
-  public void consume(final RawMessage message, final InboundClientChannel clientChannel) {
-    interest.handleInboundStreamMessage(addressType, RawMessage.copy(message), new InboundClientChannelResponder(self, clientChannel));
+  public void consume(final RawMessage message) {
+    interest.handleInboundStreamMessage(addressType, RawMessage.copy(message));
   }
 }

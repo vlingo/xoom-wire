@@ -11,5 +11,5 @@ import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.AddressType;
 
 public interface InboundStreamInterest {
-  void handleInboundStreamMessage(final AddressType addressType, final RawMessage message, final InboundResponder responder);
+  void handleInboundStreamMessage(final AddressType addressType, final RawMessage message);
 }

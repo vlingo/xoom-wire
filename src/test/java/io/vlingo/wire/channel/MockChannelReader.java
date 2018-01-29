@@ -5,30 +5,24 @@
 // was not distributed with this file, You can obtain
 // one at https://mozilla.org/MPL/2.0/.
 
-package io.vlingo.wire.fdx.inbound;
+package io.vlingo.wire.channel;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import io.vlingo.wire.fdx.inbound.InboundClientChannel;
-import io.vlingo.wire.fdx.inbound.InboundReader;
-import io.vlingo.wire.fdx.inbound.InboundReaderConsumer;
 import io.vlingo.wire.message.AbstractMessageTool;
 import io.vlingo.wire.message.RawMessage;
 
-public class MockInboundReader extends AbstractMessageTool implements InboundReader {
+public class MockChannelReader extends AbstractMessageTool implements ChannelReader {
   public static final String MessagePrefix = "Message-";
   
-  public int inboundClientChannelWriteCount;
   public int probeChannelCount;
 
   private final ByteBuffer buffer;
-  private final MockInboundClientChannel clientChannel;
-  private InboundReaderConsumer consumer;
+  private ChannelReaderConsumer consumer;
   
-  public MockInboundReader() {
+  public MockChannelReader() {
     this.buffer = ByteBuffer.allocate(1024);
-    this.clientChannel = new MockInboundClientChannel();
   }
   
   @Override
@@ -37,12 +31,12 @@ public class MockInboundReader extends AbstractMessageTool implements InboundRea
   }
 
   @Override
-  public String inboundName() {
+  public String name() {
     return "mock";
   }
 
   @Override
-  public void openFor(final InboundReaderConsumer consumer) throws IOException {
+  public void openFor(final ChannelReaderConsumer consumer) throws IOException {
     this.consumer = consumer;
   }
 
@@ -52,13 +46,6 @@ public class MockInboundReader extends AbstractMessageTool implements InboundRea
     
     final RawMessage message = buildRawMessageBuffer(buffer, MessagePrefix + probeChannelCount);
     
-    consumer.consume(message, clientChannel);
-  }
-
-  private class MockInboundClientChannel implements InboundClientChannel {
-    @Override
-    public void writeBackResponse(ByteBuffer buffer) {
-      ++inboundClientChannelWriteCount;
-    }
+    consumer.consume(message);
   }
 }

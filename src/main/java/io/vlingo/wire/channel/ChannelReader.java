@@ -5,13 +5,13 @@
 // was not distributed with this file, You can obtain
 // one at https://mozilla.org/MPL/2.0/.
 
-package io.vlingo.wire.fdx.inbound;
+package io.vlingo.wire.channel;
 
 import java.io.IOException;
 
-public interface InboundReader {
+public interface ChannelReader {
   void close();
-  String inboundName();
-  void openFor(final InboundReaderConsumer consumer) throws IOException;
+  String name();
+  void openFor(final ChannelReaderConsumer consumer) throws IOException;
   void probeChannel();
 }

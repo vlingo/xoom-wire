@@ -7,37 +7,23 @@
 
 package io.vlingo.wire.fdx.inbound;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import io.vlingo.wire.fdx.inbound.InboundResponder;
-import io.vlingo.wire.fdx.inbound.InboundStreamInterest;
 import io.vlingo.wire.message.AbstractMessageTool;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.AddressType;
 
 public class MockInboundStreamInterest extends AbstractMessageTool implements InboundStreamInterest {
-  private final ByteBuffer buffer;
   public int messageCount;
   public final List<String> messages = new ArrayList<>();
 
-  public MockInboundStreamInterest() {
-    this.buffer = ByteBuffer.allocate(1024);
-  }
+  public MockInboundStreamInterest() { }
   
   @Override
-  public void handleInboundStreamMessage(final AddressType addressType, final RawMessage message, final InboundResponder responder) {
+  public void handleInboundStreamMessage(final AddressType addressType, final RawMessage message) {
     ++messageCount;
     final String textMessage = message.asTextMessage();
     messages.add(textMessage);
-    
-    try {
-      final RawMessage responseMessage = buildRawMessageBuffer(buffer, "RESPOND-FOR: " + textMessage);
-      
-      responder.respondWith(responseMessage.asByteBuffer());
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
   }
 }

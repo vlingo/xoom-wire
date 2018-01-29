@@ -5,10 +5,10 @@
 // was not distributed with this file, You can obtain
 // one at https://mozilla.org/MPL/2.0/.
 
-package io.vlingo.wire.fdx.inbound;
+package io.vlingo.wire.channel;
 
 import io.vlingo.wire.message.RawMessage;
 
-public interface InboundReaderConsumer {
-  void consume(final RawMessage message, final InboundClientChannel clientChannel);
+public interface ChannelReaderConsumer {
+  void consume(final RawMessage message);
 }

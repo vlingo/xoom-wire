@@ -7,12 +7,11 @@
 
 package io.vlingo.wire.fdx.inbound;
 
-import java.nio.ByteBuffer;
-
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Stage;
 import io.vlingo.actors.Startable;
 import io.vlingo.actors.Stoppable;
+import io.vlingo.wire.channel.ChannelReader;
 import io.vlingo.wire.node.AddressType;
 
 public interface InboundStream extends Startable, Stoppable {
@@ -27,7 +26,7 @@ public interface InboundStream extends Startable, Stoppable {
           final long probeTimeout)
   throws Exception {
     
-    final InboundReader reader =
+    final ChannelReader reader =
             new SocketChannelInboundReader(port, inboundName, maxMessageSize, probeTimeout, stage.world().defaultLogger());
     
     final Definition definition =
@@ -40,6 +39,4 @@ public interface InboundStream extends Startable, Stoppable {
     
     return inboundStream;
   }
-
-  void respondWith(final InboundClientReference clientReference, final ByteBuffer buffer);
 }

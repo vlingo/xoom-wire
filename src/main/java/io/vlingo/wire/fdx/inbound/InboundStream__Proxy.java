@@ -7,7 +7,6 @@
 
 package io.vlingo.wire.fdx.inbound;
 
-import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 
 import io.vlingo.actors.Actor;
@@ -21,11 +20,6 @@ public class InboundStream__Proxy implements InboundStream {
   public InboundStream__Proxy(final Actor actor, final Mailbox mailbox) {
     this.actor = actor;
     this.mailbox = mailbox;
-  }
-  
-  public void respondWith(final InboundClientReference clientReference, final ByteBuffer buffer) {
-    final Consumer<InboundStream> consumer = (actor) -> actor.respondWith(clientReference, buffer);
-    mailbox.send(new LocalMessage<InboundStream>(actor, InboundStream.class, consumer, "respondWith(InboundClientReference, ByteBuffer)"));
   }
 
   @Override

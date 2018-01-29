@@ -25,8 +25,8 @@ public class InboundStreamInterest__Proxy implements InboundStreamInterest {
   }
   
   @Override
-  public void handleInboundStreamMessage(final AddressType addressType, final RawMessage message, final InboundResponder responder) {
-    final Consumer<InboundStreamInterest> consumer = (actor) -> actor.handleInboundStreamMessage(addressType, message, responder);
-    mailbox.send(new LocalMessage<InboundStreamInterest>(actor, InboundStreamInterest.class, consumer, "handleInboundStreamMessage(AddressType, RawMessage, InboundResponder)"));
+  public void handleInboundStreamMessage(final AddressType addressType, final RawMessage message) {
+    final Consumer<InboundStreamInterest> consumer = (actor) -> actor.handleInboundStreamMessage(addressType, message);
+    mailbox.send(new LocalMessage<InboundStreamInterest>(actor, InboundStreamInterest.class, consumer, "handleInboundStreamMessage(AddressType, RawMessage)"));
   }
 }
