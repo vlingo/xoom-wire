@@ -12,7 +12,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.SocketAddress;
-import java.net.SocketException;
 import java.net.StandardProtocolFamily;
 import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
@@ -33,6 +32,7 @@ public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatc
   private ChannelReaderConsumer consumer;
   private final InetAddress groupAddress;
   private final Logger logger;
+  private final int maxReceives;
   private final MembershipKey membershipKey;
   private final RawMessage message;
   private final String name;
@@ -42,7 +42,18 @@ public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatc
           final String name,
           final Group group,
           final int maxMessageSize,
-          final long probeTimeout,
+          final int maxReceives,
+          final Logger logger)
+  throws IOException {
+    this(name, group, null, maxMessageSize, maxReceives, logger);
+  }
+
+  public MulticastSubscriber(
+          final String name,
+          final Group group,
+          final String networkInterfaceName,
+          final int maxMessageSize,
+          final int maxReceives,
           final Logger logger)
   throws IOException {
     
@@ -52,7 +63,7 @@ public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatc
     this.channel = DatagramChannel.open(StandardProtocolFamily.INET);
     this.channel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
     this.channel.bind(new InetSocketAddress(group.port()));
-    this.networkInterface = assignNetworkInterfaceTo(this.channel);
+    this.networkInterface = assignNetworkInterfaceTo(this.channel, networkInterfaceName);
     this.groupAddress = InetAddress.getByName(group.address());
     this.membershipKey = channel.join(groupAddress, networkInterface);
     
@@ -60,6 +71,8 @@ public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatc
     
     this.buffer = ByteBuffer.allocate(maxMessageSize);
     this.message = new RawMessage(maxMessageSize);
+    
+    this.maxReceives = maxReceives;
     
     logger.log("MulticastSubscriber joined: " + membershipKey);
   }
@@ -98,15 +111,18 @@ public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatc
     if (closed) return;
     
     try {
+      // when nothing is received, receives represents retries
+      // and possibly some number of receives
+      for (int receives = 0; receives < maxReceives; ++receives) {
         buffer.clear();
         final SocketAddress sourceAddress = channel.receive(buffer);
         if (sourceAddress != null) {
           buffer.flip();
-          buffer.position(0);
           message.from(buffer);
           
           consumer.consume(message);
         }
+      }
     } catch (IOException e) {
       logger.log("Failed to read channel selector for: '" + name + "'", e);
     }
@@ -130,15 +146,36 @@ public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatc
   // internal implementation
   //=========================================
   
-  private NetworkInterface assignNetworkInterfaceTo(final DatagramChannel channel) throws SocketException, IOException {
+  private NetworkInterface assignNetworkInterfaceTo(
+          final DatagramChannel channel,
+          final String networkInterfaceName)
+  throws IOException {
+    
+    if (networkInterfaceName != null && !networkInterfaceName.trim().isEmpty()) {
+      final NetworkInterface specified = NetworkInterface.getByName(networkInterfaceName);
+      if (specified != null) {
+        channel.setOption(StandardSocketOptions.IP_MULTICAST_IF, specified);
+        return specified;
+      }
+    }
+
+    // if networkInterfaceName not given or unknown, take best guess
+    
+    return assignBestGuessNetworkInterfaceTo(channel);
+  }
+
+  private NetworkInterface assignBestGuessNetworkInterfaceTo(
+          final DatagramChannel channel)
+  throws IOException {
+    
     NetworkInterface networkInterface = null;
     
     final Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
     
     while (networkInterfaces.hasMoreElements()) {
       NetworkInterface candidate = networkInterfaces.nextElement();
-      
-      if (!candidate.getName().contains("virtual") && !candidate.getName().startsWith("v")) {
+      final String candidateName = candidate.getName().toLowerCase();
+      if (!candidateName.contains("virtual") && !candidateName.startsWith("v")) {
         if (candidate.isUp() && !candidate.isLoopback() && !candidate.isPointToPoint() && !candidate.isVirtual()) {
           try {
             channel.setOption(StandardSocketOptions.IP_MULTICAST_IF, candidate);
@@ -152,7 +189,7 @@ public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatc
     }
     
     if (networkInterface == null) {
-      throw new IOException("Cannot find network interface");
+      throw new IOException("Cannot assign network interface");
     }
     
     return networkInterface;

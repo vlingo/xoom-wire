@@ -23,18 +23,18 @@ public class MulticastTest {
     final MulticastPublisherReader publisher =
             new MulticastPublisherReader(
                     "test-publisher",
-                    new Group("239.100.0.1", 8080),
+                    new Group("237.37.37.1", 37371),
                     1024,
-                    100L,
+                    10L,
                     publisherConsumer,
                     JDKLogger.testInstance());
     
     final MulticastSubscriber subscriber =
             new MulticastSubscriber(
                     "test-subscriber",
-                    new Group("239.100.0.1", 8080),
+                    new Group("237.37.37.1", 37371),
                     1024,
-                    10L,
+                    10,
                     JDKLogger.testInstance());
     
     final MockChannelReaderConsumer subscriberConsumer = new MockChannelReaderConsumer();
@@ -46,7 +46,7 @@ public class MulticastTest {
     
     publisher.processChannel();
     
-    for (int i = 0; i < 15; ++i) {
+    for (int i = 0; i < 2; ++i) {
       subscriber.probeChannel();
     }
     
