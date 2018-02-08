@@ -48,6 +48,22 @@ public class PublisherAvailability {
   }
 
   @Override
+  public int hashCode() {
+    return 31 * (name.hashCode() + host.hashCode() + port);
+  }
+
+  @Override
+  public boolean equals(final Object other) {
+    if (other == null || other.getClass() != PublisherAvailability.class) {
+      return false;
+    }
+    
+    final PublisherAvailability otherPA = (PublisherAvailability) other;
+    
+    return this.name.equals(otherPA.name) && this.host.equals(otherPA.host) && this.port == otherPA.port;
+  }
+
+  @Override
   public String toString() {
     final StringBuilder builder = new StringBuilder();
     
