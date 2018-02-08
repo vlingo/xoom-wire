@@ -10,6 +10,9 @@ package io.vlingo.wire.fdx.inbound;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,9 +35,9 @@ public class InboundStreamTest extends AbstractMessageTool {
     inboundStream.actor().start();
     pause();
     assertTrue(interest.messageCount > 0);
-    
+    final List<String> copy = new ArrayList<>(interest.messages);
     int count = 0;
-    for (final String message : interest.messages) {
+    for (final String message : copy) {
       ++count;
       assertEquals(MockChannelReader.MessagePrefix + count, message);
     }
