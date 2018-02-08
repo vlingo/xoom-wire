@@ -68,6 +68,6 @@ public class InboundStreamTest extends AbstractMessageTool {
   }
   
   private void pause() {
-    try { Thread.sleep(1000); } catch (Exception e) { }
+    try { Thread.sleep(2000); } catch (Exception e) { }
   }
 }
