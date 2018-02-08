@@ -35,6 +35,8 @@ public class InboundStreamTest extends AbstractMessageTool {
     inboundStream.actor().start();
     pause();
     assertTrue(interest.messageCount > 0);
+    inboundStream.actor().stop();
+    pause();
     final List<String> copy = new ArrayList<>(interest.messages);
     int count = 0;
     for (final String message : copy) {
@@ -68,6 +70,6 @@ public class InboundStreamTest extends AbstractMessageTool {
   }
   
   private void pause() {
-    try { Thread.sleep(2000); } catch (Exception e) { }
+    try { Thread.sleep(1000); } catch (Exception e) { }
   }
 }

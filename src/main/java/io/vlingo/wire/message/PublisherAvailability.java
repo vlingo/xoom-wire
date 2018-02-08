@@ -40,11 +40,11 @@ public class PublisherAvailability {
   }
 
   public Address toAddress() {
-    return Address.from(Host.of(name), port, AddressType.MAIN);
+    return toAddress(AddressType.MAIN);
   }
 
   public Address toAddress(final AddressType type) {
-    return Address.from(Host.of(name), port, type);
+    return Address.from(Host.of(host), port, type);
   }
 
   @Override
