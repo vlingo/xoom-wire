@@ -8,14 +8,28 @@
 package io.vlingo.wire.node;
 
 public enum AddressType {
+  MAIN {
+    public boolean isMain() {
+      return true;
+    }
+    public String field() {
+      return "addr=";
+    }
+  },
   OP {
     public boolean isOperational() {
       return true;
+    }
+    public String field() {
+      return "op=";
     }
   },
   APP {
     public boolean isApplication() {
       return true;
+    }
+    public String field() {
+      return "app=";
     }
   },
   NONE {
@@ -32,7 +46,15 @@ public enum AddressType {
     return false;
   }
 
+  public boolean isMain() {
+    return false;
+  }
+
   public boolean isNone() {
     return false;
+  }
+
+  public String field() {
+    return "";
   }
 }

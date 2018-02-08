@@ -10,7 +10,6 @@ package io.vlingo.wire.fdx.outbound;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 
 import org.junit.Before;
@@ -34,11 +33,9 @@ public class OutboundTest extends AbstractMessageTool {
   
   @Test
   public void testBroadcast() throws Exception {
-    final ByteBuffer buffer = ByteBuffer.allocate(1024);
-    
-    final RawMessage rawMessage1 = buildRawMessageBuffer(buffer, Message1);
-    final RawMessage rawMessage2 = buildRawMessageBuffer(buffer, Message2);
-    final RawMessage rawMessage3 = buildRawMessageBuffer(buffer, Message3);
+    final RawMessage rawMessage1 = RawMessage.from(0, 0, Message1);
+    final RawMessage rawMessage2 = RawMessage.from(0, 0, Message2);
+    final RawMessage rawMessage3 = RawMessage.from(0, 0, Message3);
     
     outbound.broadcast(rawMessage1);
     outbound.broadcast(rawMessage2);
@@ -59,12 +56,12 @@ public class OutboundTest extends AbstractMessageTool {
     final PooledByteBuffer buffer2 = pool.access();
     final PooledByteBuffer buffer3 = pool.access();
     
-    final RawMessage rawMessage1 = buildRawMessageBuffer(buffer1.buffer(), Message1);
-    bytesFrom(rawMessage1, buffer1.buffer());
-    final RawMessage rawMessage2 = buildRawMessageBuffer(buffer2.buffer(), Message2);
-    bytesFrom(rawMessage2, buffer2.buffer());
-    final RawMessage rawMessage3 = buildRawMessageBuffer(buffer3.buffer(), Message3);
-    bytesFrom(rawMessage3, buffer3.buffer());
+    final RawMessage rawMessage1 = RawMessage.from(0, 0, Message1);
+    rawMessage1.asByteBuffer(buffer1.buffer());
+    final RawMessage rawMessage2 = RawMessage.from(0, 0, Message2);
+    rawMessage2.asByteBuffer(buffer2.buffer());
+    final RawMessage rawMessage3 = RawMessage.from(0, 0, Message3);
+    rawMessage3.asByteBuffer(buffer3.buffer());
 
     outbound.broadcast(buffer1);
     buffer1.release();
@@ -84,11 +81,9 @@ public class OutboundTest extends AbstractMessageTool {
   
   @Test
   public void testBroadcastToSelectNodes() throws Exception {
-    final ByteBuffer buffer = ByteBuffer.allocate(1024);
-    
-    final RawMessage rawMessage1 = buildRawMessageBuffer(buffer, Message1);
-    final RawMessage rawMessage2 = buildRawMessageBuffer(buffer, Message2);
-    final RawMessage rawMessage3 = buildRawMessageBuffer(buffer, Message3);
+    final RawMessage rawMessage1 = RawMessage.from(0, 0, Message1);
+    final RawMessage rawMessage2 = RawMessage.from(0, 0, Message2);
+    final RawMessage rawMessage3 = RawMessage.from(0, 0, Message3);
     
     final List<Node> selectNodes = asList(config.nodeMatching(Id.of(3)));
     
@@ -105,11 +100,9 @@ public class OutboundTest extends AbstractMessageTool {
   
   @Test
   public void testSendTo() throws Exception {
-    final ByteBuffer buffer = ByteBuffer.allocate(1024);
-    
-    final RawMessage rawMessage1 = buildRawMessageBuffer(buffer, Message1);
-    final RawMessage rawMessage2 = buildRawMessageBuffer(buffer, Message2);
-    final RawMessage rawMessage3 = buildRawMessageBuffer(buffer, Message3);
+    final RawMessage rawMessage1 = RawMessage.from(0, 0, Message1);
+    final RawMessage rawMessage2 = RawMessage.from(0, 0, Message2);
+    final RawMessage rawMessage3 = RawMessage.from(0, 0, Message3);
     
     final Id id3 = Id.of(3);
     
@@ -130,12 +123,12 @@ public class OutboundTest extends AbstractMessageTool {
     final PooledByteBuffer buffer2 = pool.access();
     final PooledByteBuffer buffer3 = pool.access();
     
-    final RawMessage rawMessage1 = buildRawMessageBuffer(buffer1.buffer(), Message1);
-    bytesFrom(rawMessage1, buffer1.buffer());
-    final RawMessage rawMessage2 = buildRawMessageBuffer(buffer2.buffer(), Message2);
-    bytesFrom(rawMessage2, buffer2.buffer());
-    final RawMessage rawMessage3 = buildRawMessageBuffer(buffer3.buffer(), Message3);
-    bytesFrom(rawMessage3, buffer3.buffer());
+    final RawMessage rawMessage1 = RawMessage.from(0, 0, Message1);
+    rawMessage1.asByteBuffer(buffer1.buffer());
+    final RawMessage rawMessage2 = RawMessage.from(0, 0, Message2);
+    rawMessage2.asByteBuffer(buffer2.buffer());
+    final RawMessage rawMessage3 = RawMessage.from(0, 0, Message3);
+    rawMessage3.asByteBuffer(buffer3.buffer());
     
     final Id id3 = Id.of(3);
     

@@ -14,7 +14,7 @@ public final class RawMessageHeader {
   private static final int INT_FIELDS = 1;
   private static final int SHORT_BYTES = Short.SIZE / Byte.SIZE;
   private static final int INT_BYTES = Integer.SIZE / Byte.SIZE;
-  public static final int BYTES = (SHORT_BYTES * SHORT_FIELDS) + (INT_BYTES + INT_FIELDS);
+  public static final int BYTES = (SHORT_BYTES * SHORT_FIELDS) + (INT_BYTES * INT_FIELDS);
   private static final short HEADER_ID = 3730 | 0x01; // version 1
 
   private int length;
@@ -101,7 +101,7 @@ public final class RawMessageHeader {
     final short headerId = buffer.getShort();
     
     if (headerId != HEADER_ID) {
-      throw new IllegalArgumentException("Invalid raw message header.");
+      throw new IllegalArgumentException("Invalid raw message header: " + headerId);
     }
 
     final short nodeId = buffer.getShort();

@@ -81,7 +81,11 @@ public class RawMessage {
   }
 
   public final ByteBuffer asByteBuffer() {
-    final ByteBuffer buffer = ByteBuffer.allocate(RawMessageHeader.BYTES + bytes.length);
+    return asByteBuffer(ByteBufferAllocator.allocate(RawMessageHeader.BYTES + bytes.length));
+  }
+
+  public final ByteBuffer asByteBuffer(final ByteBuffer buffer) {
+    buffer.clear();
     copyBytesTo(buffer);
     buffer.flip();
     return buffer;
@@ -150,5 +154,9 @@ public class RawMessage {
   @Override
   public String toString() {
     return "RawMessage[header=" + header + " length=" + length() + "]";
+  }
+
+  public int totalLength() {
+    return RawMessageHeader.BYTES + length();
   }
 }

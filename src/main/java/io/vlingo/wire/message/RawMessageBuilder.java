@@ -16,7 +16,7 @@ public class RawMessageBuilder {
 
   public RawMessageBuilder(final int maxMessageSize) {
     this.rawMessage = new RawMessage(maxMessageSize);
-    this.workBuffer = ByteBuffer.allocate(maxMessageSize);
+    this.workBuffer = ByteBufferAllocator.allocate(maxMessageSize);
     this.mode = ScanMode.READ_HEADER;
   }
 

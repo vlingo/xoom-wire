@@ -7,9 +7,5 @@
 
 package io.vlingo.wire.message;
 
-import io.vlingo.wire.node.Configuration;
-import io.vlingo.wire.node.MockConfiguration;
-
-public class AbstractMessageTool {
-  protected Configuration config = new MockConfiguration();
+public interface Message {
 }

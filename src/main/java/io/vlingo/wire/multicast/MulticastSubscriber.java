@@ -23,6 +23,7 @@ import io.vlingo.actors.Logger;
 import io.vlingo.wire.channel.ChannelMessageDispatcher;
 import io.vlingo.wire.channel.ChannelReader;
 import io.vlingo.wire.channel.ChannelReaderConsumer;
+import io.vlingo.wire.message.ByteBufferAllocator;
 import io.vlingo.wire.message.RawMessage;
 
 public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatcher {
@@ -69,7 +70,7 @@ public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatc
     
     this.channel.configureBlocking(false);
     
-    this.buffer = ByteBuffer.allocate(maxMessageSize);
+    this.buffer = ByteBufferAllocator.allocate(maxMessageSize);
     this.message = new RawMessage(maxMessageSize);
     
     this.maxReceives = maxReceives;

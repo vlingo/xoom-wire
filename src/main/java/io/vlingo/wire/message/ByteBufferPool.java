@@ -58,7 +58,7 @@ public class ByteBufferPool {
     private volatile boolean inUse;
     
     PooledByteBuffer(final int maxBufferSize) {
-      this.buffer = ByteBuffer.allocate(maxBufferSize);
+      this.buffer = ByteBufferAllocator.allocate(maxBufferSize);
       this.inUse = false;
     }
     

@@ -23,6 +23,7 @@ import io.vlingo.wire.channel.ChannelMessageDispatcher;
 import io.vlingo.wire.channel.ChannelPublisher;
 import io.vlingo.wire.channel.ChannelReaderConsumer;
 import io.vlingo.wire.channel.SocketChannelSelectionReader;
+import io.vlingo.wire.message.ByteBufferAllocator;
 import io.vlingo.wire.message.PublisherAvailability;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.message.RawMessageBuilder;
@@ -55,7 +56,7 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
     this.processTimeout = processTimeout;
     this.consumer = consumer;
     this.logger = logger;
-    this.messageBuffer = ByteBuffer.allocate(maxMessageSize);
+    this.messageBuffer = ByteBufferAllocator.allocate(maxMessageSize);
     this.messageQueue = new LinkedList<>();
     this.channel = DatagramChannel.open();
     this.selector = Selector.open();
@@ -171,7 +172,7 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
                     publisherAddress.getPort())
             .toString();
     
-    final ByteBuffer buffer = ByteBuffer.allocate(message.length());
+    final ByteBuffer buffer = ByteBufferAllocator.allocate(message.length());
     buffer.put(message.getBytes());
     buffer.flip();
     

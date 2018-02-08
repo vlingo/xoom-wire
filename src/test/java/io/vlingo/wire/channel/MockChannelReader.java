@@ -8,7 +8,6 @@
 package io.vlingo.wire.channel;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import io.vlingo.wire.message.AbstractMessageTool;
 import io.vlingo.wire.message.RawMessage;
@@ -18,11 +17,9 @@ public class MockChannelReader extends AbstractMessageTool implements ChannelRea
   
   public int probeChannelCount;
 
-  private final ByteBuffer buffer;
   private ChannelReaderConsumer consumer;
   
   public MockChannelReader() {
-    this.buffer = ByteBuffer.allocate(1024);
   }
   
   @Override
@@ -44,7 +41,7 @@ public class MockChannelReader extends AbstractMessageTool implements ChannelRea
   public void probeChannel() {
     ++probeChannelCount;
     
-    final RawMessage message = buildRawMessageBuffer(buffer, MessagePrefix + probeChannelCount);
+    final RawMessage message = RawMessage.from(0, 0, MessagePrefix + probeChannelCount);
     
     consumer.consume(message);
   }

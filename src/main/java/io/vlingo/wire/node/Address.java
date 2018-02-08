@@ -36,6 +36,10 @@ public final class Address {
     this.type = type;
   }
 
+  public String full() {
+    return host.name() + ":" + port;
+  }
+
   public final Host host() {
     return host;
   }

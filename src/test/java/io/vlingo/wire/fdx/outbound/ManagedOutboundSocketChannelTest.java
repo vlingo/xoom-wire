@@ -21,6 +21,7 @@ import io.vlingo.wire.channel.ChannelReader;
 import io.vlingo.wire.channel.MockChannelReaderConsumer;
 import io.vlingo.wire.fdx.inbound.SocketChannelInboundReader;
 import io.vlingo.wire.message.AbstractMessageTool;
+import io.vlingo.wire.message.ByteBufferAllocator;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Host;
 import io.vlingo.wire.node.Id;
@@ -43,11 +44,11 @@ public class ManagedOutboundSocketChannelTest extends AbstractMessageTool {
     
     opReader.openFor(consumer);
     
-    final ByteBuffer buffer = ByteBuffer.allocate(1024);
+    final ByteBuffer buffer = ByteBufferAllocator.allocate(1024);
     
     final String message1 = OpMessage + 1;
-    final RawMessage rawMessage1 = buildRawMessageBuffer(buffer, message1);
-    opChannel.write(bytesFrom(rawMessage1, buffer));
+    final RawMessage rawMessage1 = RawMessage.from(0, 0, message1);
+    opChannel.write(rawMessage1.asByteBuffer(buffer));
     
     probeUntilConsumed(opReader, consumer);
     
@@ -55,8 +56,8 @@ public class ManagedOutboundSocketChannelTest extends AbstractMessageTool {
     assertEquals(message1, consumer.messages.get(0));
 
     final String message2 = OpMessage + 2;
-    final RawMessage rawMessage2 = buildRawMessageBuffer(buffer, message2);
-    opChannel.write(bytesFrom(rawMessage2, buffer));
+    final RawMessage rawMessage2 = RawMessage.from(0, 0, message2);
+    opChannel.write(rawMessage2.asByteBuffer(buffer));
     
     probeUntilConsumed(opReader, consumer);
     
@@ -70,11 +71,11 @@ public class ManagedOutboundSocketChannelTest extends AbstractMessageTool {
     
     appReader.openFor(consumer);
     
-    final ByteBuffer buffer = ByteBuffer.allocate(1024);
+    final ByteBuffer buffer = ByteBufferAllocator.allocate(1024);
     
     final String message1 = AppMessage + 1;
-    final RawMessage rawMessage1 = buildRawMessageBuffer(buffer, message1);
-    appChannel.write(bytesFrom(rawMessage1, buffer));
+    final RawMessage rawMessage1 = RawMessage.from(0, 0, message1);
+    appChannel.write(rawMessage1.asByteBuffer(buffer));
     
     probeUntilConsumed(appReader, consumer);
     
@@ -82,8 +83,8 @@ public class ManagedOutboundSocketChannelTest extends AbstractMessageTool {
     assertEquals(message1, consumer.messages.get(0));
 
     final String message2 = AppMessage + 2;
-    final RawMessage rawMessage2 = buildRawMessageBuffer(buffer, message2);
-    appChannel.write(bytesFrom(rawMessage2, buffer));
+    final RawMessage rawMessage2 = RawMessage.from(0, 0, message2);
+    appChannel.write(rawMessage2.asByteBuffer(buffer));
     
     probeUntilConsumed(appReader, consumer);
     
