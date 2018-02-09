@@ -17,13 +17,13 @@ public final class Address {
   private final AddressType type;
 
   public static Address from(final String fullAddress, final AddressType type) {
-    String[] parts = fullAddress.split(":");
+    final int lastColon = fullAddress.lastIndexOf(":");
 
-    if (parts.length != 2) {
+    if (lastColon == -1) {
       throw new IllegalArgumentException("The address is not valid: " + fullAddress);
     }
 
-    return new Address(Host.of(parts[0]), Integer.parseInt(parts[1]), type);
+    return new Address(Host.of(fullAddress.substring(0, lastColon)), Integer.parseInt(fullAddress.substring(lastColon+1)), type);
   }
 
   public static Address from(final Host host, final int port, final AddressType type) {
