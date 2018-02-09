@@ -14,6 +14,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -30,7 +32,7 @@ import io.vlingo.wire.message.RawMessageBuilder;
 
 public class MulticastPublisherReader implements ChannelPublisher, ChannelMessageDispatcher {
   private final RawMessage availability;
-  private final DatagramChannel channel;
+  private final DatagramChannel publisherChannel;
   private boolean closed;
   private final ChannelReaderConsumer consumer;
   private final InetSocketAddress groupAddress;
@@ -40,11 +42,13 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
   private final String name;
   private final long processTimeout;
   private final InetSocketAddress publisherAddress;
+  private final ServerSocketChannel readChannel;
   private final Selector selector;
   
   public MulticastPublisherReader(
           final String name,
           final Group group,
+          final int incomingSocketPort,
           final int maxMessageSize,
           final long processTimeout,
           final ChannelReaderConsumer consumer,
@@ -58,17 +62,20 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
     this.logger = logger;
     this.messageBuffer = ByteBufferAllocator.allocate(maxMessageSize);
     this.messageQueue = new LinkedList<>();
-    this.channel = DatagramChannel.open();
+    this.publisherChannel = DatagramChannel.open();
     this.selector = Selector.open();
 
     // binds to an assigned local address that is
     // published as my availabilityMessage
-    channel.bind(null);
+    publisherChannel.bind(null);
     
-    channel.configureBlocking(false);
-    this.channel.register(selector, SelectionKey.OP_WRITE | SelectionKey.OP_READ, new RawMessageBuilder(maxMessageSize));
-    
-    this.publisherAddress = (InetSocketAddress) channel.getLocalAddress();
+    publisherChannel.configureBlocking(false);
+    this.publisherChannel.register(selector, SelectionKey.OP_WRITE);
+    this.readChannel = ServerSocketChannel.open();
+    readChannel.socket().bind(new InetSocketAddress(incomingSocketPort));
+    readChannel.configureBlocking(false);
+    this.readChannel.register(selector, SelectionKey.OP_ACCEPT);
+    this.publisherAddress = (InetSocketAddress) readChannel.socket().getLocalSocketAddress();
     this.availability = availabilityMessage();
   }
 
@@ -89,9 +96,15 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
     }
     
     try {
-      channel.close();
+      publisherChannel.close();
     } catch (Exception e) {
       logger.log("Failed to close multicast publisher channel for: '" + name + "'", e);
+    }
+    
+    try {
+      readChannel.close();
+    } catch (Exception e) {
+      logger.log("Failed to close multicast reader channel for: '" + name + "'", e);
     }
   }
   
@@ -108,7 +121,9 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
           iterator.remove();
 
           if (key.isValid()) {
-            if (key.isWritable()) {
+            if (key.isAcceptable()) {
+              accept(key);
+            } else if (key.isWritable()) {
               sendMax();
             } else if (key.isReadable()) {
               receive(key);
@@ -164,6 +179,26 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
   // internal implementation
   //====================================
 
+  private void accept(final SelectionKey key) throws IOException {
+    final ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
+
+    if (serverChannel.isOpen()) {
+      final SocketChannel clientChannel = serverChannel.accept();
+  
+      clientChannel.configureBlocking(false);
+  
+      final SelectionKey clientChannelKey = clientChannel.register(selector, SelectionKey.OP_READ);
+  
+      clientChannelKey.attach(new RawMessageBuilder(messageBuffer.capacity()));
+
+      logger.log(
+              "Accepted new connection for '"
+              + name
+              + "' from: "
+              + clientChannel.getRemoteAddress());
+    }
+  }
+
   private RawMessage availabilityMessage() {
     final String message =
             new PublisherAvailability(
@@ -190,11 +225,7 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
       if (message == null) {
         return;
       } else {
-        messageBuffer.clear();
-        message.copyBytesTo(messageBuffer);
-        messageBuffer.flip();
-        final int bytes = channel.send(messageBuffer, groupAddress);
-        if (bytes > 0) {
+        if (publisherChannel.send(message.asByteBuffer(messageBuffer), groupAddress) > 0) {
           messageQueue.remove();
         } else {
           return;
