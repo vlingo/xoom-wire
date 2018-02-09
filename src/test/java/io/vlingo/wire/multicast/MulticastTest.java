@@ -24,6 +24,7 @@ public class MulticastTest {
             new MulticastPublisherReader(
                     "test-publisher",
                     new Group("237.37.37.1", 37371),
+                    37379,
                     1024,
                     10L,
                     publisherConsumer,
