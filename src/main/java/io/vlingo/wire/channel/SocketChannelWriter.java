@@ -45,7 +45,7 @@ public class SocketChannelWriter {
   }
 
   public int write(final ByteBuffer buffer) {
-    final SocketChannel preparedChannel = preparedChannel();
+    final SocketChannel preparedChannel = prepareChannel();
     int totalBytesWritten = 0;
 
     if (preparedChannel != null) {
@@ -61,7 +61,12 @@ public class SocketChannelWriter {
     return totalBytesWritten;
   }
 
-  private SocketChannel preparedChannel() {
+  @Override
+  public String toString() {
+    return "SocketChannelWriter[address=" + address + ", channel=" + channel + "]";
+  }
+
+  private SocketChannel prepareChannel() {
     try {
       if (channel != null) {
         if (channel.isConnected()) {
@@ -75,6 +80,7 @@ public class SocketChannelWriter {
         return channel;
       }
     } catch (Exception e) {
+      logger.log("" + this + ": Failed to prepare channel because: " + e.getMessage(), e);
       close();
     }
     return null;
