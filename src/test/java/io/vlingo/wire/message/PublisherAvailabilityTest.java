@@ -45,5 +45,6 @@ public class PublisherAvailabilityTest {
             new PublisherAvailability("test-dir", "1.2.3.4", 111);
     
     assertEquals(Address.from(Host.of("1.2.3.4"), 111, AddressType.MAIN), publisherAvailability.toAddress());
+    assertEquals(Address.from(Host.of("1.2.3.4"), 111, AddressType.OP), publisherAvailability.toAddress(AddressType.OP));
   }
 }
