@@ -9,12 +9,14 @@ package io.vlingo.wire.message;
 
 import static org.junit.Assert.assertEquals;
 
+import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.Test;
 
 import io.vlingo.wire.message.ByteBufferPool.PooledByteBuffer;
 
 public class ByteBufferPoolTest {
-
   @Test
   public void testAccessAvailableRelease() {
     ByteBufferPool pool = new ByteBufferPool(10, 100);
@@ -50,5 +52,50 @@ public class ByteBufferPoolTest {
     assertEquals(testText, new String(buffer1.flip().array(), 0, buffer1.limit()));
     
     buffer1.release();
+  }
+  
+  @Test
+  public void testAlwaysAccessible() throws Exception {
+    final ByteBufferPool pool = new ByteBufferPool(1, 100);
+    
+    final AtomicInteger count = new AtomicInteger(0);
+    
+    new Thread() {
+      @Override
+      public void run() {
+        System.out.println("Accessible 1 started.");
+        for (int count = 0; count < 10_000_000; ++count) {
+          final PooledByteBuffer pooled = pool.access();
+          final ByteBuffer buffer = pooled.buffer();
+          buffer.clear();
+          buffer.put("I got it: 1!".getBytes());
+          buffer.flip();
+          pooled.release();
+        }
+        System.out.println("Accessible 1 ended.");
+        count.incrementAndGet();
+      }
+    }.start();
+    
+    new Thread() {
+      @Override
+      public void run() {
+        System.out.println("Accessible 2 started.");
+        for (int count = 0; count < 10_000_000; ++count) {
+          final PooledByteBuffer pooled = pool.access();
+          final ByteBuffer buffer = pooled.buffer();
+          buffer.clear();
+          buffer.put("I got it: 2!".getBytes());
+          buffer.flip();
+          pooled.release();
+        }
+        System.out.println("Accessible 2 ended.");
+        count.incrementAndGet();
+      }
+    }.start();
+    
+    while (count.get() < 2) {
+      Thread.sleep(100);
+    }
   }
 }
