@@ -10,6 +10,7 @@ package io.vlingo.wire.fdx.inbound;
 import java.util.function.Consumer;
 
 import io.vlingo.actors.Actor;
+import io.vlingo.actors.DeadLetter;
 import io.vlingo.actors.LocalMessage;
 import io.vlingo.actors.Mailbox;
 import io.vlingo.wire.message.RawMessage;
@@ -26,7 +27,11 @@ public class InboundStreamInterest__Proxy implements InboundStreamInterest {
   
   @Override
   public void handleInboundStreamMessage(final AddressType addressType, final RawMessage message) {
-    final Consumer<InboundStreamInterest> consumer = (actor) -> actor.handleInboundStreamMessage(addressType, message);
-    mailbox.send(new LocalMessage<InboundStreamInterest>(actor, InboundStreamInterest.class, consumer, "handleInboundStreamMessage(AddressType, RawMessage)"));
+    if (!actor.isStopped()) {
+      final Consumer<InboundStreamInterest> consumer = (actor) -> actor.handleInboundStreamMessage(addressType, message);
+      mailbox.send(new LocalMessage<InboundStreamInterest>(actor, InboundStreamInterest.class, consumer, "handleInboundStreamMessage(AddressType, RawMessage)"));
+    } else {
+      actor.deadLetters().failedDelivery(new DeadLetter(actor, "handleInboundStreamMessage(AddressType, RawMessage)"));
+    }
   }
 }

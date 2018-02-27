@@ -10,6 +10,7 @@ package io.vlingo.wire.fdx.inbound;
 import java.util.function.Consumer;
 
 import io.vlingo.actors.Actor;
+import io.vlingo.actors.DeadLetter;
 import io.vlingo.actors.LocalMessage;
 import io.vlingo.actors.Mailbox;
 
@@ -24,8 +25,12 @@ public class InboundStream__Proxy implements InboundStream {
 
   @Override
   public void start() {
-    final Consumer<InboundStream> consumer = (actor) -> actor.start();
-    mailbox.send(new LocalMessage<InboundStream>(actor, InboundStream.class, consumer, "start()"));
+    if (!actor.isStopped()) {
+      final Consumer<InboundStream> consumer = (actor) -> actor.start();
+      mailbox.send(new LocalMessage<InboundStream>(actor, InboundStream.class, consumer, "start()"));
+    } else {
+      actor.deadLetters().failedDelivery(new DeadLetter(actor, "start()"));
+    }
   }
 
   @Override
@@ -35,7 +40,11 @@ public class InboundStream__Proxy implements InboundStream {
 
   @Override
   public void stop() {
-    final Consumer<InboundStream> consumer = (actor) -> actor.stop();
-    mailbox.send(new LocalMessage<InboundStream>(actor, InboundStream.class, consumer, "stop()"));
+    if (!actor.isStopped()) {
+      final Consumer<InboundStream> consumer = (actor) -> actor.stop();
+      mailbox.send(new LocalMessage<InboundStream>(actor, InboundStream.class, consumer, "stop()"));
+    } else {
+      actor.deadLetters().failedDelivery(new DeadLetter(actor, "stop()"));
+    }
   }
 }
