@@ -265,10 +265,8 @@ public class ServerRequestResponseChannel implements RequestListenerChannel, Res
     }
 
     void release(final ResponseData responseData) {
-      if (orderedResponseData.remove(responseData)) {
-        System.out.println("RELEASING: " + responseData.buffer);
-        ((PooledByteBuffer) responseData.buffer).release();
-      }
+      orderedResponseData.remove(responseData);
+      ((PooledByteBuffer) responseData.buffer).release();
     }
 
     @Override
