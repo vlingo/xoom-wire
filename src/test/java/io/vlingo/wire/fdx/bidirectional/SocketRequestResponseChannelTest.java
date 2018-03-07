@@ -27,9 +27,9 @@ import io.vlingo.wire.node.Host;
 public class SocketRequestResponseChannelTest {
   private ByteBuffer buffer;
   private ClientRequestResponseChannel client;
-  private MockResponseChannelConsumer clientConsumer;
+  private TestResponseChannelConsumer clientConsumer;
   private ServerRequestResponseChannel server;
-  private MockRequestChannelConsumer serverConsumer;
+  private TestRequestChannelConsumer serverConsumer;
   
   @Test
   public void testBasicRequestResponse() {
@@ -144,9 +144,9 @@ public class SocketRequestResponseChannelTest {
     buffer = ByteBufferAllocator.allocate(1024);
     final Logger logger = JDKLogger.testInstance();
     server = new ServerRequestResponseChannel(37371, "test-server", 100, 1024, 10L, logger);
-    serverConsumer = new MockRequestChannelConsumer();
+    serverConsumer = new TestRequestChannelConsumer();
     server.openFor(serverConsumer);
-    clientConsumer = new MockResponseChannelConsumer();
+    clientConsumer = new TestResponseChannelConsumer();
     client = new ClientRequestResponseChannel(Address.from(Host.of("localhost"), 37371,  AddressType.NONE), clientConsumer, 1024, logger);
   }
 

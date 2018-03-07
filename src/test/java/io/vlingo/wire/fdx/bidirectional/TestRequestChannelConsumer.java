@@ -15,7 +15,7 @@ import io.vlingo.wire.channel.RequestChannelConsumer;
 import io.vlingo.wire.channel.RequestResponseContext;
 import io.vlingo.wire.message.Converters;
 
-public class MockRequestChannelConsumer implements RequestChannelConsumer {
+public class TestRequestChannelConsumer implements RequestChannelConsumer {
   public int currentExpectedRequestLength;
   public int consumeCount;
   public List<String> requests = new ArrayList<>();

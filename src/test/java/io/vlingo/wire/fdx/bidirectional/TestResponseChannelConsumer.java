@@ -15,7 +15,7 @@ import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.message.Converters;
 
-public class MockResponseChannelConsumer implements ResponseChannelConsumer {
+public class TestResponseChannelConsumer implements ResponseChannelConsumer {
   public int currentExpectedResponseLength;
   public int consumeCount;
   public List<String> responses = new ArrayList<>();

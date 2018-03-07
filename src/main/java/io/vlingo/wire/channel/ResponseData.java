@@ -10,11 +10,9 @@ package io.vlingo.wire.channel;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 
 public final class ResponseData {
-  public final RequestResponseContext<?> context;
   public final ConsumerByteBuffer buffer;
   
-  public ResponseData(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer) {
-    this.context = context;
+  public ResponseData(final ConsumerByteBuffer buffer) {
     this.buffer = buffer;
   }
 

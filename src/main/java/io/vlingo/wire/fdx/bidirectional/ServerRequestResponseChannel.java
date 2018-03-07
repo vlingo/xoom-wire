@@ -282,7 +282,7 @@ public class ServerRequestResponseChannel implements RequestListenerChannel, Res
     @Override
     public ResponseData responseData() {
       final PooledByteBuffer pooled = bufferPool.access();
-      final ResponseData responseData = new ResponseData(this, pooled);
+      final ResponseData responseData = new ResponseData(pooled);
       orderedResponseData.add(responseData);
       return responseData;
     }
