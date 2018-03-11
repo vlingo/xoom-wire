@@ -140,13 +140,8 @@ public class ServerRequestResponseChannel implements RequestListenerChannel, Res
 
   @Override
   public void respondWith(RequestResponseContext<?> context, boolean completes) {
-    try {
-      final Context localContext = (Context) context;
-      if (completes) localContext.closable();
-      final SocketChannel clientChannel = localContext.reference();
-      if (localContext.firstResponse()) clientChannel.register(selector, SelectionKey.OP_WRITE, context);
-    } catch (Exception e) {
-      logger.log("Failed to stage response because: " + e.getMessage(), e);
+    if (completes) {
+      ((Context) context).closable();
     }
   }
 
@@ -162,7 +157,7 @@ public class ServerRequestResponseChannel implements RequestListenerChannel, Res
   
       clientChannel.configureBlocking(false);
   
-      clientChannel.register(selector, SelectionKey.OP_READ, new Context(this, clientChannel));
+      clientChannel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE, new Context(this, clientChannel));
 
       logger.log(
               "Accepted new connection for '"
@@ -190,46 +185,52 @@ public class ServerRequestResponseChannel implements RequestListenerChannel, Res
       totalBytesRead += bytesRead;
     } while (bytesRead > 0);
 
-    if (totalBytesRead > 0 && buffer.limit() > 0) {
+    if (bytesRead == -1) {
+      channel.close();
+      key.cancel();
+    }
+
+    if (totalBytesRead > 0) {
       buffer.flip();
       consumer.consume(context);
       buffer.clear();
     }
   }
 
-  private void respondWith(final Context context) throws Exception {
+  private void respondWithCachedData(final Context context) throws Exception {
     final SocketChannel clientChannel = context.reference();
-    final ResponseData responseData = context.nextResponseData();
-    final ByteBuffer responseBuffer = responseData.buffer.asByteBuffer();
+    ResponseData responseData = context.nextCachedResponseData();
     
-    try {
-      while (responseBuffer.hasRemaining()) {
-        clientChannel.write(responseBuffer);
+    while (responseData != null) {
+      try {
+        final ByteBuffer responseBuffer = responseData.buffer.asByteBuffer();
+        while (responseBuffer.hasRemaining()) {
+          clientChannel.write(responseBuffer);
+        }
+      } catch (Exception e) {
+        logger.log("Failed to write buffer for channel " + clientChannel.getRemoteAddress() + " because: " + e.getMessage(), e);
       }
-    } catch (Exception e) {
-      logger.log("Failed to write buffer for channel " + clientChannel.getRemoteAddress() + " because: " + e.getMessage(), e);
-    } finally {
       context.release(responseData);
-      context.close();
+      responseData = context.nextCachedResponseData();
     }
+    context.close();
   }
 
   private void write(final SelectionKey key) throws Exception {
     final Context context = (Context) key.attachment();
-    respondWith(context);
+    respondWithCachedData(context);
   }
 
   class Context implements RequestResponseContext<SocketChannel> {
     private final SocketChannel clientChannel;
     private boolean closable;
     private final List<ResponseData> orderedResponseData;
-    final PooledByteBuffer requestBuffer;
+    PooledByteBuffer requestBuffer;
     private final ResponseSenderChannel responder;
 
     Context(final ResponseSenderChannel responder, final SocketChannel clientChannel) {
       this.responder = responder;
       this.clientChannel = clientChannel;
-      this.requestBuffer = bufferPool.access();
       this.closable = false;
       this.orderedResponseData = new ArrayList<>(1);
     }
@@ -238,16 +239,16 @@ public class ServerRequestResponseChannel implements RequestListenerChannel, Res
       if (!closable || !orderedResponseData.isEmpty()) return;
       
       try {
-        requestBuffer.release();
+        if (requestBuffer != null) {
+          requestBuffer.release();
+          requestBuffer = null;
+        }
         
         for (final ResponseData responseData : orderedResponseData) {
           ((PooledByteBuffer) responseData.buffer).release();
         }
-        
-        //clientChannel.close();
-        
       } catch (Exception e) {
-        logger.log("Failed to clsoe client channel because: " + e.getMessage(), e);
+        logger.log("Failed to close client channel because: " + e.getMessage(), e);
       }
     }
 
@@ -259,14 +260,19 @@ public class ServerRequestResponseChannel implements RequestListenerChannel, Res
       return orderedResponseData.size() == 1;
     }
 
-    ResponseData nextResponseData() {
+    ResponseData nextCachedResponseData() {
+      if (orderedResponseData.isEmpty()) {
+        return null;
+      }
       final ResponseData responseData = orderedResponseData.remove(0);
       return responseData;
     }
 
     void release(final ResponseData responseData) {
-      orderedResponseData.remove(responseData);
-      ((PooledByteBuffer) responseData.buffer).release();
+      if (responseData != null) {
+        orderedResponseData.remove(responseData);
+        ((PooledByteBuffer) responseData.buffer).release();
+      }
     }
 
     @Override
@@ -276,6 +282,9 @@ public class ServerRequestResponseChannel implements RequestListenerChannel, Res
 
     @Override
     public ConsumerByteBuffer requestBuffer() {
+      if (requestBuffer == null) {
+        requestBuffer = bufferPool.access();
+      }
       return requestBuffer;
     }
 
