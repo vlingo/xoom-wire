@@ -19,10 +19,22 @@ public interface RequestResponseContext<R> {
     sender().abandon(this);
   }
 
+  default void respondOnceWith(final ConsumerByteBuffer buffer) {
+    final ResponseData responseData = responseData();
+    responseData.buffer.put(buffer.array(), 0, buffer.limit()).flip();
+    sender().respondOnceWith(this);
+  }
+
   default void respondOnceWith(final byte[] bytes) {
     final ResponseData responseData = responseData();
     responseData.buffer.put(bytes).flip();
     sender().respondOnceWith(this);
+  }
+
+  default void respondWith(final ConsumerByteBuffer buffer, final boolean completes) {
+    final ResponseData responseData = responseData();
+    responseData.buffer.put(buffer.array(), 0, buffer.limit()).flip();
+    sender().respondWith(this, completes);
   }
 
   default void respondWith(final byte[] bytes, final boolean completes) {
