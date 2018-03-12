@@ -14,23 +14,21 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ByteBufferPool {
-  private final List<PooledByteBuffer> pool;
+  private final PooledByteBuffer[] pool;
   private final int poolSize;
   
   public ByteBufferPool(final int poolSize, final int maxBufferSize) {
     this.poolSize = poolSize;
-    this.pool = new ArrayList<PooledByteBuffer>(poolSize);
+    this.pool = new PooledByteBuffer[poolSize];
     
     for (int idx = 0; idx < poolSize; ++idx) {
-      pool.add(new PooledByteBuffer(idx, maxBufferSize));
+      pool[idx] = new PooledByteBuffer(idx, maxBufferSize);
     }
   }
-  
+
   public int available() {
     // this is not an accurate calculation because the number
     // of in-use buffers could change before the loop completes
@@ -38,8 +36,8 @@ public class ByteBufferPool {
     
     int available = poolSize;
     
-    for (PooledByteBuffer buffer : pool) {
-      if (buffer.isInUse()) {
+    for (int idx = 0; idx < poolSize; ++idx) {
+      if (pool[idx].isInUse()) {
         --available;
       }
     }
@@ -50,7 +48,7 @@ public class ByteBufferPool {
   public PooledByteBuffer access() {
     while (true) {
       for (int idx = 0; idx < poolSize; ++idx) {
-        final PooledByteBuffer buffer = pool.get(idx);
+        final PooledByteBuffer buffer = pool[idx];
         if (buffer.claimUse()) {
           return buffer;
         }
