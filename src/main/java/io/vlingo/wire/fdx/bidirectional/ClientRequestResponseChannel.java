@@ -82,6 +82,7 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
     try {
       final SocketChannel channel = preparedChannel();
       if (channel != null) {
+        readBuffer.clear();
         int totalBytesRead = 0;
         int bytesRead = 0;
         do {
@@ -89,7 +90,7 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
           totalBytesRead += bytesRead;
         } while (bytesRead > 0);
 
-        if (totalBytesRead > 0 && readBuffer.limit() > 0) {
+        if (totalBytesRead > 0) {
           readBuffer.flip();
           consumer.consume(readBuffer);
           readBuffer.clear();

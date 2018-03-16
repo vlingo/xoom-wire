@@ -10,14 +10,34 @@ package io.vlingo.wire.channel;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 
 public final class ResponseData {
+  enum Stage { New, Modified, Sent };
+  
   public final ConsumerByteBuffer buffer;
+  private volatile Stage stage;
   
   public ResponseData(final ConsumerByteBuffer buffer) {
     this.buffer = buffer;
+    this.stage = Stage.New;
   }
 
   public int id() {
     return buffer.id();
+  }
+
+  public boolean isModified() {
+    return stage == Stage.Modified;
+  }
+
+  public void modified() {
+    stage = Stage.Modified;
+  }
+
+  public boolean wasSent() {
+    return stage == Stage.Sent;
+  }
+
+  public void sent() {
+    stage = Stage.Sent;
   }
 
   @Override

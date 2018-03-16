@@ -27,12 +27,11 @@ public class TestRequestChannelConsumer implements RequestChannelConsumer {
   public void consume(RequestResponseContext<?> context) {
     final String requestPart = Converters.bytesToText(context.requestBuffer().array(), 0, context.requestBuffer().limit());
     requestBuilder.append(requestPart);
-    
+
     if (requestBuilder.length() >= currentExpectedRequestLength) {
       // assume currentExpectedRequestLength is length of all
       // requests when multiple are received at one time
       final String combinedRequests = requestBuilder.toString();
-      final int combinedLength = combinedRequests.length();
       requestBuilder.setLength(0); // reuse
       
       int currentIndex = 0;
@@ -44,9 +43,7 @@ public class TestRequestChannelConsumer implements RequestChannelConsumer {
         requests.add(request);
         ++consumeCount;
         
-        last = currentIndex == combinedLength;
-        
-        context.respondWith(request.getBytes(), last); // echo back
+        context.respondWith(request.getBytes()); // echo back
         
         untilConsume.happened();
       }

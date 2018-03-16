@@ -9,6 +9,5 @@ package io.vlingo.wire.channel;
 
 public interface ResponseSenderChannel {
   void abandon(final RequestResponseContext<?> context);
-  void respondOnceWith(final RequestResponseContext<?> context);
-  void respondWith(final RequestResponseContext<?> context, final boolean completes);
+  void respondWith(final RequestResponseContext<?> context);
 }

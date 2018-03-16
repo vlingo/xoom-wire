@@ -143,11 +143,11 @@ public class SocketRequestResponseChannelTest {
   public void setUp() throws Exception {
     buffer = ByteBufferAllocator.allocate(1024);
     final Logger logger = JDKLogger.testInstance();
-    server = new ServerRequestResponseChannel(37371, "test-server", 100, 1024, 10L, logger);
+    server = new ServerRequestResponseChannel(37371, "test-server", 100, 10240, 10L, logger);
     serverConsumer = new TestRequestChannelConsumer();
     server.openFor(serverConsumer);
     clientConsumer = new TestResponseChannelConsumer();
-    client = new ClientRequestResponseChannel(Address.from(Host.of("localhost"), 37371,  AddressType.NONE), clientConsumer, 1024, logger);
+    client = new ClientRequestResponseChannel(Address.from(Host.of("localhost"), 37371,  AddressType.NONE), clientConsumer, 10240, logger);
   }
 
   @After

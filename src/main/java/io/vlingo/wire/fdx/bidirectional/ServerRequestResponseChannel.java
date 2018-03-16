@@ -14,9 +14,9 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import io.vlingo.actors.Logger;
 import io.vlingo.wire.channel.RequestChannelConsumer;
@@ -29,6 +29,8 @@ import io.vlingo.wire.message.ByteBufferPool.PooledByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 
 public class ServerRequestResponseChannel implements RequestListenerChannel, ResponseSenderChannel {
+  private static long NextContextId = 1;
+
   private final ByteBufferPool bufferPool;
   private final ServerSocketChannel channel;
   private boolean closed;
@@ -130,19 +132,13 @@ public class ServerRequestResponseChannel implements RequestListenerChannel, Res
 
   @Override
   public void abandon(final RequestResponseContext<?> context) {
+    // TODO: determine if this is still needed
     ((Context) context).close();
   }
 
   @Override
-  public void respondOnceWith(final RequestResponseContext<?> context) {
-    respondWith(context, true);
-  }
-
-  @Override
-  public void respondWith(RequestResponseContext<?> context, boolean completes) {
-    if (completes) {
-      ((Context) context).closable();
-    }
+  public void respondWith(RequestResponseContext<?> context) {
+    // TODO: determine if this is still needed
   }
 
   //=========================================
@@ -157,7 +153,7 @@ public class ServerRequestResponseChannel implements RequestListenerChannel, Res
   
       clientChannel.configureBlocking(false);
   
-      clientChannel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE, new Context(this, clientChannel));
+      clientChannel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE, new Context(NextContextId++, this, clientChannel));
 
       logger.log(
               "Accepted new connection for '"
@@ -176,7 +172,7 @@ public class ServerRequestResponseChannel implements RequestListenerChannel, Res
   private void read(final SelectionKey key) throws IOException {
     final SocketChannel channel = (SocketChannel) key.channel();
     final Context context = (Context) key.attachment();
-    final ByteBuffer buffer = context.requestBuffer().asByteBuffer();
+    final ByteBuffer buffer = context.requestBuffer().clear().asByteBuffer();
 
     int totalBytesRead = 0;
     int bytesRead = 0;
@@ -186,14 +182,14 @@ public class ServerRequestResponseChannel implements RequestListenerChannel, Res
     } while (bytesRead > 0);
 
     if (bytesRead == -1) {
-      channel.close();
+      context.close();
+      //channel.close();
       key.cancel();
     }
 
     if (totalBytesRead > 0) {
       buffer.flip();
       consumer.consume(context);
-      buffer.clear();
     }
   }
 
@@ -209,11 +205,12 @@ public class ServerRequestResponseChannel implements RequestListenerChannel, Res
         }
       } catch (Exception e) {
         logger.log("Failed to write buffer for channel " + clientChannel.getRemoteAddress() + " because: " + e.getMessage(), e);
+      } finally {
+        responseData.sent();
+        context.release(responseData);
       }
-      context.release(responseData);
       responseData = context.nextCachedResponseData();
     }
-    context.close();
   }
 
   private void write(final SelectionKey key) throws Exception {
@@ -221,58 +218,38 @@ public class ServerRequestResponseChannel implements RequestListenerChannel, Res
     respondWithCachedData(context);
   }
 
+  //=========================================
+  // Context (RequestResponseContext)
+  //=========================================
+
   class Context implements RequestResponseContext<SocketChannel> {
     private final SocketChannel clientChannel;
-    private boolean closable;
-    private final List<ResponseData> orderedResponseData;
+    private Object consumerData;
+    private final String id;
+    private final Queue<ResponseData> orderedResponseData;
     PooledByteBuffer requestBuffer;
     private final ResponseSenderChannel responder;
 
-    Context(final ResponseSenderChannel responder, final SocketChannel clientChannel) {
-      this.responder = responder;
-      this.clientChannel = clientChannel;
-      this.closable = false;
-      this.orderedResponseData = new ArrayList<>(1);
+    @Override
+    @SuppressWarnings("unchecked")
+    public <T> T consumerData() {
+      return (T) consumerData;
     }
 
-    void close() {
-      if (!closable || !orderedResponseData.isEmpty()) return;
-      
-      try {
-        if (requestBuffer != null) {
-          requestBuffer.release();
-          requestBuffer = null;
-        }
-        
-        for (final ResponseData responseData : orderedResponseData) {
-          ((PooledByteBuffer) responseData.buffer).release();
-        }
-      } catch (Exception e) {
-        logger.log("Failed to close client channel because: " + e.getMessage(), e);
-      }
+    @Override
+    public <T> T consumerData(final T workingData) {
+      this.consumerData = workingData;
+      return workingData;
     }
 
-    void closable() {
-      closable = true;
+    @Override
+    public boolean hasConsumerData() {
+      return consumerData != null;
     }
 
-    boolean firstResponse() {
-      return orderedResponseData.size() == 1;
-    }
-
-    ResponseData nextCachedResponseData() {
-      if (orderedResponseData.isEmpty()) {
-        return null;
-      }
-      final ResponseData responseData = orderedResponseData.remove(0);
-      return responseData;
-    }
-
-    void release(final ResponseData responseData) {
-      if (responseData != null) {
-        orderedResponseData.remove(responseData);
-        ((PooledByteBuffer) responseData.buffer).release();
-      }
+    @Override
+    public String id() {
+      return id;
     }
 
     @Override
@@ -299,6 +276,58 @@ public class ServerRequestResponseChannel implements RequestListenerChannel, Res
     @Override
     public ResponseSenderChannel sender() {
       return responder;
+    }
+
+    Context(final long id, final ResponseSenderChannel responder, final SocketChannel clientChannel) {
+      this.responder = responder;
+      this.clientChannel = clientChannel;
+      this.orderedResponseData = new ConcurrentLinkedQueue<>();
+      this.consumerData = null;
+      this.id = "" + id;
+    }
+
+    void close() {
+      try {
+        if (requestBuffer != null) {
+          requestBuffer.release();
+          requestBuffer = null;
+        }
+        
+        Iterator<ResponseData> iter = orderedResponseData.iterator();
+        while (iter.hasNext()) {
+          final ResponseData responseData = iter.next();
+          ((PooledByteBuffer) responseData.buffer).release();
+          iter.remove();
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+        logger.log("Failed to close client channel because: " + e.getMessage(), e);
+      }
+    }
+
+    boolean firstResponse() {
+      return orderedResponseData.size() == 1;
+    }
+
+    ResponseData nextCachedResponseData() {
+      if (!orderedResponseData.isEmpty()) {
+        Iterator<ResponseData> iter = orderedResponseData.iterator();
+        while (iter.hasNext()) {
+          final ResponseData responseData = iter.next();
+          if (responseData.isModified()) {
+            iter.remove();
+            return responseData;
+          }
+        }
+      }
+      return null;
+    }
+
+    void release(final ResponseData responseData) {
+      if (responseData != null && responseData.wasSent()) {
+        ((PooledByteBuffer) responseData.buffer).release();
+        orderedResponseData.remove(responseData);
+      }
     }
   }
 }
