@@ -7,6 +7,8 @@
 
 package io.vlingo.wire.channel;
 
+import io.vlingo.wire.message.ConsumerByteBuffer;
+
 public interface RequestChannelConsumer {
-  void consume(final RequestResponseContext<?> context);
+  void consume(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer);
 }

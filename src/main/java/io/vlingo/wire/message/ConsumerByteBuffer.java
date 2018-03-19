@@ -18,6 +18,8 @@ import java.nio.ShortBuffer;
 public interface ConsumerByteBuffer {
   int id();
   
+  void release();
+  
   byte[] array();
   int arrayOffset();
   boolean hasArray();

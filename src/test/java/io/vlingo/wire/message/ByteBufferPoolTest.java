@@ -63,7 +63,6 @@ public class ByteBufferPoolTest {
     new Thread() {
       @Override
       public void run() {
-        System.out.println("Accessible 1 started.");
         for (int count = 0; count < 10_000_000; ++count) {
           final PooledByteBuffer pooled = pool.access();
           final ByteBuffer buffer = pooled.buffer();
@@ -72,7 +71,6 @@ public class ByteBufferPoolTest {
           buffer.flip();
           pooled.release();
         }
-        System.out.println("Accessible 1 ended.");
         count.incrementAndGet();
       }
     }.start();
@@ -80,7 +78,6 @@ public class ByteBufferPoolTest {
     new Thread() {
       @Override
       public void run() {
-        System.out.println("Accessible 2 started.");
         for (int count = 0; count < 10_000_000; ++count) {
           final PooledByteBuffer pooled = pool.access();
           final ByteBuffer buffer = pooled.buffer();
@@ -89,7 +86,6 @@ public class ByteBufferPoolTest {
           buffer.flip();
           pooled.release();
         }
-        System.out.println("Accessible 2 ended.");
         count.incrementAndGet();
       }
     }.start();

@@ -13,6 +13,7 @@ import io.vlingo.actors.Actor;
 import io.vlingo.actors.DeadLetter;
 import io.vlingo.actors.LocalMessage;
 import io.vlingo.actors.Mailbox;
+import io.vlingo.wire.message.ConsumerByteBuffer;
 
 public class RequestChannelConsumer__Proxy implements RequestChannelConsumer {
   private static final String representationConsume1 = "consume(RequestResponseContext<?>)";
@@ -25,9 +26,9 @@ public class RequestChannelConsumer__Proxy implements RequestChannelConsumer {
   }
 
   @Override
-  public void consume(final RequestResponseContext<?> context) {
+  public void consume(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer) {
     if (!actor.isStopped()) {
-      final Consumer<RequestChannelConsumer> consumer = (actor) -> actor.consume(context);
+      final Consumer<RequestChannelConsumer> consumer = (actor) -> actor.consume(context, buffer);
       mailbox.send(new LocalMessage<RequestChannelConsumer>(actor, RequestChannelConsumer.class, consumer, representationConsume1));
     } else {
       actor.deadLetters().failedDelivery(new DeadLetter(actor, representationConsume1));

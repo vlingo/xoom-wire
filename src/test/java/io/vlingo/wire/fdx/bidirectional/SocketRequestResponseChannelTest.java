@@ -17,6 +17,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.vlingo.actors.Logger;
+import io.vlingo.actors.World;
 import io.vlingo.actors.plugin.logging.jdk.JDKLogger;
 import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.message.ByteBufferAllocator;
@@ -30,25 +31,28 @@ public class SocketRequestResponseChannelTest {
   private TestResponseChannelConsumer clientConsumer;
   private ServerRequestResponseChannel server;
   private TestRequestChannelConsumer serverConsumer;
+  private World world;
   
   @Test
-  public void testBasicRequestResponse() {
+  public void testBasicRequestResponse() throws Exception {
     final String request = "Hello, Request-Response";
+    
+    Thread.sleep(100);
     
     serverConsumer.currentExpectedRequestLength = request.length();
     clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
-    
     request(request);
     
     serverConsumer.untilConsume = TestUntil.happenings(1);
+    clientConsumer.untilConsume = TestUntil.happenings(1);
+
     while (serverConsumer.untilConsume.remaining() > 0) {
-      server.probeChannel();
+      Thread.sleep(10);
     }
     serverConsumer.untilConsume.completes();
-    
-    clientConsumer.untilConsume = TestUntil.happenings(1);
+
     while (clientConsumer.untilConsume.remaining() > 0) {
-      server.probeChannel();
+      Thread.sleep(10);
       client.probeChannel();
     }
     clientConsumer.untilConsume.completes();
@@ -83,13 +87,13 @@ public class SocketRequestResponseChannelTest {
     
     serverConsumer.untilConsume = TestUntil.happenings(1);
     while (serverConsumer.untilConsume.remaining() > 0) {
-      server.probeChannel();
+      Thread.sleep(10);
     }
     serverConsumer.untilConsume.completes();
 
     clientConsumer.untilConsume = TestUntil.happenings(1);
     while (clientConsumer.untilConsume.remaining() > 0) {
-      server.probeChannel();
+      Thread.sleep(10);
       client.probeChannel();
     }
     clientConsumer.untilConsume.completes();
@@ -120,7 +124,7 @@ public class SocketRequestResponseChannelTest {
     clientConsumer.untilConsume = TestUntil.happenings(10);
     
     while (clientConsumer.untilConsume.remaining() > 0) {
-      server.probeChannel();
+      Thread.sleep(10);
       client.probeChannel();
     }
     serverConsumer.untilConsume.completes();
@@ -141,12 +145,23 @@ public class SocketRequestResponseChannelTest {
 
   @Before
   public void setUp() throws Exception {
+    world = World.start("test-request-response-channel");
+    
     buffer = ByteBufferAllocator.allocate(1024);
     final Logger logger = JDKLogger.testInstance();
-    server = new ServerRequestResponseChannel(37371, "test-server", 100, 10240, 10L, logger);
     serverConsumer = new TestRequestChannelConsumer();
-    server.openFor(serverConsumer);
+    server = ServerRequestResponseChannel.start(
+                    world.stage(),
+                    serverConsumer,
+                    37371,
+                    "test-server",
+                    500,
+                    10240,
+                    10L,
+                    10L);
+    
     clientConsumer = new TestResponseChannelConsumer();
+    
     client = new ClientRequestResponseChannel(Address.from(Host.of("localhost"), 37371,  AddressType.NONE), clientConsumer, 10240, logger);
   }
 
@@ -154,6 +169,8 @@ public class SocketRequestResponseChannelTest {
   public void tearDown() {
     server.close();
     client.close();
+    
+    world.terminate();
   }
 
   private void request(final String request) {
