@@ -16,7 +16,8 @@ import io.vlingo.actors.Logger;
 import io.vlingo.wire.channel.RequestSenderChannel;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.channel.ResponseListenerChannel;
-import io.vlingo.wire.message.ByteBufferAllocator;
+import io.vlingo.wire.message.ByteBufferPool;
+import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.node.Address;
 
 public class ClientRequestResponseChannel implements RequestSenderChannel, ResponseListenerChannel {
@@ -25,11 +26,12 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
   private boolean closed;
   private final ResponseChannelConsumer consumer;
   private final Logger logger;
-  private final ByteBuffer readBuffer;
+  private final ByteBufferPool readBufferPool;
 
   public ClientRequestResponseChannel(
           final Address address,
           final ResponseChannelConsumer consumer,
+          final int maxBufferPoolSize,
           final int maxMessageSize,
           final Logger logger)
   throws Exception {
@@ -38,7 +40,7 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
     this.logger = logger;
     this.closed = false;
     this.channel = null;
-    this.readBuffer = ByteBufferAllocator.allocate(maxMessageSize);
+    this.readBufferPool = new ByteBufferPool(maxBufferPoolSize, maxMessageSize);
   }
 
   //=========================================
@@ -82,24 +84,13 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
     try {
       final SocketChannel channel = preparedChannel();
       if (channel != null) {
-        readBuffer.clear();
-        int totalBytesRead = 0;
-        int bytesRead = 0;
-        do {
-          bytesRead = channel.read(readBuffer);
-          totalBytesRead += bytesRead;
-        } while (bytesRead > 0);
-
-        if (totalBytesRead > 0) {
-          readBuffer.flip();
-          consumer.consume(readBuffer);
-          readBuffer.clear();
-        }
+        readConsume(channel);
       }
     } catch (IOException e) {
       logger.log("Failed to read channel selector for " + address + " because: " + e.getMessage(), e);
     }
   }
+
 
   //=========================================
   // internal implementation
@@ -134,5 +125,27 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
       closeChannel();
     }
     return null;
+  }
+
+  private void readConsume(final SocketChannel channel) throws IOException {
+    final ConsumerByteBuffer pooledBuffer = readBufferPool.access();
+    final ByteBuffer readBuffer = pooledBuffer.asByteBuffer();
+    int totalBytesRead = 0;
+    int bytesRead = 0;
+    try {
+      do {
+        bytesRead = channel.read(readBuffer);
+        totalBytesRead += bytesRead;
+      } while (bytesRead > 0);
+
+      if (totalBytesRead > 0) {
+        consumer.consume(pooledBuffer.flip());
+      } else {
+        pooledBuffer.release();
+      }
+    } catch (Exception e) {
+      pooledBuffer.release();
+      throw e;
+    }
   }
 }

@@ -7,8 +7,8 @@
 
 package io.vlingo.wire.channel;
 
-import java.nio.ByteBuffer;
+import io.vlingo.wire.message.ConsumerByteBuffer;
 
 public interface ResponseChannelConsumer {
-  void consume(final ByteBuffer buffer);
+  void consume(final ConsumerByteBuffer buffer);
 }

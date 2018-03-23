@@ -19,6 +19,7 @@ public interface ConsumerByteBuffer {
   int id();
   
   void release();
+  String tag();
   
   byte[] array();
   int arrayOffset();

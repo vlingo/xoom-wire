@@ -7,12 +7,12 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
+import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.Converters;
 
 public class TestResponseChannelConsumer implements ResponseChannelConsumer {
@@ -24,8 +24,9 @@ public class TestResponseChannelConsumer implements ResponseChannelConsumer {
   private final StringBuilder responseBuilder = new StringBuilder();
   
   @Override
-  public void consume(final ByteBuffer buffer) {
+  public void consume(final ConsumerByteBuffer buffer) {
     final String responsePart = Converters.bytesToText(buffer.array(), 0, buffer.limit());
+    buffer.release();
     responseBuilder.append(responsePart);
     
     if (responseBuilder.length() >= currentExpectedResponseLength) {

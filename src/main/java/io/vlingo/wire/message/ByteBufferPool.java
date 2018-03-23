@@ -46,10 +46,14 @@ public class ByteBufferPool {
   }
   
   public PooledByteBuffer access() {
+    return accessFor("untagged");
+  }
+  
+  public PooledByteBuffer accessFor(final String tag) {
     while (true) {
       for (int idx = 0; idx < poolSize; ++idx) {
         final PooledByteBuffer buffer = pool[idx];
-        if (buffer.claimUse()) {
+        if (buffer.claimUse(tag)) {
           return buffer;
         }
       }
@@ -60,6 +64,7 @@ public class ByteBufferPool {
     private final ByteBuffer buffer;
     private final int id;
     private final AtomicBoolean inUse;
+    private String tag;
 
     PooledByteBuffer(final int id, final int maxBufferSize) {
       this.id = id;
@@ -69,6 +74,11 @@ public class ByteBufferPool {
 
     public ByteBuffer buffer() {
       return buffer;
+    }
+
+    @Override
+    public String tag() {
+      return tag;
     }
 
     @Override
@@ -89,8 +99,9 @@ public class ByteBufferPool {
       return "PooledByteBuffer[id=" + id + "]";
     }
 
-    private boolean claimUse() {
+    private boolean claimUse(final String tag) {
       if (inUse.compareAndSet(false, true)) {
+        this.tag = tag;
         buffer.clear();
         return true;
       }

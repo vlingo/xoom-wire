@@ -40,6 +40,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
   private final String name;
   private final long probeTimeout;
   private final Selector selector;
+  private final ResponseSenderChannel self;
 
   public ServerRequestResponseChannelActor(
           final RequestChannelConsumer consumer,
@@ -57,6 +58,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
     this.probeTimeout = probeTimeout;
     this.cancellable = stage().scheduler().schedule(selfAs(Scheduled.class), null, 1000, probeInterval);
     
+    this.self = selfAs(ResponseSenderChannel.class);
     this.channel = ServerSocketChannel.open();
     this.selector = Selector.open();
     channel.socket().bind(new InetSocketAddress(port));
@@ -82,7 +84,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
   @Override
   public void stop() {
     cancellable.cancel();
-    
+
     close();
 
     super.stop();
@@ -102,15 +104,15 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
   @Override
   public void close() {
     if (closed) return;
-    
+
     closed = true;
-    
+
     try {
       selector.close();
     } catch (Exception e) {
       logger().log("Failed to close selctor for: '" + name + "'", e);
     }
-    
+
     try {
       channel.close();
     } catch (Exception e) {
@@ -139,7 +141,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
       clientChannel.register(
               selector,
               SelectionKey.OP_READ | SelectionKey.OP_WRITE,
-              new Context(NextContextId++, selfAs(ResponseSenderChannel.class), clientChannel));
+              new Context(NextContextId++, self, clientChannel));
 
       logger().log(
               "Accepted new connection for '"
@@ -172,6 +174,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
         }
       }
     } catch (Exception e) {
+      e.printStackTrace();
       logger().log("Failed to accept/read/write/close client channel for '" + name + "' because: " + e.getMessage(), e);
     }
   }
@@ -191,37 +194,42 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
 
     if (bytesRead == -1) {
       context.close();
-      //channel.close();
       key.cancel();
     }
 
     if (totalBytesRead > 0) {
       consumer.consume(context, buffer.flip());
+    } else {
+      buffer.release();
     }
   }
 
   private void respondWithCachedData(final Context context) throws Exception {
     final SocketChannel clientChannel = context.reference();
-    ConsumerByteBuffer buffer = context.nextWritable();
-    
-    while (buffer != null) {
-      try {
-        final ByteBuffer responseBuffer = buffer.asByteBuffer();
-        while (responseBuffer.hasRemaining()) {
-          clientChannel.write(responseBuffer);
-        }
-      } catch (Exception e) {
-        logger().log("Failed to write buffer for channel " + clientChannel.getRemoteAddress() + " because: " + e.getMessage(), e);
-      } finally {
-        buffer.release();
+
+    for (ConsumerByteBuffer buffer = context.nextWritable() ; buffer != null; buffer = context.nextWritable()) {
+      respondWithCachedData(context, clientChannel, buffer);
+    }
+  }
+
+  private void respondWithCachedData(final Context context, final SocketChannel clientChannel, ConsumerByteBuffer buffer) throws Exception {
+    try {
+      final ByteBuffer responseBuffer = buffer.asByteBuffer();
+      while (responseBuffer.hasRemaining()) {
+        clientChannel.write(responseBuffer);
       }
-      buffer = context.nextWritable();
+    } catch (Exception e) {
+      logger().log("Failed to write buffer for channel " + clientChannel.getRemoteAddress() + " because: " + e.getMessage(), e);
+    } finally {
+      context.release(buffer);
     }
   }
 
   private void write(final SelectionKey key) throws Exception {
     final Context context = (Context) key.attachment();
-    respondWithCachedData(context);
+    if (context.hasNextWritable()) {
+      respondWithCachedData(context);
+    }
   }
 
   //=========================================
@@ -270,12 +278,14 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
 
     @Override
     public ConsumerByteBuffer requestBuffer() {
-      return bufferPool.access();
+      final ConsumerByteBuffer buffer = bufferPool.accessFor("request");
+      return buffer;
     }
 
     @Override
     public ResponseData responseData() {
-      return new ResponseData(bufferPool.access());
+      final ConsumerByteBuffer buffer = bufferPool.accessFor("response");
+      return new ResponseData(buffer);
     }
 
     @Override
@@ -299,6 +309,10 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
         e.printStackTrace();
         logger().log("Failed to close client channel because: " + e.getMessage(), e);
       }
+    }
+
+    boolean hasNextWritable() {
+      return writables.peek() != null;
     }
 
     ConsumerByteBuffer nextWritable() {

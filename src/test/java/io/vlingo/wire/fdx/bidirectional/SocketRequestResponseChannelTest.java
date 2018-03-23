@@ -162,14 +162,16 @@ public class SocketRequestResponseChannelTest {
     
     clientConsumer = new TestResponseChannelConsumer();
     
-    client = new ClientRequestResponseChannel(Address.from(Host.of("localhost"), 37371,  AddressType.NONE), clientConsumer, 10240, logger);
+    client = new ClientRequestResponseChannel(Address.from(Host.of("localhost"), 37371,  AddressType.NONE), clientConsumer, 100, 10240, logger);
   }
 
   @After
   public void tearDown() {
     server.close();
     client.close();
-    
+
+    try { Thread.sleep(1000); } catch (Exception e) {  }
+
     world.terminate();
   }
 
