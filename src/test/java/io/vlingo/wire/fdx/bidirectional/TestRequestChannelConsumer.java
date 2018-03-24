@@ -13,6 +13,7 @@ import java.util.List;
 import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.channel.RequestChannelConsumer;
 import io.vlingo.wire.channel.RequestResponseContext;
+import io.vlingo.wire.message.BasicConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.Converters;
 
@@ -27,7 +28,7 @@ public class TestRequestChannelConsumer implements RequestChannelConsumer {
   @Override
   public void consume(RequestResponseContext<?> context, final ConsumerByteBuffer buffer) {
     final String requestPart = Converters.bytesToText(buffer.array(), 0, buffer.limit());
-    context.release(buffer);
+    buffer.release();
     requestBuilder.append(requestPart);
     if (requestBuilder.length() >= currentExpectedRequestLength) {
       // assume currentExpectedRequestLength is length of all
@@ -44,7 +45,8 @@ public class TestRequestChannelConsumer implements RequestChannelConsumer {
         requests.add(request);
         ++consumeCount;
         
-        context.respondWith(request.getBytes()); // echo back
+        final ConsumerByteBuffer responseBuffer = new BasicConsumerByteBuffer(1, currentExpectedRequestLength);
+        context.respondWith(responseBuffer.clear().put(request.getBytes()).flip()); // echo back
         
         last = currentIndex == combinedLength;
         

@@ -18,6 +18,7 @@ import org.junit.Test;
 import io.vlingo.wire.message.AbstractMessageTool;
 import io.vlingo.wire.message.ByteBufferPool;
 import io.vlingo.wire.message.ByteBufferPool.PooledByteBuffer;
+import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 import io.vlingo.wire.node.Node;
@@ -57,18 +58,15 @@ public class OutboundTest extends AbstractMessageTool {
     final PooledByteBuffer buffer3 = pool.access();
     
     final RawMessage rawMessage1 = RawMessage.from(0, 0, Message1);
-    rawMessage1.asByteBuffer(buffer1.buffer());
+    rawMessage1.asByteBuffer(buffer1.asByteBuffer());
     final RawMessage rawMessage2 = RawMessage.from(0, 0, Message2);
-    rawMessage2.asByteBuffer(buffer2.buffer());
+    rawMessage2.asByteBuffer(buffer2.asByteBuffer());
     final RawMessage rawMessage3 = RawMessage.from(0, 0, Message3);
-    rawMessage3.asByteBuffer(buffer3.buffer());
+    rawMessage3.asByteBuffer(buffer3.asByteBuffer());
 
     outbound.broadcast(buffer1);
-    buffer1.release();
     outbound.broadcast(buffer2);
-    buffer2.release();
     outbound.broadcast(buffer3);
-    buffer3.release();
     
     for (final ManagedOutboundChannel channel : channelProvider.allOtherNodeChannels().values()) {
       final MockManagedOutboundChannel mock = (MockManagedOutboundChannel) channel;
@@ -119,25 +117,22 @@ public class OutboundTest extends AbstractMessageTool {
   
   @Test
   public void testSendToPooledByteBuffer() throws Exception {
-    final PooledByteBuffer buffer1 = pool.access();
-    final PooledByteBuffer buffer2 = pool.access();
-    final PooledByteBuffer buffer3 = pool.access();
+    final ConsumerByteBuffer buffer1 = pool.access();
+    final ConsumerByteBuffer buffer2 = pool.access();
+    final ConsumerByteBuffer buffer3 = pool.access();
     
     final RawMessage rawMessage1 = RawMessage.from(0, 0, Message1);
-    rawMessage1.asByteBuffer(buffer1.buffer());
+    rawMessage1.asByteBuffer(buffer1.asByteBuffer());
     final RawMessage rawMessage2 = RawMessage.from(0, 0, Message2);
-    rawMessage2.asByteBuffer(buffer2.buffer());
+    rawMessage2.asByteBuffer(buffer2.asByteBuffer());
     final RawMessage rawMessage3 = RawMessage.from(0, 0, Message3);
-    rawMessage3.asByteBuffer(buffer3.buffer());
+    rawMessage3.asByteBuffer(buffer3.asByteBuffer());
     
     final Id id3 = Id.of(3);
     
     outbound.sendTo(buffer1, id3);
-    buffer1.release();
     outbound.sendTo(buffer2, id3);
-    buffer2.release();
     outbound.sendTo(buffer3, id3);
-    buffer3.release();
     
     final MockManagedOutboundChannel mock = (MockManagedOutboundChannel) channelProvider.channelFor(Id.of(3));
     

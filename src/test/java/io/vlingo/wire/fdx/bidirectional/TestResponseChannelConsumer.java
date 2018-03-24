@@ -28,7 +28,6 @@ public class TestResponseChannelConsumer implements ResponseChannelConsumer {
     final String responsePart = Converters.bytesToText(buffer.array(), 0, buffer.limit());
     buffer.release();
     responseBuilder.append(responsePart);
-    
     if (responseBuilder.length() >= currentExpectedResponseLength) {
       // assume currentExpectedRequestLength is length of all
       // requests when multiple are received at one time

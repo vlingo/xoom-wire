@@ -23,7 +23,6 @@ import io.vlingo.actors.Cancellable;
 import io.vlingo.actors.Scheduled;
 import io.vlingo.wire.channel.RequestChannelConsumer;
 import io.vlingo.wire.channel.RequestResponseContext;
-import io.vlingo.wire.channel.ResponseData;
 import io.vlingo.wire.channel.ResponseSenderChannel;
 import io.vlingo.wire.message.ByteBufferPool;
 import io.vlingo.wire.message.ConsumerByteBuffer;
@@ -56,7 +55,6 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
     this.maxBufferPoolSize = maxBufferPoolSize;
     this.maxMessageSize = maxMessageSize;
     this.probeTimeout = probeTimeout;
-    this.cancellable = stage().scheduler().schedule(selfAs(Scheduled.class), null, 1000, probeInterval);
     
     this.self = selfAs(ResponseSenderChannel.class);
     this.channel = ServerSocketChannel.open();
@@ -64,6 +62,8 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
     channel.socket().bind(new InetSocketAddress(port));
     channel.configureBlocking(false);
     channel.register(selector, SelectionKey.OP_ACCEPT);
+
+    this.cancellable = stage().scheduler().schedule(selfAs(Scheduled.class), null, 100, probeInterval);
   }
 
 
@@ -221,7 +221,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
     } catch (Exception e) {
       logger().log("Failed to write buffer for channel " + clientChannel.getRemoteAddress() + " because: " + e.getMessage(), e);
     } finally {
-      context.release(buffer);
+      buffer.release();
     }
   }
 
@@ -272,23 +272,6 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
     }
 
     @Override
-    public void release(final ConsumerByteBuffer buffer) {
-      buffer.release();
-    }
-
-    @Override
-    public ConsumerByteBuffer requestBuffer() {
-      final ConsumerByteBuffer buffer = bufferPool.accessFor("request");
-      return buffer;
-    }
-
-    @Override
-    public ResponseData responseData() {
-      final ConsumerByteBuffer buffer = bufferPool.accessFor("response");
-      return new ResponseData(buffer);
-    }
-
-    @Override
     public ResponseSenderChannel sender() {
       return responder;
     }
@@ -296,7 +279,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
     Context(final long id, final ResponseSenderChannel responder, final SocketChannel clientChannel) {
       this.responder = responder;
       this.clientChannel = clientChannel;
-      this.bufferPool = allocateBufferPool(maxBufferPoolSize, maxMessageSize);
+      this.bufferPool = new ByteBufferPool(maxBufferPoolSize, maxMessageSize);
       this.consumerData = null;
       this.id = "" + id;
       this.writables = new LinkedList<>();
@@ -323,10 +306,9 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
       writables.add(buffer);
     }
 
-    private ByteBufferPool allocateBufferPool(final int maxBufferPoolSize, final int maxMessageSize) {
-      // buffers tend to be used in pairs, one for request and one for response
-      final int actualPoolSize = (maxBufferPoolSize % 2 == 0 ? maxBufferPoolSize : maxBufferPoolSize + 1);
-      return new ByteBufferPool(actualPoolSize, maxMessageSize);
+    ConsumerByteBuffer requestBuffer() {
+      final ConsumerByteBuffer buffer = bufferPool.accessFor("request", 25);
+      return buffer;
     }
   }
 }

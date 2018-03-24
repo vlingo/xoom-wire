@@ -128,7 +128,7 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
   }
 
   private void readConsume(final SocketChannel channel) throws IOException {
-    final ConsumerByteBuffer pooledBuffer = readBufferPool.access();
+    final ConsumerByteBuffer pooledBuffer = readBufferPool.accessFor("client-response", 25);
     final ByteBuffer readBuffer = pooledBuffer.asByteBuffer();
     int totalBytesRead = 0;
     int bytesRead = 0;

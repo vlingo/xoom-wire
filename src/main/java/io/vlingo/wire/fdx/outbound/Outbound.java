@@ -11,10 +11,9 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Map;
 
-import io.vlingo.wire.fdx.outbound.ManagedOutboundChannel;
-import io.vlingo.wire.fdx.outbound.ManagedOutboundChannelProvider;
 import io.vlingo.wire.message.ByteBufferPool;
 import io.vlingo.wire.message.ByteBufferPool.PooledByteBuffer;
+import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 import io.vlingo.wire.node.Node;
@@ -32,31 +31,28 @@ public class Outbound {
   }
 
   public void broadcast(final RawMessage message) {
-    final PooledByteBuffer buffer = pool.access();
+    final ConsumerByteBuffer buffer = pool.access();
     broadcast(bytesFrom(message, buffer));
   }
 
-  public void broadcast(final PooledByteBuffer buffer) {
+  public void broadcast(final ConsumerByteBuffer buffer) {
     // currently based on configured nodes,
     // but eventually could be live-node based
     broadcast(provider.allOtherNodeChannels(), buffer);
   }
 
   public void broadcast(final Collection<Node> selectNodes, final RawMessage message) {
-    final PooledByteBuffer buffer = pool.access();
+    final ConsumerByteBuffer buffer = pool.access();
     broadcast(selectNodes, bytesFrom(message, buffer));
   }
 
-  public void broadcast(final Collection<Node> selectNodes, final PooledByteBuffer buffer) {
+  public void broadcast(final Collection<Node> selectNodes, final ConsumerByteBuffer buffer) {
     broadcast(provider.channelsFor(selectNodes), buffer);
   }
 
-  public PooledByteBuffer bytesFrom(final RawMessage message, final PooledByteBuffer buffer) {
-    final ByteBuffer copyBuffer = buffer.buffer();
-    copyBuffer.clear();
-    message.copyBytesTo(copyBuffer);
-    copyBuffer.flip();
-    return buffer;
+  public ConsumerByteBuffer bytesFrom(final RawMessage message, final ConsumerByteBuffer buffer) {
+    message.copyBytesTo(buffer.clear().asByteBuffer());
+    return buffer.flip();
   }
 
   public void close() {
@@ -76,22 +72,22 @@ public class Outbound {
   }
 
   public void sendTo(final RawMessage message, final Id id) {
-    final PooledByteBuffer buffer = pool.access();
+    final ConsumerByteBuffer buffer = pool.access();
     sendTo(bytesFrom(message, buffer), id);
   }
 
-  public void sendTo(final PooledByteBuffer buffer, final Id id) {
+  public void sendTo(final ConsumerByteBuffer buffer, final Id id) {
     try {
       open(id);
-      provider.channelFor(id).write(buffer.buffer());
+      provider.channelFor(id).write(buffer.asByteBuffer());
     } finally {
       buffer.release();
     }
   }
 
-  private void broadcast(final Map<Id, ManagedOutboundChannel> channels, final PooledByteBuffer buffer) {
+  private void broadcast(final Map<Id, ManagedOutboundChannel> channels, final ConsumerByteBuffer buffer) {
     try {
-      final ByteBuffer bufferToWrite = buffer.buffer();
+      final ByteBuffer bufferToWrite = buffer.asByteBuffer();
       for (final ManagedOutboundChannel channel: channels.values()) {
         bufferToWrite.position(0);
         channel.write(bufferToWrite);

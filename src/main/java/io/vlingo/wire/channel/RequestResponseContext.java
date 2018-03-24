@@ -15,9 +15,6 @@ public interface RequestResponseContext<R> {
   boolean hasConsumerData();
   String id();
   R reference();
-  void release(final ConsumerByteBuffer buffer);
-  ConsumerByteBuffer requestBuffer();
-  ResponseData responseData();
   ResponseSenderChannel sender();
 
   default void abandon() {
@@ -25,14 +22,6 @@ public interface RequestResponseContext<R> {
   }
 
   default void respondWith(final ConsumerByteBuffer buffer) {
-    final ResponseData responseData = responseData();
-    responseData.buffer.put(buffer.array(), 0, buffer.limit()).flip();
-    sender().respondWith(this, responseData.buffer);
-  }
-
-  default void respondWith(final byte[] bytes) {
-    final ResponseData responseData = responseData();
-    responseData.buffer.put(bytes).flip();
-    sender().respondWith(this, responseData.buffer);
+    sender().respondWith(this, buffer);
   }
 }

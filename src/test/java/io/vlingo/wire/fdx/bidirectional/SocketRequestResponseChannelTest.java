@@ -37,8 +37,6 @@ public class SocketRequestResponseChannelTest {
   public void testBasicRequestResponse() throws Exception {
     final String request = "Hello, Request-Response";
     
-    Thread.sleep(100);
-    
     serverConsumer.currentExpectedRequestLength = request.length();
     clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
     request(request);
@@ -47,12 +45,11 @@ public class SocketRequestResponseChannelTest {
     clientConsumer.untilConsume = TestUntil.happenings(1);
 
     while (serverConsumer.untilConsume.remaining() > 0) {
-      Thread.sleep(10);
+      ;
     }
     serverConsumer.untilConsume.completes();
 
     while (clientConsumer.untilConsume.remaining() > 0) {
-      Thread.sleep(10);
       client.probeChannel();
     }
     clientConsumer.untilConsume.completes();
@@ -84,10 +81,9 @@ public class SocketRequestResponseChannelTest {
     request(requestPart2);
     Thread.sleep(200);
     request(requestPart3);
-    
     serverConsumer.untilConsume = TestUntil.happenings(1);
     while (serverConsumer.untilConsume.remaining() > 0) {
-      Thread.sleep(10);
+      ;
     }
     serverConsumer.untilConsume.completes();
 
@@ -116,15 +112,14 @@ public class SocketRequestResponseChannelTest {
     serverConsumer.currentExpectedRequestLength = request.length() + 1; // digits 0 - 9
     clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
     
+    serverConsumer.untilConsume = TestUntil.happenings(10);
+    clientConsumer.untilConsume = TestUntil.happenings(10);
+    
     for (int idx = 0; idx < 10; ++idx) {
       request(request + idx);
     }
     
-    serverConsumer.untilConsume = TestUntil.happenings(10);
-    clientConsumer.untilConsume = TestUntil.happenings(10);
-    
     while (clientConsumer.untilConsume.remaining() > 0) {
-      Thread.sleep(10);
       client.probeChannel();
     }
     serverConsumer.untilConsume.completes();

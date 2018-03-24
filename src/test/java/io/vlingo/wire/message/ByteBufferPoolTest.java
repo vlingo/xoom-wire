@@ -9,7 +9,6 @@ package io.vlingo.wire.message;
 
 import static org.junit.Assert.assertEquals;
 
-import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
@@ -47,7 +46,7 @@ public class ByteBufferPoolTest {
     
     PooledByteBuffer buffer1 = pool.access();
     
-    buffer1.buffer().put(testText.getBytes());
+    buffer1.asByteBuffer().put(testText.getBytes());
     
     assertEquals(testText, new String(buffer1.flip().array(), 0, buffer1.limit()));
     
@@ -64,11 +63,8 @@ public class ByteBufferPoolTest {
       @Override
       public void run() {
         for (int count = 0; count < 10_000_000; ++count) {
-          final PooledByteBuffer pooled = pool.access();
-          final ByteBuffer buffer = pooled.buffer();
-          buffer.clear();
-          buffer.put("I got it: 1!".getBytes());
-          buffer.flip();
+          final ConsumerByteBuffer pooled = pool.access();
+          pooled.clear().put("I got it: 1!".getBytes()).flip();
           pooled.release();
         }
         count.incrementAndGet();
@@ -79,11 +75,8 @@ public class ByteBufferPoolTest {
       @Override
       public void run() {
         for (int count = 0; count < 10_000_000; ++count) {
-          final PooledByteBuffer pooled = pool.access();
-          final ByteBuffer buffer = pooled.buffer();
-          buffer.clear();
-          buffer.put("I got it: 2!".getBytes());
-          buffer.flip();
+          final ConsumerByteBuffer pooled = pool.access();
+          pooled.clear().put("I got it: 2!".getBytes()).flip();
           pooled.release();
         }
         count.incrementAndGet();
