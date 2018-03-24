@@ -24,12 +24,14 @@ public class TestRequestChannelConsumer implements RequestChannelConsumer {
   public TestUntil untilConsume;
   
   private StringBuilder requestBuilder = new StringBuilder();
+  private String remaining = "";
   
   @Override
   public void consume(RequestResponseContext<?> context, final ConsumerByteBuffer buffer) {
     final String requestPart = Converters.bytesToText(buffer.array(), 0, buffer.limit());
     buffer.release();
-    requestBuilder.append(requestPart);
+    requestBuilder.append(remaining).append(requestPart);
+    remaining = "";
     if (requestBuilder.length() >= currentExpectedRequestLength) {
       // assume currentExpectedRequestLength is length of all
       // requests when multiple are received at one time
@@ -40,7 +42,12 @@ public class TestRequestChannelConsumer implements RequestChannelConsumer {
       int currentIndex = 0;
       boolean last = false;
       while (!last) {
-        final String request = combinedRequests.substring(currentIndex, currentIndex+currentExpectedRequestLength);
+        final int endIndex = currentIndex+currentExpectedRequestLength;
+        if (endIndex > combinedRequests.length()) {
+          remaining = combinedRequests.substring(currentIndex);
+          return;
+        }
+        final String request = combinedRequests.substring(currentIndex, endIndex);
         currentIndex += currentExpectedRequestLength;
         requests.add(request);
         ++consumeCount;

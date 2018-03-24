@@ -26,6 +26,8 @@ import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
 
 public class SocketRequestResponseChannelTest {
+  private static final int POOL_SIZE = 100;
+  
   private ByteBuffer buffer;
   private ClientRequestResponseChannel client;
   private TestResponseChannelConsumer clientConsumer;
@@ -137,6 +139,41 @@ public class SocketRequestResponseChannelTest {
       assertEquals(clientConsumer.responses.get(idx), serverConsumer.requests.get(idx));
     }
   }
+  
+  @Test
+  public void testThatRequestResponsePoolLimitsNotExceeded() throws Exception {
+    final int TOTAL = POOL_SIZE * 2;
+    
+    final String request = "Hello, Request-Response";
+    
+    serverConsumer.currentExpectedRequestLength = request.length() + 3; // digits 000 - 999
+    clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
+    
+    serverConsumer.untilConsume = TestUntil.happenings(TOTAL);
+    clientConsumer.untilConsume = TestUntil.happenings(TOTAL);
+    
+    for (int idx = 0; idx < TOTAL; ++idx) {
+      request(request + String.format("%03d", idx));
+    }
+    
+    while (clientConsumer.untilConsume.remaining() > 0) {
+      client.probeChannel();
+    }
+    serverConsumer.untilConsume.completes();
+    clientConsumer.untilConsume.completes();
+
+    assertFalse(serverConsumer.requests.isEmpty());
+    assertEquals(TOTAL, serverConsumer.consumeCount);
+    assertEquals(serverConsumer.consumeCount, serverConsumer.requests.size());
+    
+    assertFalse(clientConsumer.responses.isEmpty());
+    assertEquals(TOTAL, clientConsumer.consumeCount);
+    assertEquals(clientConsumer.consumeCount, clientConsumer.responses.size());
+    
+    for (int idx = 0; idx < TOTAL; ++idx) {
+      assertEquals(clientConsumer.responses.get(idx), serverConsumer.requests.get(idx));
+    }
+  }
 
   @Before
   public void setUp() throws Exception {
@@ -150,14 +187,14 @@ public class SocketRequestResponseChannelTest {
                     serverConsumer,
                     37371,
                     "test-server",
-                    500,
+                    POOL_SIZE,
                     10240,
                     10L,
                     10L);
     
     clientConsumer = new TestResponseChannelConsumer();
     
-    client = new ClientRequestResponseChannel(Address.from(Host.of("localhost"), 37371,  AddressType.NONE), clientConsumer, 100, 10240, logger);
+    client = new ClientRequestResponseChannel(Address.from(Host.of("localhost"), 37371,  AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger);
   }
 
   @After
