@@ -8,19 +8,14 @@
 package io.vlingo.wire.message;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class ByteBufferPool {
-  private final AtomicInteger dynamicId;
-  private final int maxBufferSize;
   private final PooledByteBuffer[] pool;
   private final int poolSize;
 
   public ByteBufferPool(final int poolSize, final int maxBufferSize) {
     this.poolSize = poolSize;
     this.pool = new PooledByteBuffer[poolSize];
-    this.maxBufferSize = maxBufferSize;
-    this.dynamicId = new AtomicInteger(poolSize);
 
     for (int idx = 0; idx < poolSize; ++idx) {
       pool[idx] = new PooledByteBuffer(idx, maxBufferSize);
@@ -52,7 +47,7 @@ public class ByteBufferPool {
   }
 
   public PooledByteBuffer accessFor(final String tag, final int retries) {
-    for (int attempt = 0; attempt <= retries; ++attempt) {
+    while (true) {
       for (int idx = 0; idx < poolSize; ++idx) {
         final PooledByteBuffer buffer = pool[idx];
         if (buffer.claimUse(tag)) {
@@ -60,13 +55,6 @@ public class ByteBufferPool {
         }
       }
     }
-
-    // allocate a non-pooled buffer that is
-    // garbage collected following a single use
-    final PooledByteBuffer buffer = new PooledByteBuffer(dynamicId.getAndIncrement(), maxBufferSize);
-    buffer.claimUse(tag + "-overflow");
-    
-    return buffer;
   }
 
   public int size() {
