@@ -1,4 +1,7 @@
 # vlingo-wire
+
+[![Build Status](https://travis-ci.org/vlingo/vlingo-wire.svg?branch=master)](https://travis-ci.org/vlingo/vlingo-wire)
+
 The vlingo-wire toolkit provides wire protocol messaging implementations, such as with full-duplex TCP, using vlingo-actors.
 
 
