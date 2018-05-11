@@ -7,23 +7,32 @@
 
 package io.vlingo.wire.fdx.inbound;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.message.AbstractMessageTool;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.AddressType;
 
 public class MockInboundStreamInterest extends AbstractMessageTool implements InboundStreamInterest {
-  public int messageCount;
-  public final List<String> messages = new ArrayList<>();
+  public TestResults testResults = new TestResults();
 
   public MockInboundStreamInterest() { }
   
   @Override
   public void handleInboundStreamMessage(final AddressType addressType, final RawMessage message) {
-    ++messageCount;
     final String textMessage = message.asTextMessage();
-    messages.add(textMessage);
+    testResults.messages.add(textMessage);
+    testResults.messageCount.incrementAndGet();
+    System.out.println("INTEREST: " + textMessage + " list-size: " + testResults.messages.size() + " count: " + testResults.messageCount.get() + " count-down: " + testResults.untilStops.remaining());
+    testResults.untilStops.happened();
+  }
+
+  static class TestResults {
+    public final AtomicInteger messageCount = new AtomicInteger(0);
+    public final List<String> messages = new CopyOnWriteArrayList<>();
+    public TestUntil untilStops;
   }
 }
