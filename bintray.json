@@ -1,0 +1,31 @@
+{
+    "package": {
+        "name": "vlingo-wire",
+        "repo": "vlingo-wire",
+        "subject": "vlingo-platform",
+        "desc": "Wire protocol messaging implementations, such as with full-duplex TCP and UDP multicast, using vlingo/actors.",
+        "website_url": "https://github.com/vlingo/vlingo-wire",
+        "issue_tracker_url": "https://github.com/vlingo/vlingo-wire/issues",
+        "vcs_url": "https://github.com/vlingo/vlingo-wire.git",
+        "licenses": ["MPL-2.0"],
+        "public_download_numbers": true,
+        "public_stats": true
+    },
+
+    "version": {
+        "name": "master",
+        "gpgSign": false
+    },
+
+    "files": [
+        {
+            "includePattern": "target/(.*).jar",
+            "uploadPattern": "/vlingo-wire/master/$1.jar",
+            "matrixParams": {
+                "override": 1
+            }
+        }
+    ],
+
+    "publish": true
+}
