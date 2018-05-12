@@ -4,6 +4,15 @@
 
 The vlingo-wire toolkit provides wire protocol messaging implementations, such as with full-duplex TCP, using vlingo-actors.
 
+### Bintray
+```xml
+<dependency>
+  <groupId>io.vlingo</groupId>
+  <artifactId>vlingo-wire</artifactId>
+  <version>0.3.1</version>
+  <type>pom</type>
+</dependency>
+```
 
 License (See LICENSE file for full license)
 -------------------------------------------
