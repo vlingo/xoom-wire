@@ -1,6 +1,6 @@
 # vlingo-wire
 
-[![Build Status](https://travis-ci.org/vlingo/vlingo-wire.svg?branch=master)](https://travis-ci.org/vlingo/vlingo-wire)
+[![Build Status](https://travis-ci.org/vlingo/vlingo-wire.svg?branch=master)](https://travis-ci.org/vlingo/vlingo-wire) [ ![Download](https://api.bintray.com/packages/vlingo/vlingo-platform-java/vlingo-wire/images/download.svg) ](https://bintray.com/vlingo/vlingo-platform-java/vlingo-wire/_latestVersion)
 
 The vlingo-wire toolkit provides wire protocol messaging implementations, such as with full-duplex TCP, using vlingo-actors.
 
