@@ -5,13 +5,32 @@
 The vlingo-wire toolkit provides wire protocol messaging implementations, such as with full-duplex TCP, using vlingo-actors.
 
 ### Bintray
+
 ```xml
-<dependency>
-  <groupId>io.vlingo</groupId>
-  <artifactId>vlingo-wire</artifactId>
-  <version>0.3.1</version>
-  <type>pom</type>
-</dependency>
+  <repositories>
+    <repository>
+      <id>jcenter</id>
+      <url>https://jcenter.bintray.com/</url>
+    </repository>
+  </repositories>
+  <dependencies>
+    <dependency>
+      <groupId>io.vlingo</groupId>
+      <artifactId>vlingo-wire</artifactId>
+      <version>0.3.3</version>
+      <scope>compile</scope>
+    </dependency>
+  </dependencies>
+```
+
+```gradle
+dependencies {
+    compile 'io.vlingo:vlingo-wire:0.3.3'
+}
+
+repositories {
+    jcenter()
+}
 ```
 
 License (See LICENSE file for full license)
