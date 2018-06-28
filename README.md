@@ -17,7 +17,7 @@ The vlingo-wire toolkit provides wire protocol messaging implementations, such a
     <dependency>
       <groupId>io.vlingo</groupId>
       <artifactId>vlingo-wire</artifactId>
-      <version>0.3.4</version>
+      <version>0.3.5</version>
       <scope>compile</scope>
     </dependency>
   </dependencies>
@@ -25,7 +25,7 @@ The vlingo-wire toolkit provides wire protocol messaging implementations, such a
 
 ```gradle
 dependencies {
-    compile 'io.vlingo:vlingo-wire:0.3.4'
+    compile 'io.vlingo:vlingo-wire:0.3.5'
 }
 
 repositories {
