@@ -123,6 +123,7 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
       }
     } catch (Exception e) {
       closeChannel();
+      logger.log(getClass().getSimpleName() + ": Cannot prepare/open channel because: " + e.getMessage(), e);
     }
     return null;
   }
