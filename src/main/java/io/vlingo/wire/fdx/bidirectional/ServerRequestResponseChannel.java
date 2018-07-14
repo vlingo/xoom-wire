@@ -9,6 +9,7 @@ package io.vlingo.wire.fdx.bidirectional;
 
 import java.util.List;
 
+import io.vlingo.actors.Address;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Stage;
 import io.vlingo.actors.Stoppable;
@@ -32,6 +33,30 @@ public interface ServerRequestResponseChannel extends ResponseSenderChannel, Sto
             stage.actorFor(
               Definition.has(ServerRequestResponseChannelActor.class, params),
               ServerRequestResponseChannel.class);
+
+    return channel;
+  }
+
+  static ServerRequestResponseChannel start(
+          final Stage stage,
+          final Address address,
+          final String mailboxName,
+          final RequestChannelConsumer consumer,
+          final int port,
+          final String name,
+          final int maxBufferPoolSize,
+          final int maxMessageSize,
+          final long probeTimeout,
+          final long probeInterval) {
+
+    final List<Object> params = Definition.parameters(consumer, port, name, maxBufferPoolSize, maxMessageSize, probeTimeout, probeInterval);
+
+    final ServerRequestResponseChannel channel =
+            stage.actorFor(
+              Definition.has(ServerRequestResponseChannelActor.class, params, mailboxName, address.name()),
+              ServerRequestResponseChannel.class,
+              address,
+              stage.world().defaultLogger());
 
     return channel;
   }
