@@ -48,8 +48,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
           final int maxBufferPoolSize,
           final int maxMessageSize,
           final long probeTimeout,
-          final long probeInterval)
-  throws Exception {
+          final long probeInterval) {
     this.consumer = consumer;
     this.name = name;
     this.maxBufferPoolSize = maxBufferPoolSize;
@@ -57,11 +56,18 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
     this.probeTimeout = probeTimeout;
     
     this.self = selfAs(ResponseSenderChannel.class);
-    this.channel = ServerSocketChannel.open();
-    this.selector = Selector.open();
-    channel.socket().bind(new InetSocketAddress(port));
-    channel.configureBlocking(false);
-    channel.register(selector, SelectionKey.OP_ACCEPT);
+
+    try {
+      this.channel = ServerSocketChannel.open();
+      this.selector = Selector.open();
+      channel.socket().bind(new InetSocketAddress(port));
+      channel.configureBlocking(false);
+      channel.register(selector, SelectionKey.OP_ACCEPT);
+    } catch (Exception e) {
+      final String message = "Failure opening socket because: " + e.getMessage();
+      logger().log(message, e);
+      throw new IllegalArgumentException();
+    }
 
     this.cancellable = stage().scheduler().schedule(selfAs(Scheduled.class), null, 100, probeInterval);
   }
