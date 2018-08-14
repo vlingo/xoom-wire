@@ -66,7 +66,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
     } catch (Exception e) {
       final String message = "Failure opening socket because: " + e.getMessage();
       logger().log(message, e);
-      throw new IllegalArgumentException();
+      throw new IllegalArgumentException(message);
     }
 
     this.cancellable = stage().scheduler().schedule(selfAs(Scheduled.class), null, 100, probeInterval);
