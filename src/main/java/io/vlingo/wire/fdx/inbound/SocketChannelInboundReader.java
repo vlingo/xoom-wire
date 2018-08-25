@@ -146,12 +146,6 @@ public class SocketChannelInboundReader implements ChannelReader, ChannelMessage
       final SelectionKey clientChannelKey = clientChannel.register(selector, SelectionKey.OP_READ);
   
       clientChannelKey.attach(new RawMessageBuilder(maxMessageSize));
-
-      logger.log(
-              "Accepted new connection for '"
-              + name
-              + "' from: "
-              + clientChannel.getRemoteAddress());
     }
   }
 }
