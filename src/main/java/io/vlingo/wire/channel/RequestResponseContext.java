@@ -14,7 +14,6 @@ public interface RequestResponseContext<R> {
   <T> T consumerData(final T data);
   boolean hasConsumerData();
   String id();
-  R reference();
   ResponseSenderChannel sender();
 
   default void abandon() {
