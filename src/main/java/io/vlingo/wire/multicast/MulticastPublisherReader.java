@@ -190,12 +190,6 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
       final SelectionKey clientChannelKey = clientChannel.register(selector, SelectionKey.OP_READ);
   
       clientChannelKey.attach(new RawMessageBuilder(messageBuffer.capacity()));
-
-      logger.log(
-              "Accepted new connection for '"
-              + name
-              + "' from: "
-              + clientChannel.getRemoteAddress());
     }
   }
 
