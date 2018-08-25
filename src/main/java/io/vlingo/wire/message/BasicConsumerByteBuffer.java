@@ -13,6 +13,10 @@ public class BasicConsumerByteBuffer implements ConsumerByteBuffer {
   private final int id;
   private String tag;
 
+  public static BasicConsumerByteBuffer allocate(final int id, final int maxBufferSize) {
+    return new BasicConsumerByteBuffer(id, maxBufferSize);
+  }
+
   public BasicConsumerByteBuffer(final int id, final int maxBufferSize) {
     this.id = id;
     this.buffer = ByteBufferAllocator.allocate(maxBufferSize);
