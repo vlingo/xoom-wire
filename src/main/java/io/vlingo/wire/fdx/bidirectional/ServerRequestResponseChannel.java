@@ -13,21 +13,21 @@ import io.vlingo.actors.Address;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Stage;
 import io.vlingo.actors.Stoppable;
-import io.vlingo.wire.channel.RequestChannelConsumer;
-import io.vlingo.wire.channel.ResponseSenderChannel;
+import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 
-public interface ServerRequestResponseChannel extends ResponseSenderChannel, Stoppable {
+public interface ServerRequestResponseChannel extends Stoppable {
   static ServerRequestResponseChannel start(
           final Stage stage,
-          final RequestChannelConsumer consumer,
+          final RequestChannelConsumerProvider provider,
           final int port,
           final String name,
+          final int processorPoolSize,
           final int maxBufferPoolSize,
           final int maxMessageSize,
           final long probeTimeout,
           final long probeInterval) {
 
-    final List<Object> params = Definition.parameters(consumer, port, name, maxBufferPoolSize, maxMessageSize, probeTimeout, probeInterval);
+    final List<Object> params = Definition.parameters(provider, port, name, processorPoolSize, maxBufferPoolSize, maxMessageSize, probeTimeout, probeInterval);
 
     final ServerRequestResponseChannel channel =
             stage.actorFor(
@@ -41,15 +41,16 @@ public interface ServerRequestResponseChannel extends ResponseSenderChannel, Sto
           final Stage stage,
           final Address address,
           final String mailboxName,
-          final RequestChannelConsumer consumer,
+          final RequestChannelConsumerProvider provider,
           final int port,
           final String name,
+          final int processorPoolSize,
           final int maxBufferPoolSize,
           final int maxMessageSize,
           final long probeTimeout,
           final long probeInterval) {
 
-    final List<Object> params = Definition.parameters(consumer, port, name, maxBufferPoolSize, maxMessageSize, probeTimeout, probeInterval);
+    final List<Object> params = Definition.parameters(provider, port, name, processorPoolSize, maxBufferPoolSize, maxMessageSize, probeTimeout, probeInterval);
 
     final ServerRequestResponseChannel channel =
             stage.actorFor(
