@@ -27,10 +27,12 @@ import io.vlingo.wire.node.Host;
 
 public class SocketRequestResponseChannelTest {
   private static final int POOL_SIZE = 100;
+  private static int TEST_PORT = 37371;
   
   private ByteBuffer buffer;
   private ClientRequestResponseChannel client;
   private TestResponseChannelConsumer clientConsumer;
+  private TestRequestChannelConsumerProvider provider;
   private ServerRequestResponseChannel server;
   private TestRequestChannelConsumer serverConsumer;
   private World world;
@@ -110,13 +112,13 @@ public class SocketRequestResponseChannelTest {
   @Test
   public void test10RequestResponse() throws Exception {
     final String request = "Hello, Request-Response";
-    
+
     serverConsumer.currentExpectedRequestLength = request.length() + 1; // digits 0 - 9
     clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
     
     serverConsumer.untilConsume = TestUntil.happenings(10);
     clientConsumer.untilConsume = TestUntil.happenings(10);
-    
+
     for (int idx = 0; idx < 10; ++idx) {
       request(request + idx);
     }
@@ -124,6 +126,7 @@ public class SocketRequestResponseChannelTest {
     while (clientConsumer.untilConsume.remaining() > 0) {
       client.probeChannel();
     }
+
     serverConsumer.untilConsume.completes();
     clientConsumer.untilConsume.completes();
 
@@ -181,12 +184,15 @@ public class SocketRequestResponseChannelTest {
     
     buffer = ByteBufferAllocator.allocate(1024);
     final Logger logger = JDKLogger.testInstance();
-    serverConsumer = new TestRequestChannelConsumer();
+    provider = new TestRequestChannelConsumerProvider();
+    serverConsumer = (TestRequestChannelConsumer) provider.consumer;
+
     server = ServerRequestResponseChannel.start(
                     world.stage(),
-                    serverConsumer,
-                    37371,
+                    provider,
+                    TEST_PORT,
                     "test-server",
+                    1,
                     POOL_SIZE,
                     10240,
                     10L,
@@ -194,7 +200,9 @@ public class SocketRequestResponseChannelTest {
     
     clientConsumer = new TestResponseChannelConsumer();
     
-    client = new ClientRequestResponseChannel(Address.from(Host.of("localhost"), 37371,  AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger);
+    client = new ClientRequestResponseChannel(Address.from(Host.of("localhost"), TEST_PORT,  AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger);
+    
+    ++TEST_PORT;
   }
 
   @After
