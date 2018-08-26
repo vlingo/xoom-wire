@@ -26,6 +26,7 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
   private boolean closed;
   private final ResponseChannelConsumer consumer;
   private final Logger logger;
+  private int previousPrepareFailures;
   private final ByteBufferPool readBufferPool;
 
   public ClientRequestResponseChannel(
@@ -40,6 +41,7 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
     this.logger = logger;
     this.closed = false;
     this.channel = null;
+    this.previousPrepareFailures = 0;
     this.readBufferPool = new ByteBufferPool(maxBufferPoolSize, maxMessageSize);
   }
 
@@ -111,6 +113,7 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
     try {
       if (channel != null) {
         if (channel.isConnected()) {
+          previousPrepareFailures = 0;
           return channel;
         } else {
           closeChannel();
@@ -119,12 +122,19 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
         channel = SocketChannel.open();
         channel.connect(new InetSocketAddress(address.hostName(), address.port()));
         channel.configureBlocking(false);
+        previousPrepareFailures = 0;
         return channel;
       }
     } catch (Exception e) {
       closeChannel();
-      logger.log(getClass().getSimpleName() + ": Cannot prepare/open channel because: " + e.getMessage(), e);
+      final String message = getClass().getSimpleName() + ": Cannot prepare/open channel because: " + e.getMessage();
+      if (previousPrepareFailures == 0) {
+        logger.log(message, e);
+      } else if (previousPrepareFailures % 20 == 0) {
+        logger.log("AGAIN: " + message);
+      }
     }
+    ++previousPrepareFailures;
     return null;
   }
 
