@@ -93,7 +93,7 @@ public class SocketChannelInboundReader implements ChannelReader, ChannelMessage
     if (closed) return;
     
     try {
-      if (selector.select(probeTimeout) > 0) {
+      if (selector.selectNow() > 0) {
         final Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
 
         while (iterator.hasNext()) {
