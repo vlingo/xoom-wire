@@ -78,7 +78,7 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
   //=========================================
   // ResponseListenerChannel
   //=========================================
-
+private int probeMisses = 0;
   @Override
   public void probeChannel() {
     if (closed) return;
@@ -86,8 +86,9 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
     try {
       final SocketChannel channel = preparedChannel();
       if (channel != null) {
+        probeMisses = 0;
         readConsume(channel);
-      }
+      } else { if (++probeMisses % 1000 == 0) System.out.print("p"); }
     } catch (IOException e) {
       logger.log("Failed to read channel selector for " + address + " because: " + e.getMessage(), e);
     }
@@ -137,7 +138,7 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
     ++previousPrepareFailures;
     return null;
   }
-
+private int readMisses = 0;
   private void readConsume(final SocketChannel channel) throws IOException {
     final ConsumerByteBuffer pooledBuffer = readBufferPool.accessFor("client-response", 25);
     final ByteBuffer readBuffer = pooledBuffer.asByteBuffer();
@@ -150,8 +151,10 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
       } while (bytesRead > 0);
 
       if (totalBytesRead > 0) {
+        readMisses = 0;
         consumer.consume(pooledBuffer.flip());
       } else {
+        if (++readMisses % 1000 == 0) System.out.print("r");
         pooledBuffer.release();
       }
     } catch (Exception e) {
