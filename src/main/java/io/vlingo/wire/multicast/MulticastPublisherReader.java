@@ -40,7 +40,6 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
   private final ByteBuffer messageBuffer;
   private final Queue<RawMessage> messageQueue;
   private final String name;
-  private final long processTimeout;
   private final InetSocketAddress publisherAddress;
   private final ServerSocketChannel readChannel;
   private final Selector selector;
@@ -50,14 +49,12 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
           final Group group,
           final int incomingSocketPort,
           final int maxMessageSize,
-          final long processTimeout,
           final ChannelReaderConsumer consumer,
           final Logger logger)
   throws Exception {
     
     this.name = name;
     this.groupAddress = new InetSocketAddress(InetAddress.getByName(group.address()), group.port());
-    this.processTimeout = processTimeout;
     this.consumer = consumer;
     this.logger = logger;
     this.messageBuffer = ByteBufferAllocator.allocate(maxMessageSize);

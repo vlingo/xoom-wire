@@ -64,7 +64,7 @@ public class SocketChannelWriterTest extends AbstractMessageTool {
     final Node node = Node.with(Id.of(2), Name.of("node2"), Host.of("localhost"), 37373, 37374);
     final Logger logger = JDKLogger.testInstance();
     channelWriter = new SocketChannelWriter(node.operationalAddress(), logger);
-    channelReader = new SocketChannelInboundReader(node.operationalAddress().port(), "test-reader", 1024, 10, logger);
+    channelReader = new SocketChannelInboundReader(node.operationalAddress().port(), "test-reader", 1024, logger);
   }
   
   @After

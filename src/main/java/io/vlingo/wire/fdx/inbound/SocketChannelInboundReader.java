@@ -30,21 +30,18 @@ public class SocketChannelInboundReader implements ChannelReader, ChannelMessage
   private final int maxMessageSize;
   private final String name;
   private final int port;
-  private final long probeTimeout;
   private final Selector selector;
 
   public SocketChannelInboundReader(
           final int port,
           final String name,
           final int maxMessageSize,
-          final long probeTimeout,
           final Logger logger)
   throws Exception {
     this.port = port;
     this.name = name;
     this.channel = ServerSocketChannel.open();
     this.maxMessageSize = maxMessageSize;
-    this.probeTimeout = probeTimeout;
     this.logger = logger;
     this.selector = Selector.open();
   }

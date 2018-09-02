@@ -33,7 +33,6 @@ public class SocketChannelSelectionProcessorActor extends Actor
   private final int messageBufferSize;
   //private final int maxBufferPoolSize;
   private final String name;
-  private final long probeTimeout;
   private final RequestChannelConsumerProvider provider;
   private final ResponseSenderChannel responder;
   private final Selector selector;
@@ -43,13 +42,11 @@ public class SocketChannelSelectionProcessorActor extends Actor
           final String name,
           final int maxBufferPoolSize,
           final int messageBufferSize,
-          final long probeTimeout,
           final long probeInterval) {
 
     this.provider = provider;
     this.name = name;
     this.messageBufferSize = messageBufferSize;
-    this.probeTimeout = probeTimeout;
     this.selector = open();
     //this.maxBufferPoolSize = maxBufferPoolSize;
     this.responder = selfAs(ResponseSenderChannel.class);

@@ -26,7 +26,6 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
   private final Cancellable cancellable;
   private final ServerSocketChannel channel;
   private final String name;
-  private final long probeTimeout;
   private final SocketChannelSelectionProcessor[] processors;
   private int processorPoolIndex;
   private final Selector selector;
@@ -38,12 +37,10 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
           final int processorPoolSize,
           final int maxBufferPoolSize,
           final int maxMessageSize,
-          final long probeTimeout,
           final long probeInterval) {
 
     this.name = name;
-    this.probeTimeout = probeTimeout;
-    this.processors = startProcessors(provider, name, processorPoolSize, maxBufferPoolSize, maxMessageSize, probeTimeout, probeInterval);
+    this.processors = startProcessors(provider, name, processorPoolSize, maxBufferPoolSize, maxMessageSize, probeInterval);
 
     try {
       this.channel = ServerSocketChannel.open();
@@ -155,7 +152,6 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
           final int processorPoolSize,
           final int maxBufferPoolSize,
           final int maxMessageSize,
-          final long probeTimeout,
           final long probeInterval) {
 
     final SocketChannelSelectionProcessor[] processors = new SocketChannelSelectionProcessor[processorPoolSize];
@@ -163,7 +159,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
     for (int idx = 0; idx < processors.length; ++idx) {
       processors[idx] = childActorFor(
               Definition.has(SocketChannelSelectionProcessorActor.class,
-                      Definition.parameters(provider, name + "-processor-" + idx, maxBufferPoolSize, maxMessageSize, probeTimeout, probeInterval)),
+                      Definition.parameters(provider, name + "-processor-" + idx, maxBufferPoolSize, maxMessageSize, probeInterval)),
               SocketChannelSelectionProcessor.class);
     }
 
