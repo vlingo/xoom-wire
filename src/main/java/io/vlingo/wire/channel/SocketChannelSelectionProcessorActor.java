@@ -241,6 +241,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
   private class Context implements RequestResponseContext<SocketChannel> {
     private final ConsumerByteBuffer buffer;
     private final SocketChannel clientChannel;
+    private Object closingData;
     private final RequestChannelConsumer consumer;
     private Object consumerData;
     private final String id;
@@ -273,6 +274,11 @@ public class SocketChannelSelectionProcessorActor extends Actor
       return responder;
     }
 
+    @Override
+    public void whenClosing(final Object data) {
+      this.closingData = data;
+    }
+
     Context(final SocketChannel clientChannel) {
       this.clientChannel = clientChannel;
       this.consumer = provider.requestChannelConsumer();
@@ -282,7 +288,10 @@ public class SocketChannelSelectionProcessorActor extends Actor
     }
 
     void close() {
+      if (!clientChannel.isOpen()) return;
+
       try {
+        consumer().closeWith(this, closingData);
         clientChannel.close();
       } catch (Exception e) {
         logger().log("Failed to close client channel for " + name + " because: " + e.getMessage(), e);
