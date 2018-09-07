@@ -59,7 +59,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
 
 
   //=========================================
-  // Scheduled
+  // ServerRequestResponseChannel
   //=========================================
 
   @Override
