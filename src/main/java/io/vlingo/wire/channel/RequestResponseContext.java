@@ -15,6 +15,7 @@ public interface RequestResponseContext<R> {
   boolean hasConsumerData();
   String id();
   ResponseSenderChannel sender();
+  void whenClosing(final Object data);
 
   default void abandon() {
     sender().abandon(this);
