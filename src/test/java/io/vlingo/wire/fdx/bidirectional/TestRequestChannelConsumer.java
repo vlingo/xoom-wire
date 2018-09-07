@@ -21,11 +21,17 @@ public class TestRequestChannelConsumer implements RequestChannelConsumer {
   public int currentExpectedRequestLength;
   public int consumeCount;
   public List<String> requests = new ArrayList<>();
+  public TestUntil untilClosed;
   public TestUntil untilConsume;
   
   private StringBuilder requestBuilder = new StringBuilder();
   private String remaining = "";
-  
+
+  @Override
+  public void closeWith(final RequestResponseContext<?> requestResponseContext, final Object data) {
+    if (untilClosed != null) untilClosed.happened();
+  }
+
   @Override
   public void consume(RequestResponseContext<?> context, final ConsumerByteBuffer buffer) {
     final String requestPart = Converters.bytesToText(buffer.array(), 0, buffer.limit());
@@ -57,7 +63,7 @@ public class TestRequestChannelConsumer implements RequestChannelConsumer {
         
         last = currentIndex == combinedLength;
         
-        untilConsume.happened();
+        if (untilConsume != null) untilConsume.happened();
       }
     }
   }
