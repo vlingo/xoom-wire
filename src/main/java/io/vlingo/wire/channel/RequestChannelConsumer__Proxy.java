@@ -16,7 +16,8 @@ import io.vlingo.actors.Mailbox;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 
 public class RequestChannelConsumer__Proxy implements RequestChannelConsumer {
-  private static final String representationConsume1 = "consume(RequestResponseContext<?>)";
+  private static final String representationCloseWith1 = "closeWith(RequestResponseContext<?>, Object)";
+  private static final String representationConsume2 = "consume(RequestResponseContext<?>, ConsumerByteBuffer)";
   private final Actor actor;
   private final Mailbox mailbox;
 
@@ -26,12 +27,22 @@ public class RequestChannelConsumer__Proxy implements RequestChannelConsumer {
   }
 
   @Override
+  public void closeWith(final RequestResponseContext<?> context, final Object data) {
+    if (!actor.isStopped()) {
+      final Consumer<RequestChannelConsumer> consumer = (actor) -> actor.closeWith(context, data);
+      mailbox.send(new LocalMessage<RequestChannelConsumer>(actor, RequestChannelConsumer.class, consumer, representationCloseWith1));
+    } else {
+      actor.deadLetters().failedDelivery(new DeadLetter(actor, representationCloseWith1));
+    }
+  }
+
+  @Override
   public void consume(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer) {
     if (!actor.isStopped()) {
       final Consumer<RequestChannelConsumer> consumer = (actor) -> actor.consume(context, buffer);
-      mailbox.send(new LocalMessage<RequestChannelConsumer>(actor, RequestChannelConsumer.class, consumer, representationConsume1));
+      mailbox.send(new LocalMessage<RequestChannelConsumer>(actor, RequestChannelConsumer.class, consumer, representationConsume2));
     } else {
-      actor.deadLetters().failedDelivery(new DeadLetter(actor, representationConsume1));
+      actor.deadLetters().failedDelivery(new DeadLetter(actor, representationConsume2));
     }
   }
 }

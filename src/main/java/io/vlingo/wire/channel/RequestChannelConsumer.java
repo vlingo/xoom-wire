@@ -10,5 +10,6 @@ package io.vlingo.wire.channel;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 
 public interface RequestChannelConsumer {
+  void closeWith(final RequestResponseContext<?> requestResponseContext, final Object data);
   void consume(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer);
 }
