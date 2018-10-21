@@ -18,9 +18,9 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 import io.vlingo.actors.Actor;
-import io.vlingo.actors.Cancellable;
-import io.vlingo.actors.Scheduled;
 import io.vlingo.actors.Stoppable;
+import io.vlingo.common.Cancellable;
+import io.vlingo.common.Scheduled;
 import io.vlingo.wire.message.BasicConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 

@@ -8,8 +8,8 @@
 package io.vlingo.wire.fdx.inbound;
 
 import io.vlingo.actors.Actor;
-import io.vlingo.actors.Cancellable;
-import io.vlingo.actors.Scheduled;
+import io.vlingo.common.Cancellable;
+import io.vlingo.common.Scheduled;
 import io.vlingo.wire.channel.ChannelReader;
 import io.vlingo.wire.channel.ChannelReaderConsumer;
 import io.vlingo.wire.message.RawMessage;
