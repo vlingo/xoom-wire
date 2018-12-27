@@ -79,7 +79,7 @@ public class SocketChannelInboundReader implements ChannelReader, ChannelMessage
     if (closed) return; // for some tests it's possible to receive close() before start()
     
     this.consumer = consumer;
-    
+    logger().log(getClass().getSimpleName() + ": OPENING PORT: " + port);
     channel.socket().bind(new InetSocketAddress(port));
     channel.configureBlocking(false);
     channel.register(selector, SelectionKey.OP_ACCEPT);
