@@ -180,7 +180,7 @@ public class SocketRequestResponseChannelTest {
 
   @Before
   public void setUp() throws Exception {
-    world = World.start("test-request-response-channel");
+    world = World.startWithDefaults("test-request-response-channel");
     
     buffer = ByteBufferAllocator.allocate(1024);
     final Logger logger = JDKLogger.testInstance();
