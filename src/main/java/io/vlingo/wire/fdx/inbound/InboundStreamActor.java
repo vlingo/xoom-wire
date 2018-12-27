@@ -55,6 +55,7 @@ public class InboundStreamActor extends Actor implements InboundStream, ChannelR
     try {
       reader.openFor(this);
     } catch (Exception e) {
+      reader.close();
       e.printStackTrace();
       throw new IllegalStateException(e.getMessage(), e);
     }
