@@ -27,7 +27,7 @@ public interface ApplicationOutboundStream extends Stoppable {
                     "application-outbound-stream");
     
     final ApplicationOutboundStream applicationOutboundStream =
-            stage.actorFor(definition, ApplicationOutboundStream.class);
+            stage.actorFor(ApplicationOutboundStream.class, definition);
     
     return applicationOutboundStream;
   }

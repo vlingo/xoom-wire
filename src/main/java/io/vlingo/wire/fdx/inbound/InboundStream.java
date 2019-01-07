@@ -34,7 +34,7 @@ public interface InboundStream extends Startable, Stoppable {
                     Definition.parameters(interest, addressType, reader, probeInterval),
                     inboundName + "-inbound");
     
-    final InboundStream inboundStream = stage.actorFor(definition, InboundStream.class);
+    final InboundStream inboundStream = stage.actorFor(InboundStream.class, definition);
     
     return inboundStream;
   }

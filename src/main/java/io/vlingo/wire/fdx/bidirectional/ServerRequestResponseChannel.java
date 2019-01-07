@@ -30,8 +30,8 @@ public interface ServerRequestResponseChannel extends Stoppable {
 
     final ServerRequestResponseChannel channel =
             stage.actorFor(
-              Definition.has(ServerRequestResponseChannelActor.class, params),
-              ServerRequestResponseChannel.class);
+              ServerRequestResponseChannel.class,
+              Definition.has(ServerRequestResponseChannelActor.class, params));
 
     return channel;
   }
@@ -52,8 +52,8 @@ public interface ServerRequestResponseChannel extends Stoppable {
 
     final ServerRequestResponseChannel channel =
             stage.actorFor(
-              Definition.has(ServerRequestResponseChannelActor.class, params, mailboxName, address.name()),
               ServerRequestResponseChannel.class,
+              Definition.has(ServerRequestResponseChannelActor.class, params, mailboxName, address.name()),
               address,
               stage.world().defaultLogger());
 

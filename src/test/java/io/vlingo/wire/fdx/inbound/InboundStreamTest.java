@@ -59,7 +59,7 @@ public class InboundStreamTest extends AbstractMessageTool {
                     Definition.parameters(interest, AddressType.OP, reader, 10),
                     "test-inbound");
     
-    inboundStream = world.actorFor(definition, InboundStream.class);
+    inboundStream = world.actorFor(InboundStream.class, definition);
   }
   
   @After

@@ -159,9 +159,9 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
 
     for (int idx = 0; idx < processors.length; ++idx) {
       processors[idx] = childActorFor(
+              SocketChannelSelectionProcessor.class,
               Definition.has(SocketChannelSelectionProcessorActor.class,
-                      Definition.parameters(provider, name + "-processor-" + idx, maxBufferPoolSize, maxMessageSize, probeInterval)),
-              SocketChannelSelectionProcessor.class);
+                      Definition.parameters(provider, name + "-processor-" + idx, maxBufferPoolSize, maxMessageSize, probeInterval)));
     }
 
     return processors;
