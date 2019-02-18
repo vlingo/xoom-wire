@@ -25,7 +25,7 @@ import io.vlingo.wire.message.BasicConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 
 public class SocketChannelSelectionProcessorActor extends Actor
-    implements SocketChannelSelectionProcessor, ResponseSenderChannel, Scheduled, Stoppable {
+    implements SocketChannelSelectionProcessor, ResponseSenderChannel, Scheduled<Object>, Stoppable {
 
   private int bufferId;
   private final Cancellable cancellable;
@@ -37,6 +37,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
   private final ResponseSenderChannel responder;
   private final Selector selector;
 
+  @SuppressWarnings("unchecked")
   public SocketChannelSelectionProcessorActor(
           final RequestChannelConsumerProvider provider,
           final String name,
@@ -108,7 +109,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
   //=========================================
 
   @Override
-  public void intervalSignal(final Scheduled scheduled, final Object data) {
+  public void intervalSignal(final Scheduled<Object> scheduled, final Object data) {
     probeChannel();
   }
 
