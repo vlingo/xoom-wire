@@ -17,6 +17,7 @@ import org.junit.Test;
 
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.plugin.logging.jdk.JDKLogger;
+import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.channel.ChannelReader;
 import io.vlingo.wire.channel.MockChannelReaderConsumer;
 import io.vlingo.wire.fdx.outbound.ManagedOutboundSocketChannel;
@@ -41,6 +42,7 @@ public class InboundSocketChannelTest extends AbstractMessageTool {
   @Test
   public void testOpInboundChannel() throws Exception {
     final MockChannelReaderConsumer consumer = new MockChannelReaderConsumer();
+    final AccessSafely consumerAccess = consumer.afterCompleting(0);
     
     opReader.openFor(consumer);
     
@@ -50,24 +52,25 @@ public class InboundSocketChannelTest extends AbstractMessageTool {
     final RawMessage rawMessage1 = RawMessage.from(0, 0, message1);
     opChannel.write(rawMessage1.asByteBuffer(buffer));
     
-    probeUntilConsumed(opReader, consumer);
+    probeUntilConsumed(opReader, consumerAccess);
     
-    assertEquals(1, consumer.consumeCount);
-    assertEquals(message1, consumer.messages.get(0));
+    assertEquals(1, (int)consumerAccess.readFrom("consumeCount"));
+    assertEquals(message1, consumerAccess.readFrom("message", 0));
 
     final String message2 = OpMessage + 2;
     final RawMessage rawMessage2 = RawMessage.from(0, 0, message2);
     opChannel.write(rawMessage2.asByteBuffer(buffer));
     
-    probeUntilConsumed(opReader, consumer);
+    probeUntilConsumed(opReader, consumerAccess);
     
-    assertEquals(2, consumer.consumeCount);
-    assertEquals(message2, consumer.messages.get(1));
+    assertEquals(2, (int)consumerAccess.readFrom("consumeCount"));
+    assertEquals(message2, consumerAccess.readFrom("message", 1));
   }
   
   @Test
   public void testAppInboundChannel() throws Exception {
     final MockChannelReaderConsumer consumer = new MockChannelReaderConsumer();
+    final AccessSafely consumerAccess = consumer.afterCompleting(0);
     
     appReader.openFor(consumer);
     
@@ -77,19 +80,19 @@ public class InboundSocketChannelTest extends AbstractMessageTool {
     final RawMessage rawMessage1 = RawMessage.from(0, 0, message1);
     appChannel.write(rawMessage1.asByteBuffer(buffer));
     
-    probeUntilConsumed(appReader, consumer);
+    probeUntilConsumed(appReader, consumerAccess);
     
-    assertEquals(1, consumer.consumeCount);
-    assertEquals(message1, consumer.messages.get(0));
+    assertEquals(1, (int)consumerAccess.readFrom("consumeCount"));
+    assertEquals(message1, consumerAccess.readFrom("message", 0));
 
     final String message2 = AppMessage + 2;
     final RawMessage rawMessage2 = RawMessage.from(0, 0, message2);
     appChannel.write(rawMessage2.asByteBuffer(buffer));
     
-    probeUntilConsumed(appReader, consumer);
+    probeUntilConsumed(appReader, consumerAccess);
     
-    assertEquals(2, consumer.consumeCount);
-    assertEquals(message2, consumer.messages.get(1));
+    assertEquals(2, (int)consumerAccess.readFrom("consumeCount"));
+    assertEquals(message2, consumerAccess.readFrom("message", 1));
   }
   
   @Before
@@ -110,13 +113,13 @@ public class InboundSocketChannelTest extends AbstractMessageTool {
     appReader.close();
   }
 
-  private void probeUntilConsumed(final ChannelReader reader, final MockChannelReaderConsumer consumer) {
-    final int currentConsumedCount = consumer.consumeCount;
+  private void probeUntilConsumed(final ChannelReader reader, final AccessSafely consumerAccess ) {
+    final int currentConsumedCount = consumerAccess.readFrom("consumeCount");
     
     for (int idx = 0; idx < 100; ++idx) {
       reader.probeChannel();
       
-      if (consumer.consumeCount > currentConsumedCount) break;
+      if ((int)consumerAccess.readFrom("consumeCount") > currentConsumedCount) break;
     }
   }
 }
