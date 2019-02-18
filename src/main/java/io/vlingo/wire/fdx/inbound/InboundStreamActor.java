@@ -15,7 +15,7 @@ import io.vlingo.wire.channel.ChannelReaderConsumer;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.AddressType;
 
-public class InboundStreamActor extends Actor implements InboundStream, ChannelReaderConsumer, Scheduled {
+public class InboundStreamActor extends Actor implements InboundStream, ChannelReaderConsumer, Scheduled<Object> {
   private final AddressType addressType;
   private Cancellable cancellable;
   private final InboundStreamInterest interest;
@@ -38,7 +38,7 @@ public class InboundStreamActor extends Actor implements InboundStream, ChannelR
   //=========================================
 
   @Override
-  public void intervalSignal(final Scheduled scheduled, final Object data) {
+  public void intervalSignal(final Scheduled<Object> scheduled, final Object data) {
     reader.probeChannel();
   }
 
@@ -47,6 +47,7 @@ public class InboundStreamActor extends Actor implements InboundStream, ChannelR
   //=========================================
 
   @Override
+  @SuppressWarnings("unchecked")
   public void start() {
     if (isStopped()) return;
     
