@@ -22,7 +22,7 @@ import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.channel.SocketChannelSelectionProcessor;
 import io.vlingo.wire.channel.SocketChannelSelectionProcessorActor;
 
-public class ServerRequestResponseChannelActor extends Actor implements ServerRequestResponseChannel, Scheduled {
+public class ServerRequestResponseChannelActor extends Actor implements ServerRequestResponseChannel, Scheduled<Object> {
   private final Cancellable cancellable;
   private final ServerSocketChannel channel;
   private final String name;
@@ -30,6 +30,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
   private int processorPoolIndex;
   private final Selector selector;
 
+  @SuppressWarnings("unchecked")
   public ServerRequestResponseChannelActor(
           final RequestChannelConsumerProvider provider,
           final int port,
@@ -75,7 +76,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
   //=========================================
 
   @Override
-  public void intervalSignal(final Scheduled scheduled, final Object data) {
+  public void intervalSignal(final Scheduled<Object> scheduled, final Object data) {
     probeChannel();
   }
 
