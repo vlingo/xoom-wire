@@ -92,7 +92,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
 
         if (clientChannel != null) {
           clientChannel.configureBlocking(false);
-  
+
           clientChannel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE, new Context(clientChannel));
         }
       }
@@ -183,10 +183,17 @@ public class SocketChannelSelectionProcessorActor extends Actor
 
     int totalBytesRead = 0;
     int bytesRead = 0;
-    do {
-      bytesRead = channel.read(readBuffer);
-      totalBytesRead += bytesRead;
-    } while (bytesRead > 0);
+
+    try {
+      do {
+        bytesRead = channel.read(readBuffer);
+        totalBytesRead += bytesRead;
+      } while (bytesRead > 0);
+    } catch (Exception e) {
+      // likely a forcible close by the client,
+      // so force close and cleanup
+      bytesRead = -1;
+    }
 
     if (bytesRead == -1) {
       channel.close();
