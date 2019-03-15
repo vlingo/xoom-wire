@@ -134,6 +134,19 @@ public class SocketChannelSelectionProcessorActor extends Actor
   // internal implementation
   //=========================================
 
+  private void close(final SocketChannel channel, final SelectionKey key) {
+    try {
+      channel.close();
+    } catch (Exception e) {
+      // already closed; ignore
+    }
+    try {
+      key.cancel();
+    } catch (Exception e) {
+      // already cancelled/closed; ignore
+    }
+  }
+
   private Selector open() {
     try {
       return Selector.open();
@@ -196,8 +209,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
     }
 
     if (bytesRead == -1) {
-      channel.close();
-      key.cancel();
+      close(channel, key);
     }
 
     if (totalBytesRead > 0) {
