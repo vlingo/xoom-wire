@@ -8,7 +8,6 @@
 package io.vlingo.wire.fdx.bidirectional;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
@@ -20,14 +19,16 @@ import io.vlingo.wire.message.ByteBufferPool;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.node.Address;
 
-public class ClientRequestResponseChannel implements RequestSenderChannel, ResponseListenerChannel {
-  private final Address address;
+public abstract class ClientRequestResponseChannel implements RequestSenderChannel, ResponseListenerChannel {
+  protected final Address address;
+  protected final ResponseChannelConsumer consumer;
+  protected final Logger logger;
+  protected ByteBufferPool readBufferPool;
+
   private SocketChannel channel;
   private boolean closed;
-  private final ResponseChannelConsumer consumer;
-  private final Logger logger;
-  private int previousPrepareFailures;
-  private final ByteBufferPool readBufferPool;
+  private final int maxBufferPoolSize;
+  private int maxMessageSize;
 
   public ClientRequestResponseChannel(
           final Address address,
@@ -38,23 +39,22 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
   throws Exception {
     this.address = address;
     this.consumer = consumer;
+    this.maxBufferPoolSize = maxBufferPoolSize;
+    this.maxMessageSize = maxMessageSize;
     this.logger = logger;
     this.closed = false;
-    this.channel = null;
-    this.previousPrepareFailures = 0;
-    this.readBufferPool = new ByteBufferPool(maxBufferPoolSize, maxMessageSize);
   }
 
   //=========================================
   // RequestSenderChannel
   //=========================================
-  
+
   @Override
   public void close() {
     if (closed) return;
 
     closed = true;
-    
+
     closeChannel();
   }
 
@@ -82,7 +82,7 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
   @Override
   public void probeChannel() {
     if (closed) return;
-    
+
     try {
       final SocketChannel channel = preparedChannel();
       if (channel != null) {
@@ -93,12 +93,19 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
     }
   }
 
-
   //=========================================
   // internal implementation
   //=========================================
 
-  private void closeChannel() {
+  protected Address address() {
+    return address;
+  }
+
+  protected SocketChannel channel() {
+    return channel;
+  }
+
+  protected void closeChannel() {
     if (channel != null) {
       try {
         channel.close();
@@ -109,37 +116,28 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
     channel = null;
   }
 
-  private SocketChannel preparedChannel() {
-    try {
-      if (channel != null) {
-        if (channel.isConnected()) {
-          previousPrepareFailures = 0;
-          return channel;
-        } else {
-          closeChannel();
-        }
-      } else {
-        channel = SocketChannel.open();
-        channel.connect(new InetSocketAddress(address.hostName(), address.port()));
-        channel.configureBlocking(false);
-        previousPrepareFailures = 0;
-        return channel;
-      }
-    } catch (Exception e) {
-      closeChannel();
-      final String message = getClass().getSimpleName() + ": Cannot prepare/open channel because: " + e.getMessage();
-      if (previousPrepareFailures == 0) {
-        logger.log(message, e);
-      } else if (previousPrepareFailures % 20 == 0) {
-        logger.log("AGAIN: " + message);
-      }
-    }
-    ++previousPrepareFailures;
-    return null;
+  protected Logger logger() {
+    return logger;
   }
 
+  protected int maxMessageSize() {
+    return maxMessageSize;
+  }
+
+  protected void maxMessageSize(final int maxMessageSize) {
+    this.maxMessageSize = maxMessageSize;
+  }
+
+  protected SocketChannel preparedChannel() {
+    final SocketChannel prepared = preparedChannelDelegate();
+    this.channel = prepared;
+    return prepared;
+  }
+
+  protected abstract SocketChannel preparedChannelDelegate();
+
   private void readConsume(final SocketChannel channel) throws IOException {
-    final ConsumerByteBuffer pooledBuffer = readBufferPool.accessFor("client-response", 25);
+    final ConsumerByteBuffer pooledBuffer = pooledByteBuffer();
     final ByteBuffer readBuffer = pooledBuffer.asByteBuffer();
     int totalBytesRead = 0;
     int bytesRead = 0;
@@ -158,5 +156,12 @@ public class ClientRequestResponseChannel implements RequestSenderChannel, Respo
       pooledBuffer.release();
       throw e;
     }
+  }
+
+  private ConsumerByteBuffer pooledByteBuffer() {
+    if (readBufferPool == null) {
+      readBufferPool = new ByteBufferPool(maxBufferPoolSize, maxMessageSize);
+    }
+    return readBufferPool.accessFor("client-response", 25);
   }
 }
