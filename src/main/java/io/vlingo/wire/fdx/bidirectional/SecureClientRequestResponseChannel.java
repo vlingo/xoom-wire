@@ -53,11 +53,10 @@ public class SecureClientRequestResponseChannel extends ClientRequestResponseCha
         } else {
           closeChannel();
         }
-      } else {
-        channel = open();
-        previousPrepareFailures = 0;
-        return channel;
       }
+      channel = open();
+      previousPrepareFailures = 0;
+      return channel;
     } catch (Exception e) {
       closeChannel();
       final String message = getClass().getSimpleName() + ": Cannot prepare/open channel because: " + e.getMessage();
@@ -125,7 +124,7 @@ public class SecureClientRequestResponseChannel extends ClientRequestResponseCha
 
     @Override
     public boolean logDebugs() {
-      return false;
+      return true;
     }
 
     @Override
