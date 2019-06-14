@@ -123,6 +123,76 @@ public class SecureClientRequestResponseChannel extends ClientRequestResponseCha
     }
 
     @Override
+    public void error(final String message) {
+      logger.log(message);
+    }
+
+    @Override
+    public void error(final String message, final Object... args) {
+      logger.warn(message, args);
+    }
+
+    @Override
+    public void error(final String message, final Throwable exception) {
+      logger.log(message, exception);
+    }
+
+    @Override
+    public void trace(final String message) {
+      logger.trace(message);
+    }
+
+    @Override
+    public void trace(final String message, final Object... args) {
+      logger.trace(message, args);
+    }
+
+    @Override
+    public void trace(final String message, final Throwable throwable) {
+      logger.trace(message, throwable);
+    }
+
+    @Override
+    public void debug(final String message, final Object... args) {
+      logger.debug(message, args);
+    }
+
+    @Override
+    public void debug(final String message, final Throwable throwable) {
+      logger.debug(message, throwable);
+    }
+
+    @Override
+    public void info(final String message) {
+      logger.info(message);
+    }
+
+    @Override
+    public void info(final String message, final Object... args) {
+      logger.info(message, args);
+    }
+
+    @Override
+    public void info(final String message, final Throwable throwable) {
+      logger.info(message, throwable);
+    }
+
+    @Override
+    public void warn(final String message) {
+      logger.warn(message);
+    }
+
+    @Override
+    public void warn(final String message, final Object... args) {
+      logger.warn(message, args);
+    }
+
+    @Override
+    public void warn(final String message, final Throwable throwable) {
+      logger.warn(message, throwable);
+    }
+
+    @Override
     public boolean logDebugs() {
       return true;
     }
@@ -130,16 +200,6 @@ public class SecureClientRequestResponseChannel extends ClientRequestResponseCha
     @Override
     public void debug(final String message) {
       logger.log(message);
-    }
-
-    @Override
-    public void error(final String message) {
-      logger.log(message);
-    }
-
-    @Override
-    public void error(final String message, final Throwable exception) {
-      logger.log(message, exception);
     }
   }
 }
