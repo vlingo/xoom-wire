@@ -7,6 +7,13 @@
 
 package io.vlingo.wire.fdx.inbound;
 
+import io.vlingo.actors.Logger;
+import io.vlingo.wire.channel.ChannelMessageDispatcher;
+import io.vlingo.wire.channel.ChannelReader;
+import io.vlingo.wire.channel.ChannelReaderConsumer;
+import io.vlingo.wire.channel.SocketChannelSelectionReader;
+import io.vlingo.wire.message.RawMessageBuilder;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
@@ -14,13 +21,6 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
-
-import io.vlingo.actors.Logger;
-import io.vlingo.wire.channel.ChannelMessageDispatcher;
-import io.vlingo.wire.channel.ChannelReader;
-import io.vlingo.wire.channel.ChannelReaderConsumer;
-import io.vlingo.wire.channel.SocketChannelSelectionReader;
-import io.vlingo.wire.message.RawMessageBuilder;
 
 public class SocketChannelInboundReader implements ChannelReader, ChannelMessageDispatcher {
   private final ServerSocketChannel channel;
@@ -59,13 +59,13 @@ public class SocketChannelInboundReader implements ChannelReader, ChannelMessage
     try {
       selector.close();
     } catch (Exception e) {
-      logger.log("Failed to close selctor for: '" + name + "'", e);
+      logger.error("Failed to close selctor for: '" + name + "'", e);
     }
     
     try {
       channel.close();
     } catch (Exception e) {
-      logger.log("Failed to close channel for: '" + name + "'", e);
+      logger.error("Failed to close channel for: '" + name + "'", e);
     }
   }
 
@@ -79,7 +79,7 @@ public class SocketChannelInboundReader implements ChannelReader, ChannelMessage
     if (closed) return; // for some tests it's possible to receive close() before start()
     
     this.consumer = consumer;
-    logger().log(getClass().getSimpleName() + ": OPENING PORT: " + port);
+    logger().debug(getClass().getSimpleName() + ": OPENING PORT: " + port);
     channel.socket().bind(new InetSocketAddress(port));
     channel.configureBlocking(false);
     channel.register(selector, SelectionKey.OP_ACCEPT);
@@ -107,7 +107,7 @@ public class SocketChannelInboundReader implements ChannelReader, ChannelMessage
         }
       }
     } catch (IOException e) {
-      logger.log("Failed to read channel selector for: '" + name + "'", e);
+      logger.error("Failed to read channel selector for: '" + name + "'", e);
     }
   }
 

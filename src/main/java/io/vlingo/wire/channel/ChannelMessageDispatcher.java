@@ -29,7 +29,7 @@ public interface ChannelMessageDispatcher {
         consumer().consume(message);
       } catch (Exception e) {
         // TODO: deal with this
-        logger().log("Cannot dispatch message for: '" + name() + "'", e);
+        logger().error("Cannot dispatch message for: '" + name() + "'", e);
       }
 
       builder.prepareForNextMessage();

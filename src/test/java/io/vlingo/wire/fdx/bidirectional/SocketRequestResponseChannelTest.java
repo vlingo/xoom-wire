@@ -7,23 +7,21 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-
-import java.nio.ByteBuffer;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.World;
-import io.vlingo.actors.plugin.logging.jdk.JDKLogger;
 import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.message.ByteBufferAllocator;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.nio.ByteBuffer;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class SocketRequestResponseChannelTest {
   private static final int POOL_SIZE = 100;
@@ -183,7 +181,7 @@ public class SocketRequestResponseChannelTest {
     world = World.startWithDefaults("test-request-response-channel");
 
     buffer = ByteBufferAllocator.allocate(1024);
-    final Logger logger = JDKLogger.testInstance();
+    final Logger logger = Logger.basicLogger();
     provider = new TestRequestChannelConsumerProvider();
     serverConsumer = (TestRequestChannelConsumer) provider.consumer;
 

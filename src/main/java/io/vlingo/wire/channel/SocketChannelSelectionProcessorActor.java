@@ -7,6 +7,14 @@
 
 package io.vlingo.wire.channel;
 
+
+import io.vlingo.actors.Actor;
+import io.vlingo.actors.Stoppable;
+import io.vlingo.common.Cancellable;
+import io.vlingo.common.Scheduled;
+import io.vlingo.wire.message.BasicConsumerByteBuffer;
+import io.vlingo.wire.message.ConsumerByteBuffer;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -16,13 +24,6 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
-
-import io.vlingo.actors.Actor;
-import io.vlingo.actors.Stoppable;
-import io.vlingo.common.Cancellable;
-import io.vlingo.common.Scheduled;
-import io.vlingo.wire.message.BasicConsumerByteBuffer;
-import io.vlingo.wire.message.ConsumerByteBuffer;
 
 public class SocketChannelSelectionProcessorActor extends Actor
     implements SocketChannelSelectionProcessor, ResponseSenderChannel, Scheduled<Object>, Stoppable {
@@ -98,7 +99,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
       }
     } catch (Exception e) {
       final String message = "Failed to accept client socket for " + name + " because: " + e.getMessage();
-      logger().log(message, e);
+      logger().error(message, e);
       throw new IllegalArgumentException(message);
     }
   }
@@ -125,7 +126,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
     try {
       selector.close();
     } catch (Exception e) {
-      logger().log("Failed to close selctor for " + name + " while stopping because: " + e.getMessage(), e);
+      logger().error("Failed to close selctor for " + name + " while stopping because: " + e.getMessage(), e);
     }
   }
 
@@ -152,7 +153,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
       return Selector.open();
     } catch (Exception e) {
       final String message = "Failed to open selector for " + name + " because: " + e.getMessage();
-      logger().log(message, e);
+      logger().error(message, e);
       throw new IllegalArgumentException(message);
     }
   }
@@ -178,7 +179,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
         }
       }
     } catch (Exception e) {
-      logger().log("Failed client channel processing for " + name + " because: " + e.getMessage(), e);
+      logger().error("Failed client channel processing for " + name + " because: " + e.getMessage(), e);
     }
   }
 
@@ -247,7 +248,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
         clientChannel.write(responseBuffer);
       }
     } catch (Exception e) {
-      logger().log("Failed to write buffer for " + name + " with channel " + clientChannel.getRemoteAddress() + " because: " + e.getMessage(), e);
+      logger().error("Failed to write buffer for " + name + " with channel " + clientChannel.getRemoteAddress() + " because: " + e.getMessage(), e);
     } finally {
       buffer.release();
     }
@@ -314,7 +315,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
         consumer().closeWith(this, closingData);
         clientChannel.close();
       } catch (Exception e) {
-        logger().log("Failed to close client channel for " + name + " because: " + e.getMessage(), e);
+        logger().error("Failed to close client channel for " + name + " because: " + e.getMessage(), e);
       }
     }
 
