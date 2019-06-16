@@ -7,12 +7,6 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
-import java.net.InetSocketAddress;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.util.Iterator;
-
 import io.vlingo.actors.Actor;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Stoppable;
@@ -21,6 +15,12 @@ import io.vlingo.common.Scheduled;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.channel.SocketChannelSelectionProcessor;
 import io.vlingo.wire.channel.SocketChannelSelectionProcessorActor;
+
+import java.net.InetSocketAddress;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.util.Iterator;
 
 public class ServerRequestResponseChannelActor extends Actor implements ServerRequestResponseChannel, Scheduled<Object> {
   private final Cancellable cancellable;
@@ -44,7 +44,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
     this.processors = startProcessors(provider, name, processorPoolSize, maxBufferPoolSize, maxMessageSize, probeInterval);
 
     try {
-      logger().log(getClass().getSimpleName() + ": OPENING PORT: " + port);
+      logger().info(getClass().getSimpleName() + ": OPENING PORT: " + port);
       this.channel = ServerSocketChannel.open();
       this.selector = Selector.open();
       channel.socket().bind(new InetSocketAddress(port));
@@ -52,7 +52,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
       channel.register(selector, SelectionKey.OP_ACCEPT);
     } catch (Exception e) {
       final String message = "Failure opening socket because: " + e.getMessage();
-      logger().log(message, e);
+      logger().error(message, e);
       throw new IllegalArgumentException(message);
     }
 
@@ -96,13 +96,13 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
     try {
       selector.close();
     } catch (Exception e) {
-      logger().log("Failed to close selctor for: '" + name + "'", e);
+      logger().error("Failed to close selctor for: '" + name + "'", e);
     }
 
     try {
       channel.close();
     } catch (Exception e) {
-      logger().log("Failed to close channel for: '" + name + "'", e);
+      logger().error("Failed to close channel for: '" + name + "'", e);
     }
 
     super.stop();
@@ -132,8 +132,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
         }
       }
     } catch (Exception e) {
-      e.printStackTrace();
-      logger().log("Failed to accept client channel for '" + name + "' because: " + e.getMessage(), e);
+      logger().error("Failed to accept client channel for '" + name + "' because: " + e.getMessage(), e);
     }
   }
 

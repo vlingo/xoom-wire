@@ -7,10 +7,6 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
-
 import io.vlingo.actors.Logger;
 import io.vlingo.wire.channel.RequestSenderChannel;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
@@ -18,6 +14,10 @@ import io.vlingo.wire.channel.ResponseListenerChannel;
 import io.vlingo.wire.message.ByteBufferPool;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.node.Address;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 
 public abstract class ClientRequestResponseChannel implements RequestSenderChannel, ResponseListenerChannel {
   protected final Address address;
@@ -68,7 +68,7 @@ public abstract class ClientRequestResponseChannel implements RequestSenderChann
           preparedChannel.write(buffer);
         }
       } catch (Exception e) {
-        logger.log("Write to socket failed because: " + e.getMessage(), e);
+        logger.error("Write to socket failed because: " + e.getMessage(), e);
         closeChannel();
       }
     }
@@ -89,7 +89,7 @@ public abstract class ClientRequestResponseChannel implements RequestSenderChann
         readConsume(channel);
       }
     } catch (IOException e) {
-      logger.log("Failed to read channel selector for " + address + " because: " + e.getMessage(), e);
+      logger.error("Failed to read channel selector for " + address + " because: " + e.getMessage(), e);
     }
   }
 
@@ -110,7 +110,7 @@ public abstract class ClientRequestResponseChannel implements RequestSenderChann
       try {
         channel.close();
       } catch (Exception e) {
-        logger.log("Failed to close channel to " + address + " because: " + e.getMessage(), e);
+        logger.error("Failed to close channel to " + address + " because: " + e.getMessage(), e);
       }
     }
     channel = null;

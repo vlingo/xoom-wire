@@ -7,21 +7,19 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
+import io.vlingo.actors.Logger;
+import io.vlingo.wire.channel.ResponseChannelConsumer;
+import io.vlingo.wire.node.Address;
+import org.baswell.niossl.NioSslLogger;
+import org.baswell.niossl.SSLSocketChannel;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-
-import org.baswell.niossl.NioSslLogger;
-import org.baswell.niossl.SSLSocketChannel;
-
-import io.vlingo.actors.Logger;
-import io.vlingo.wire.channel.ResponseChannelConsumer;
-import io.vlingo.wire.node.Address;
 
 public class SecureClientRequestResponseChannel extends ClientRequestResponseChannel {
   private int previousPrepareFailures;
@@ -61,9 +59,9 @@ public class SecureClientRequestResponseChannel extends ClientRequestResponseCha
       closeChannel();
       final String message = getClass().getSimpleName() + ": Cannot prepare/open channel because: " + e.getMessage();
       if (previousPrepareFailures == 0) {
-        logger().log(message, e);
+        logger().error(message, e);
       } else if (previousPrepareFailures % 20 == 0) {
-        logger().log("AGAIN: " + message);
+        logger().info("AGAIN: " + message);
       }
     }
     ++previousPrepareFailures;
@@ -109,12 +107,12 @@ public class SecureClientRequestResponseChannel extends ClientRequestResponseCha
 
     @Override
     public void log(final String message) {
-      logger.log(message);
+      logger.debug(message);
     }
 
     @Override
     public void log(final String message, final Throwable throwable) {
-      logger.log(message, throwable);
+      logger.debug(message, throwable);
     }
 
     @Override
@@ -124,7 +122,7 @@ public class SecureClientRequestResponseChannel extends ClientRequestResponseCha
 
     @Override
     public void error(final String message) {
-      logger.log(message);
+      logger.error(message);
     }
 
     @Override
@@ -134,7 +132,7 @@ public class SecureClientRequestResponseChannel extends ClientRequestResponseCha
 
     @Override
     public void error(final String message, final Throwable exception) {
-      logger.log(message, exception);
+      logger.error(message, exception);
     }
 
     @Override
@@ -199,7 +197,7 @@ public class SecureClientRequestResponseChannel extends ClientRequestResponseCha
 
     @Override
     public void debug(final String message) {
-      logger.log(message);
+      logger.debug(message);
     }
   }
 }

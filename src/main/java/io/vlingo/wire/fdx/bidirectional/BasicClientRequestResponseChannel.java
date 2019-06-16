@@ -7,12 +7,12 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
-
 import io.vlingo.actors.Logger;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.node.Address;
+
+import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
 
 public class BasicClientRequestResponseChannel extends ClientRequestResponseChannel {
   private int previousPrepareFailures;
@@ -55,9 +55,9 @@ public class BasicClientRequestResponseChannel extends ClientRequestResponseChan
       closeChannel();
       final String message = getClass().getSimpleName() + ": Cannot prepare/open channel because: " + e.getMessage();
       if (previousPrepareFailures == 0) {
-        logger().log(message, e);
+        logger().error(message, e);
       } else if (previousPrepareFailures % 20 == 0) {
-        logger().log("AGAIN: " + message);
+        logger().info("AGAIN: " + message);
       }
     }
     ++previousPrepareFailures;

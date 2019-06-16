@@ -51,7 +51,7 @@ public class InboundStreamActor extends Actor implements InboundStream, ChannelR
   public void start() {
     if (isStopped()) return;
     
-    logger().log("Inbound stream listening: for '" + reader.name() + "'");
+    logger().debug("Inbound stream listening: for '" + reader.name() + "'");
     
     try {
       reader.openFor(this);

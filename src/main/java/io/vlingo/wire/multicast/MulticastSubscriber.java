@@ -7,6 +7,13 @@
 
 package io.vlingo.wire.multicast;
 
+import io.vlingo.actors.Logger;
+import io.vlingo.wire.channel.ChannelMessageDispatcher;
+import io.vlingo.wire.channel.ChannelReader;
+import io.vlingo.wire.channel.ChannelReaderConsumer;
+import io.vlingo.wire.message.ByteBufferAllocator;
+import io.vlingo.wire.message.RawMessage;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -18,13 +25,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.MembershipKey;
 import java.util.Enumeration;
-
-import io.vlingo.actors.Logger;
-import io.vlingo.wire.channel.ChannelMessageDispatcher;
-import io.vlingo.wire.channel.ChannelReader;
-import io.vlingo.wire.channel.ChannelReaderConsumer;
-import io.vlingo.wire.message.ByteBufferAllocator;
-import io.vlingo.wire.message.RawMessage;
 
 public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatcher {
   private final ByteBuffer buffer;
@@ -75,7 +75,7 @@ public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatc
     
     this.maxReceives = maxReceives;
     
-    logger.log("MulticastSubscriber joined: " + membershipKey);
+    logger.info("MulticastSubscriber joined: " + membershipKey);
   }
   
   //=========================================
@@ -91,7 +91,7 @@ public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatc
     try {
       channel.close();
     } catch (Exception e) {
-      logger.log("Failed to close channel for: '" + name + "'", e);
+      logger.error("Failed to close channel for: '" + name + "'", e);
     }
   }
 
@@ -125,7 +125,7 @@ public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatc
         }
       }
     } catch (IOException e) {
-      logger.log("Failed to read channel selector for: '" + name + "'", e);
+      logger.error("Failed to read channel selector for: '" + name + "'", e);
     }
   }
 

@@ -7,13 +7,13 @@
 
 package io.vlingo.wire.channel;
 
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
-
 import io.vlingo.actors.Logger;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Address;
+
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 
 public class SocketChannelWriter {
   private SocketChannel channel;
@@ -31,7 +31,7 @@ public class SocketChannelWriter {
       try {
         channel.close();
       } catch (Exception e) {
-        logger.log("Channel close failed because: " + e.getMessage(), e);
+        logger.error("Channel close failed because: " + e.getMessage(), e);
       }
     }
     channel = null;
@@ -54,7 +54,7 @@ public class SocketChannelWriter {
           totalBytesWritten += preparedChannel.write(buffer);
         }
       } catch (Exception e) {
-        logger.log("Write to channel failed because: " + e.getMessage(), e);
+        logger.error("Write to channel failed because: " + e.getMessage(), e);
         close();
       }
     }
@@ -80,7 +80,7 @@ public class SocketChannelWriter {
         return channel;
       }
     } catch (Exception e) {
-      logger.log("" + this + ": Failed to prepare channel because: " + e.getMessage(), e);
+      logger.error("" + this + ": Failed to prepare channel because: " + e.getMessage(), e);
       close();
     }
     return null;
