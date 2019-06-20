@@ -105,12 +105,10 @@ public class SecureClientRequestResponseChannel extends ClientRequestResponseCha
       return logger.isEnabled();
     }
 
-    @Override
     public void log(final String message) {
       logger.debug(message);
     }
 
-    @Override
     public void log(final String message, final Throwable throwable) {
       logger.debug(message, throwable);
     }
