@@ -30,7 +30,7 @@ public class SecureClientRequestResponseChannelTest {
 
   @Test
   public void testThatSecureClientRequestResponse() throws Exception {
-    final Address address = Address.from(Host.of("https://google.com"), 80, AddressType.NONE);
+    final Address address = Address.from(Host.of("https://google.com"), 443, AddressType.NONE);
     client = new SecureClientRequestResponseChannel(address, clientConsumer, POOL_SIZE, 10240, world.defaultLogger());
 
     clientConsumer.currentExpectedResponseLength = 500;
