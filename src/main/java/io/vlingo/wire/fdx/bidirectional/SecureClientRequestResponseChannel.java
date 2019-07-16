@@ -7,21 +7,24 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.AsynchronousSocketChannel;
+import java.nio.channels.CompletionHandler;
+
 import io.vlingo.actors.Logger;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
+import io.vlingo.wire.message.ByteBufferPool;
+import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.node.Address;
-import org.baswell.niossl.NioSslLogger;
-import org.baswell.niossl.SSLSocketChannel;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+public class SecureClientRequestResponseChannel implements ClientRequestResponseChannel {
+  private final Address address;
+  private final ResponseChannelConsumer consumer;
+  private final Logger logger;
+  private final ByteBufferPool readBufferPool;
 
-public class SecureClientRequestResponseChannel extends ClientRequestResponseChannel {
+  private AsynchronousSocketChannel channel;
   private int previousPrepareFailures;
 
   public SecureClientRequestResponseChannel(
@@ -31,171 +34,99 @@ public class SecureClientRequestResponseChannel extends ClientRequestResponseCha
           final int maxMessageSize,
           final Logger logger)
   throws Exception {
-    super(address, consumer, maxBufferPoolSize, maxMessageSize, new LoggerAdapter(logger));
-
-    this.previousPrepareFailures = 0;
+    this.address = address;
+    this.consumer = consumer;
+    this.logger = logger;
+    this.readBufferPool = new ByteBufferPool(maxBufferPoolSize, maxMessageSize);
   }
 
-  /**
-   * @see io.vlingo.wire.fdx.bidirectional.ClientRequestResponseChannel#preparedChannelDelegate()
-   */
   @Override
-  protected SocketChannel preparedChannelDelegate() {
-    SocketChannel channel = channel();
+  public void close() {
+    if (channel != null) {
+      try {
+        channel.close();
+      } catch (Exception e) {
+        logger.error("Failed to close channel to " + address + " because: " + e.getMessage(), e);
+      }
+    }
+    channel = null;
+  }
 
+  @Override
+  public void requestWith(final ByteBuffer buffer) {
+    final AsynchronousSocketChannel preparedChannel = prepareChannel();
+
+    if (preparedChannel != null) {
+      preparedChannel.write(buffer, this, new CompletionHandler<Integer, SecureClientRequestResponseChannel>() {
+        @Override
+        public void completed(final Integer result, final SecureClientRequestResponseChannel secure) {
+          if (buffer.hasRemaining()) {
+            SecureClientRequestResponseChannel.this.channel.write(buffer, secure, this);
+          }
+        }
+
+        @Override
+        public void failed(final Throwable exception, final SecureClientRequestResponseChannel secure) {
+          SecureClientRequestResponseChannel.this.close();
+          throw new IllegalStateException(getClass().getSimpleName() + ": Could not write to channel: " + channel, exception);
+        }
+      });
+    }
+  }
+
+  @Override
+  public void probeChannel() {
+    final AsynchronousSocketChannel preparedChannel = prepareChannel();
+
+    if (preparedChannel != null) {
+      final ConsumerByteBuffer buffer = readBufferPool.accessFor("client-response", 25);
+      preparedChannel.read(buffer.asByteBuffer(), this, new CompletionHandler<Integer, SecureClientRequestResponseChannel>() {
+        @Override
+        public void completed(final Integer result, final SecureClientRequestResponseChannel secure) {
+          if (result >= 0) {
+            consumer.consume(buffer);
+          } else {
+            buffer.release();
+          }
+        }
+
+        @Override
+        public void failed(final Throwable exception, final SecureClientRequestResponseChannel secure) {
+          exception.printStackTrace();
+          buffer.release();
+          SecureClientRequestResponseChannel.this.close();
+          throw new IllegalStateException(getClass().getSimpleName() + ": Could not read from channel: " + channel, exception);
+        }
+      });
+    }
+  }
+
+  private AsynchronousSocketChannel prepareChannel() {
     try {
       if (channel != null) {
-        if (channel.isConnected()) {
+        if (channel.isOpen()) {
           previousPrepareFailures = 0;
           return channel;
         } else {
-          closeChannel();
+          close();
         }
+      } else {
+        this.channel = AsynchronousSocketChannel.open();
+        final InetSocketAddress hostAddress = new InetSocketAddress(address.hostName(), address.port());
+        this.channel.connect(hostAddress)
+                    .get(); // DOH!
+        return this.channel;
       }
-      channel = open();
-      previousPrepareFailures = 0;
-      return channel;
     } catch (Exception e) {
-      closeChannel();
+      close();
       final String message = getClass().getSimpleName() + ": Cannot prepare/open channel because: " + e.getMessage();
       if (previousPrepareFailures == 0) {
-        logger().error(message, e);
+        logger.error(message, e);
       } else if (previousPrepareFailures % 20 == 0) {
-        logger().info("AGAIN: " + message);
+        logger.info("AGAIN: " + message);
       }
     }
     ++previousPrepareFailures;
     return null;
-  }
-
-  private SSLSocketChannel open() throws Exception {
-    final SocketChannel socketChannel = SocketChannel.open(new InetSocketAddress(address.hostName(), address.port()));
-
-    socketChannel.configureBlocking(false);
-
-    final SSLContext sslContext = SSLContext.getDefault(); // .getInstance("TLS");
-    final SSLEngine sslEngine = sslContext.createSSLEngine();
-    sslEngine.setUseClientMode(true);
-
-    final int minAppBufferSize = sslEngine.getSession().getApplicationBufferSize();
-
-    maxMessageSize(Integer.max(maxMessageSize(), minAppBufferSize));
-
-    final ThreadPoolExecutor sslThreadPool = new ThreadPoolExecutor(2, 2, 25, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-
-    final SSLSocketChannel sslSocketChannel = new SSLSocketChannel(socketChannel, sslEngine, sslThreadPool, (NioSslLogger) logger);
-
-    return sslSocketChannel;
-  }
-
-  private static class LoggerAdapter implements Logger, NioSslLogger {
-    private final Logger logger;
-
-    private LoggerAdapter(final Logger logger) {
-      this.logger = logger;
-    }
-
-    @Override
-    public void close() {
-      logger.close();
-    }
-
-    @Override
-    public boolean isEnabled() {
-      return logger.isEnabled();
-    }
-
-    public void log(final String message) {
-      logger.debug(message);
-    }
-
-    public void log(final String message, final Throwable throwable) {
-      logger.debug(message, throwable);
-    }
-
-    @Override
-    public String name() {
-      return logger.name();
-    }
-
-    @Override
-    public void error(final String message) {
-      logger.error(message);
-    }
-
-    @Override
-    public void error(final String message, final Object... args) {
-      logger.warn(message, args);
-    }
-
-    @Override
-    public void error(final String message, final Throwable exception) {
-      logger.error(message, exception);
-    }
-
-    @Override
-    public void trace(final String message) {
-      logger.trace(message);
-    }
-
-    @Override
-    public void trace(final String message, final Object... args) {
-      logger.trace(message, args);
-    }
-
-    @Override
-    public void trace(final String message, final Throwable throwable) {
-      logger.trace(message, throwable);
-    }
-
-    @Override
-    public void debug(final String message, final Object... args) {
-      logger.debug(message, args);
-    }
-
-    @Override
-    public void debug(final String message, final Throwable throwable) {
-      logger.debug(message, throwable);
-    }
-
-    @Override
-    public void info(final String message) {
-      logger.info(message);
-    }
-
-    @Override
-    public void info(final String message, final Object... args) {
-      logger.info(message, args);
-    }
-
-    @Override
-    public void info(final String message, final Throwable throwable) {
-      logger.info(message, throwable);
-    }
-
-    @Override
-    public void warn(final String message) {
-      logger.warn(message);
-    }
-
-    @Override
-    public void warn(final String message, final Object... args) {
-      logger.warn(message, args);
-    }
-
-    @Override
-    public void warn(final String message, final Throwable throwable) {
-      logger.warn(message, throwable);
-    }
-
-    @Override
-    public boolean logDebugs() {
-      return true;
-    }
-
-    @Override
-    public void debug(final String message) {
-      logger.debug(message);
-    }
   }
 }
