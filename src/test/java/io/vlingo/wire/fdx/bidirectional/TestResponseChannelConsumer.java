@@ -10,7 +10,7 @@ package io.vlingo.wire.fdx.bidirectional;
 import java.util.ArrayList;
 import java.util.List;
 
-import io.vlingo.actors.testkit.TestUntil;
+import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.Converters;
@@ -19,10 +19,25 @@ public class TestResponseChannelConsumer implements ResponseChannelConsumer {
   public int currentExpectedResponseLength;
   public int consumeCount;
   public List<String> responses = new ArrayList<>();
-  public TestUntil untilConsume;
-  
+
+  private AccessSafely consumeCalls = AccessSafely.afterCompleting(0);
   private final StringBuilder responseBuilder = new StringBuilder();
-  
+  /**
+   * Answer with an AccessSafely which writes buffer to "consume" and reads the write count from "completed".
+   * <p>
+   * Note: Clients can replace the default lambdas with their own via readingWith/writingWith.
+   * 
+   * @param n Number of times consume(buffer) must be called before readFrom(...) will return.
+   * @return
+   */
+  public AccessSafely expectConsumeTimes(final int n) {
+    consumeCalls = AccessSafely.afterCompleting(n)
+        .writingWith("consume", buffer -> {})
+        .readingWith("completed", () -> consumeCalls.totalWrites())
+        ;
+    return consumeCalls;
+  }
+
   @Override
   public void consume(final ConsumerByteBuffer buffer) {
     final String responsePart = Converters.bytesToText(buffer.array(), 0, buffer.limit());
@@ -46,7 +61,7 @@ public class TestResponseChannelConsumer implements ResponseChannelConsumer {
         
         last = currentIndex == combinedLength;
         
-        untilConsume.happened();
+        consumeCalls.writeUsing("consume", buffer);
       }
     }
   }

@@ -7,21 +7,22 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
-import io.vlingo.actors.Logger;
-import io.vlingo.actors.World;
-import io.vlingo.actors.testkit.TestUntil;
-import io.vlingo.wire.message.ByteBufferAllocator;
-import io.vlingo.wire.node.Address;
-import io.vlingo.wire.node.AddressType;
-import io.vlingo.wire.node.Host;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
+import java.nio.ByteBuffer;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.nio.ByteBuffer;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import io.vlingo.actors.Logger;
+import io.vlingo.actors.World;
+import io.vlingo.actors.testkit.AccessSafely;
+import io.vlingo.wire.message.ByteBufferAllocator;
+import io.vlingo.wire.node.Address;
+import io.vlingo.wire.node.AddressType;
+import io.vlingo.wire.node.Host;
 
 public class SocketRequestResponseChannelTest {
   private static final int POOL_SIZE = 100;
@@ -43,18 +44,18 @@ public class SocketRequestResponseChannelTest {
     clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
     request(request);
 
-    serverConsumer.untilConsume = TestUntil.happenings(1);
-    clientConsumer.untilConsume = TestUntil.happenings(1);
+    final AccessSafely serverConsumeCalls = serverConsumer.expectConsumeTimes(1);
+    final AccessSafely clientConsumeCalls = clientConsumer.expectConsumeTimes(1);
 
-    while (serverConsumer.untilConsume.remaining() > 0) {
+    while (serverConsumeCalls.totalWrites() < 1) {
       ;
     }
-    serverConsumer.untilConsume.completes();
+    serverConsumeCalls.readFrom("completed");
 
-    while (clientConsumer.untilConsume.remaining() > 0) {
+    while (clientConsumeCalls.totalWrites() < 1) {
       client.probeChannel();
     }
-    clientConsumer.untilConsume.completes();
+    clientConsumeCalls.readFrom("completed");
 
     assertFalse(serverConsumer.requests.isEmpty());
     assertEquals(1, serverConsumer.consumeCount);
@@ -83,18 +84,18 @@ public class SocketRequestResponseChannelTest {
     request(requestPart2);
     Thread.sleep(200);
     request(requestPart3);
-    serverConsumer.untilConsume = TestUntil.happenings(1);
-    while (serverConsumer.untilConsume.remaining() > 0) {
+    final AccessSafely serverConsumeCalls = serverConsumer.expectConsumeTimes(1);
+    while (serverConsumeCalls.totalWrites() < 1) {
       ;
     }
-    serverConsumer.untilConsume.completes();
+    serverConsumeCalls.readFrom("completed");
 
-    clientConsumer.untilConsume = TestUntil.happenings(1);
-    while (clientConsumer.untilConsume.remaining() > 0) {
+    final AccessSafely clientConsumeCalls = clientConsumer.expectConsumeTimes(1);
+    while (clientConsumeCalls.totalWrites() < 1) {
       Thread.sleep(10);
       client.probeChannel();
     }
-    clientConsumer.untilConsume.completes();
+    clientConsumeCalls.readFrom("completed");
 
     assertFalse(serverConsumer.requests.isEmpty());
     assertEquals(1, serverConsumer.consumeCount);
@@ -114,19 +115,19 @@ public class SocketRequestResponseChannelTest {
     serverConsumer.currentExpectedRequestLength = request.length() + 1; // digits 0 - 9
     clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
 
-    serverConsumer.untilConsume = TestUntil.happenings(10);
-    clientConsumer.untilConsume = TestUntil.happenings(10);
+    final AccessSafely serverConsumeCalls = serverConsumer.expectConsumeTimes(10);
+    final AccessSafely clientConsumeCalls = clientConsumer.expectConsumeTimes(10);
 
     for (int idx = 0; idx < 10; ++idx) {
       request(request + idx);
     }
 
-    while (clientConsumer.untilConsume.remaining() > 0) {
+    while (clientConsumeCalls.totalWrites() < 10) {
       client.probeChannel();
     }
 
-    serverConsumer.untilConsume.completes();
-    clientConsumer.untilConsume.completes();
+    serverConsumeCalls.readFrom("completed");
+    clientConsumeCalls.readFrom("completed");
 
     assertFalse(serverConsumer.requests.isEmpty());
     assertEquals(10, serverConsumer.consumeCount);
@@ -150,18 +151,18 @@ public class SocketRequestResponseChannelTest {
     serverConsumer.currentExpectedRequestLength = request.length() + 3; // digits 000 - 999
     clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
 
-    serverConsumer.untilConsume = TestUntil.happenings(TOTAL);
-    clientConsumer.untilConsume = TestUntil.happenings(TOTAL);
+    final AccessSafely serverConsumeCalls = serverConsumer.expectConsumeTimes(TOTAL);
+    final AccessSafely clientConsumeCalls = clientConsumer.expectConsumeTimes(TOTAL);
 
     for (int idx = 0; idx < TOTAL; ++idx) {
       request(request + String.format("%03d", idx));
     }
 
-    while (clientConsumer.untilConsume.remaining() > 0) {
+    while (clientConsumeCalls.totalWrites() < TOTAL) {
       client.probeChannel();
     }
-    serverConsumer.untilConsume.completes();
-    clientConsumer.untilConsume.completes();
+    serverConsumeCalls.readFrom("completed");
+    clientConsumeCalls.readFrom("completed");
 
     assertFalse(serverConsumer.requests.isEmpty());
     assertEquals(TOTAL, serverConsumer.consumeCount);
