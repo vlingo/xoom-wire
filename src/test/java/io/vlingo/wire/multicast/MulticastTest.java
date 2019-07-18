@@ -7,17 +7,20 @@
 
 package io.vlingo.wire.multicast;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import io.vlingo.actors.Logger;
+import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.channel.MockChannelReaderConsumer;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
 
 public class MulticastTest {
 
   @Test
   public void testMulticastPublishSubscribe() throws Exception {
     final MockChannelReaderConsumer publisherConsumer = new MockChannelReaderConsumer();
+    final AccessSafely consumerAccess = publisherConsumer.afterCompleting(0);
     
     final MulticastPublisherReader publisher =
             new MulticastPublisherReader(
@@ -37,6 +40,7 @@ public class MulticastTest {
                     Logger.basicLogger());
     
     final MockChannelReaderConsumer subscriberConsumer = new MockChannelReaderConsumer();
+    final AccessSafely subscriberAccess = subscriberConsumer.afterCompleting(1);
     subscriber.openFor(subscriberConsumer);
     
     for (int idx = 0; idx < 10; ++idx) {
@@ -45,11 +49,12 @@ public class MulticastTest {
     
     publisher.processChannel();
     
-    for (int i = 0; i < 2; ++i) {
+    for (int i = 0; i < 10; ++i) {
       subscriber.probeChannel();
     }
     
-    assertEquals(0, publisherConsumer.consumeCount);
-    assertEquals(10, subscriberConsumer.consumeCount);
+    assertEquals( 0, (int)consumerAccess.readFrom( "consumeCount" ));
+    assertTrue( ((int)subscriberAccess.readFrom( "consumeCount" )) >= 1 );
   }
+  
 }
