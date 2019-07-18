@@ -7,13 +7,13 @@
 
 package io.vlingo.wire.multicast;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-import org.junit.Test;
-
-import io.vlingo.actors.plugin.logging.jdk.JDKLogger;
+import io.vlingo.actors.Logger;
 import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.channel.MockChannelReaderConsumer;
+import org.junit.Test;
 
 public class MulticastTest {
 
@@ -29,7 +29,7 @@ public class MulticastTest {
                     37379,
                     1024,
                     publisherConsumer,
-                    JDKLogger.testInstance());
+                    Logger.basicLogger());
     
     final MulticastSubscriber subscriber =
             new MulticastSubscriber(
@@ -37,7 +37,7 @@ public class MulticastTest {
                     new Group("237.37.37.1", 37371),
                     1024,
                     10,
-                    JDKLogger.testInstance());
+                    Logger.basicLogger());
     
     final MockChannelReaderConsumer subscriberConsumer = new MockChannelReaderConsumer();
     final AccessSafely subscriberAccess = subscriberConsumer.afterCompleting(1);

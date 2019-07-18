@@ -7,16 +7,8 @@
 
 package io.vlingo.wire.channel;
 
-import static org.junit.Assert.assertEquals;
-
-import java.nio.ByteBuffer;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
 import io.vlingo.actors.Logger;
-import io.vlingo.actors.plugin.logging.jdk.JDKLogger;
+
 import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.fdx.inbound.SocketChannelInboundReader;
 import io.vlingo.wire.message.AbstractMessageTool;
@@ -26,6 +18,13 @@ import io.vlingo.wire.node.Host;
 import io.vlingo.wire.node.Id;
 import io.vlingo.wire.node.Name;
 import io.vlingo.wire.node.Node;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.nio.ByteBuffer;
+
+import static org.junit.Assert.assertEquals;
 
 public class SocketChannelWriterTest extends AbstractMessageTool {
   private static final String TestMessage = "TEST ";
@@ -64,7 +63,7 @@ public class SocketChannelWriterTest extends AbstractMessageTool {
   @Before
   public void setUp() throws Exception {
     final Node node = Node.with(Id.of(2), Name.of("node2"), Host.of("localhost"), 37373, 37374);
-    final Logger logger = JDKLogger.testInstance();
+    final Logger logger = Logger.basicLogger();
     channelWriter = new SocketChannelWriter(node.operationalAddress(), logger);
     channelReader = new SocketChannelInboundReader(node.operationalAddress().port(), "test-reader", 1024, logger);
   }

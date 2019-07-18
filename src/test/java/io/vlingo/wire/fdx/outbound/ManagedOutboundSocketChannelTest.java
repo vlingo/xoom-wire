@@ -7,16 +7,7 @@
 
 package io.vlingo.wire.fdx.outbound;
 
-import static org.junit.Assert.assertEquals;
-
-import java.nio.ByteBuffer;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
 import io.vlingo.actors.Logger;
-import io.vlingo.actors.plugin.logging.jdk.JDKLogger;
 import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.channel.ChannelReader;
 import io.vlingo.wire.channel.MockChannelReaderConsumer;
@@ -28,6 +19,13 @@ import io.vlingo.wire.node.Host;
 import io.vlingo.wire.node.Id;
 import io.vlingo.wire.node.Name;
 import io.vlingo.wire.node.Node;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.nio.ByteBuffer;
+
+import static org.junit.Assert.assertEquals;
 
 public class ManagedOutboundSocketChannelTest extends AbstractMessageTool {
   private static final String AppMessage = "APP TEST ";
@@ -98,7 +96,7 @@ public class ManagedOutboundSocketChannelTest extends AbstractMessageTool {
   @Before
   public void setUp() throws Exception {
     node = Node.with(Id.of(2), Name.of("node2"), Host.of("localhost"), 37373, 37374);
-    final Logger logger = JDKLogger.testInstance();
+    final Logger logger = Logger.basicLogger();
     opChannel = new ManagedOutboundSocketChannel(node, node.operationalAddress(), logger);
     appChannel = new ManagedOutboundSocketChannel(node, node.applicationAddress(), logger);
     opReader = new SocketChannelInboundReader(node.operationalAddress().port(), "test-op", 1024, logger);

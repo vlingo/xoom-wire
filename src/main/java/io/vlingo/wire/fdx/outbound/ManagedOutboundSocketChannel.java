@@ -7,13 +7,13 @@
 
 package io.vlingo.wire.fdx.outbound;
 
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
-
 import io.vlingo.actors.Logger;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.Node;
+
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 
 public class ManagedOutboundSocketChannel implements ManagedOutboundChannel {
   private SocketChannel channel;
@@ -33,7 +33,7 @@ public class ManagedOutboundSocketChannel implements ManagedOutboundChannel {
       try {
         channel.close();
       } catch (Exception e) {
-        logger.log("Close of channel to " + node.id() + " failed for because: " + e.getMessage(), e);
+        logger.error("Close of channel to " + node.id() + " failed for because: " + e.getMessage(), e);
       }
     }
     channel = null;
@@ -48,7 +48,7 @@ public class ManagedOutboundSocketChannel implements ManagedOutboundChannel {
           preparedChannel.write(buffer);
         }
       } catch (Exception e) {
-        logger.log("Write to " + node + " failed because: " + e.getMessage(), e);
+        logger.error("Write to " + node + " failed because: " + e.getMessage(), e);
         close();
       }
     }

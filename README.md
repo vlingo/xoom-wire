@@ -17,7 +17,7 @@ The vlingo-wire toolkit provides wire protocol messaging implementations, such a
     <dependency>
       <groupId>io.vlingo</groupId>
       <artifactId>vlingo-wire</artifactId>
-      <version>0.8.1</version>
+      <version>0.8.5</version>
       <scope>compile</scope>
     </dependency>
   </dependencies>
@@ -25,7 +25,7 @@ The vlingo-wire toolkit provides wire protocol messaging implementations, such a
 
 ```gradle
 dependencies {
-    compile 'io.vlingo:vlingo-wire:0.8.1'
+    compile 'io.vlingo:vlingo-wire:0.8.5'
 }
 
 repositories {
@@ -41,4 +41,11 @@ This Source Code Form is subject to the terms of the
 Mozilla Public License, v. 2.0. If a copy of the MPL
 was not distributed with this file, You can obtain
 one at https://mozilla.org/MPL/2.0/.
+
+
+### Licenses for Dependencies
+SSLSocketChannel support under org.baswell.niossl under Apache 2.
+Copyright 2015 Corey Baswell
+Corey's suggestion is to copy his source to your project, which
+we did due to Java version conflicts.
 

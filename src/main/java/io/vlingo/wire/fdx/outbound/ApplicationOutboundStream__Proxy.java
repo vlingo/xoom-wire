@@ -13,10 +13,12 @@ import io.vlingo.actors.Actor;
 import io.vlingo.actors.DeadLetter;
 import io.vlingo.actors.LocalMessage;
 import io.vlingo.actors.Mailbox;
+import io.vlingo.actors.Stoppable;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 
 public class ApplicationOutboundStream__Proxy implements ApplicationOutboundStream {
+  private static final String representationConclude0 = "conclude()";
   private static final String representationStop1 = "stop()";
   private static final String representationBroadcast2 = "broadcast(RawMessage)";
   private static final String representationSendTo3 = "sendTo(RawMessage, Id)";
@@ -28,7 +30,18 @@ public class ApplicationOutboundStream__Proxy implements ApplicationOutboundStre
     this.actor = actor;
     this.mailbox = mailbox;
   }
-  
+
+  @Override
+  public void conclude() {
+    if (!actor.isStopped()) {
+      final Consumer<Stoppable> consumer = (actor) -> actor.conclude();
+      if (mailbox.isPreallocated()) { mailbox.send(actor, Stoppable.class, consumer, null, representationConclude0); }
+      else { mailbox.send(new LocalMessage<Stoppable>(actor, Stoppable.class, consumer, representationConclude0)); }
+    } else {
+      actor.deadLetters().failedDelivery(new DeadLetter(actor, representationConclude0));
+    }
+  }
+
   @Override
   public boolean isStopped() {
     return actor.isStopped();

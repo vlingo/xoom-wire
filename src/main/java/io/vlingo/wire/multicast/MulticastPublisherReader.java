@@ -7,6 +7,16 @@
 
 package io.vlingo.wire.multicast;
 
+import io.vlingo.actors.Logger;
+import io.vlingo.wire.channel.ChannelMessageDispatcher;
+import io.vlingo.wire.channel.ChannelPublisher;
+import io.vlingo.wire.channel.ChannelReaderConsumer;
+import io.vlingo.wire.channel.SocketChannelSelectionReader;
+import io.vlingo.wire.message.ByteBufferAllocator;
+import io.vlingo.wire.message.PublisherAvailability;
+import io.vlingo.wire.message.RawMessage;
+import io.vlingo.wire.message.RawMessageBuilder;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -19,16 +29,6 @@ import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
-
-import io.vlingo.actors.Logger;
-import io.vlingo.wire.channel.ChannelMessageDispatcher;
-import io.vlingo.wire.channel.ChannelPublisher;
-import io.vlingo.wire.channel.ChannelReaderConsumer;
-import io.vlingo.wire.channel.SocketChannelSelectionReader;
-import io.vlingo.wire.message.ByteBufferAllocator;
-import io.vlingo.wire.message.PublisherAvailability;
-import io.vlingo.wire.message.RawMessage;
-import io.vlingo.wire.message.RawMessageBuilder;
 
 public class MulticastPublisherReader implements ChannelPublisher, ChannelMessageDispatcher {
   private final RawMessage availability;
@@ -89,19 +89,19 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
     try {
       selector.close();
     } catch (Exception e) {
-      logger.log("Failed to close multicast publisher selctor for: '" + name + "'", e);
+      logger.error("Failed to close multicast publisher selctor for: '" + name + "'", e);
     }
     
     try {
       publisherChannel.close();
     } catch (Exception e) {
-      logger.log("Failed to close multicast publisher channel for: '" + name + "'", e);
+      logger.error("Failed to close multicast publisher channel for: '" + name + "'", e);
     }
     
     try {
       readChannel.close();
     } catch (Exception e) {
-      logger.log("Failed to close multicast reader channel for: '" + name + "'", e);
+      logger.error("Failed to close multicast reader channel for: '" + name + "'", e);
     }
   }
   
@@ -129,7 +129,7 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
         }
       }
     } catch (IOException e) {
-      logger.log("Failed to read channel selector for: '" + name + "'", e);
+      logger.error("Failed to read channel selector for: '" + name + "'", e);
     }
   }
 
