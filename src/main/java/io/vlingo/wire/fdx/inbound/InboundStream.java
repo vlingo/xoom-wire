@@ -12,6 +12,7 @@ import io.vlingo.actors.Stage;
 import io.vlingo.actors.Startable;
 import io.vlingo.actors.Stoppable;
 import io.vlingo.wire.channel.ChannelReader;
+import io.vlingo.wire.fdx.inbound.tcp.SocketChannelInboundReader;
 import io.vlingo.wire.node.AddressType;
 
 public interface InboundStream extends Startable, Stoppable {

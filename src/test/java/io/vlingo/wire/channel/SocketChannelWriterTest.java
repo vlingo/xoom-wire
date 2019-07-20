@@ -10,7 +10,7 @@ package io.vlingo.wire.channel;
 import io.vlingo.actors.Logger;
 
 import io.vlingo.actors.testkit.AccessSafely;
-import io.vlingo.wire.fdx.inbound.SocketChannelInboundReader;
+import io.vlingo.wire.fdx.inbound.tcp.SocketChannelInboundReader;
 import io.vlingo.wire.message.AbstractMessageTool;
 import io.vlingo.wire.message.ByteBufferAllocator;
 import io.vlingo.wire.message.RawMessage;

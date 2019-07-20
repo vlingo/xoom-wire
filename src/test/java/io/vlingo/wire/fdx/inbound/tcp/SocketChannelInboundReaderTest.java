@@ -5,13 +5,13 @@
 // was not distributed with this file, You can obtain
 // one at https://mozilla.org/MPL/2.0/.
 
-package io.vlingo.wire.fdx.inbound;
+package io.vlingo.wire.fdx.inbound.tcp;
 
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.channel.ChannelReader;
 import io.vlingo.wire.channel.MockChannelReaderConsumer;
-import io.vlingo.wire.fdx.outbound.ManagedOutboundSocketChannel;
+import io.vlingo.wire.fdx.outbound.tcp.ManagedOutboundSocketChannel;
 import io.vlingo.wire.message.AbstractMessageTool;
 import io.vlingo.wire.message.ByteBufferAllocator;
 import io.vlingo.wire.message.RawMessage;
@@ -27,7 +27,7 @@ import java.nio.ByteBuffer;
 
 import static org.junit.Assert.assertEquals;
 
-public class InboundSocketChannelTest extends AbstractMessageTool {
+public class SocketChannelInboundReaderTest extends AbstractMessageTool {
   private static final String AppMessage = "APP TEST ";
   private static final String OpMessage = "OP TEST ";
   
