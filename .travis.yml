@@ -8,7 +8,7 @@ before_install:
 - cd vlingo-actors && mvn install -DskipTests=true
 - cd ${TRAVIS_BUILD_DIR}
 script:
-- mvn install
+- mvn install -Dtest=\!SecureClientRequestResponseChannelTest
 deploy:
   provider: bintray
   file: bintray.json
