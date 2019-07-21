@@ -16,6 +16,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import io.vlingo.actors.World;
+import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.message.ByteBufferAllocator;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
@@ -30,23 +31,27 @@ public class SecureClientRequestResponseChannelTest {
 
   @Test
   public void testThatSecureClientRequestResponse() throws Exception {
-    final Address address = Address.from(Host.of("https://google.com"), 80, AddressType.NONE);
-    client = new SecureClientRequestResponseChannel(address, clientConsumer, POOL_SIZE, 10240, world.defaultLogger());
+    final Address address = Address.from(Host.of("www.google.com"), 443, AddressType.NONE);
+    client = new SecureClientRequestResponseChannel(address, clientConsumer, POOL_SIZE, 65536, world.defaultLogger());
 
     clientConsumer.currentExpectedResponseLength = 500;
-    clientConsumer.afterCompleting(1);
+    final AccessSafely access = clientConsumer.afterCompleting(1);
 
-    final String get = "GET / HTTP/1.1\nHost: google.com\n\n";
+    final String get = "GET / HTTP/1.1\nHost: www.google.com\nConnection: close\n\n";
     final ByteBuffer buffer = ByteBufferAllocator.allocate(1000);
     buffer.put(get.getBytes());
     buffer.flip();
     client.requestWith(buffer);
 
-    client.probeChannel();
+    for (int count = 0; count < 100; ++count) {
+      if (access.totalWrites() > 0) break;
+      client.probeChannel();
+      Thread.sleep(100);
+    }
 
     assertTrue(clientConsumer.consumeCount() > 0);
     assertTrue(clientConsumer.responses().get(0).contains("google.com"));
-    //System.out.println("\nRESULT: " + clientConsumer.responses().get(0));
+    System.out.println("\nRESULT: " + clientConsumer.responses().get(0));
   }
 
   @Before

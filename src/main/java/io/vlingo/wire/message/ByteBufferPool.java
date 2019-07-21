@@ -10,11 +10,14 @@ package io.vlingo.wire.message;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ByteBufferPool {
+  public final int maxBufferSize;
+
   private final PooledByteBuffer[] pool;
   private final int poolSize;
 
   public ByteBufferPool(final int poolSize, final int maxBufferSize) {
     this.poolSize = poolSize;
+    this.maxBufferSize = maxBufferSize;
     this.pool = new PooledByteBuffer[poolSize];
 
     for (int idx = 0; idx < poolSize; ++idx) {
@@ -26,15 +29,15 @@ public class ByteBufferPool {
     // this is not an accurate calculation because the number
     // of in-use buffers could change before the loop completes
     // and/or the result is answered.
-    
+
     int available = poolSize;
-    
+
     for (int idx = 0; idx < poolSize; ++idx) {
       if (pool[idx].isInUse()) {
         --available;
       }
     }
-    
+
     return available;
   }
 
@@ -47,7 +50,7 @@ public class ByteBufferPool {
   }
 
   public PooledByteBuffer accessFor(final String tag, final int retries) {
-    while (true) {
+    for (int count = 0; count < retries; ++count) {
       for (int idx = 0; idx < poolSize; ++idx) {
         final PooledByteBuffer buffer = pool[idx];
         if (buffer.claimUse(tag)) {
@@ -55,6 +58,7 @@ public class ByteBufferPool {
         }
       }
     }
+    return null;
   }
 
   public int size() {
@@ -77,7 +81,7 @@ public class ByteBufferPool {
       }
       return this.id() == ((BasicConsumerByteBuffer) other).id();
     }
-  
+
     @Override
     public String toString() {
       return "PooledByteBuffer[id=" + id() + "]";

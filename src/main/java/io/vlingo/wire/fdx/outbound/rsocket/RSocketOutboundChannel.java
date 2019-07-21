@@ -16,6 +16,7 @@ import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.Node;
 
 import java.nio.ByteBuffer;
+import java.util.Optional;
 
 public class RSocketOutboundChannel implements ManagedOutboundChannel {
   private final Node node;
@@ -41,17 +42,25 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
 
   @Override
   public void write(final ByteBuffer buffer) {
-    prepareSocket();
-    socket.fireAndForget(ByteBufPayload.create(buffer))
-          .doOnError(throwable -> {
-            logger.error("Failed write to node {}, because: {}", node, throwable.getMessage(), throwable);
-          })
-          .subscribe();
+    prepareSocket().ifPresent(rSocket -> {
+      rSocket.fireAndForget(ByteBufPayload.create(buffer))
+             .doOnError(throwable -> {
+              logger.error("Failed write to node {}, because: {}", node, throwable.getMessage(), throwable);
+             })
+             .subscribe();
+    });
   }
 
-  private void prepareSocket() {
-    if (this.socket == null){
-      this.socket = socketFactory.start().block();
+  private Optional<RSocket> prepareSocket() {
+    if (this.socket == null) {
+      try {
+        this.socket = socketFactory.start().block();
+      } catch (final Exception e){
+        logger.error("Failed to connect to {}", this.node);
+        return Optional.empty();
+      }
     }
+
+    return Optional.ofNullable(this.socket);
   }
 }

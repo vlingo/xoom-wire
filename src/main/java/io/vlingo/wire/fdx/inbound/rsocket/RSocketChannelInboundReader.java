@@ -89,7 +89,7 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
 
   @Override
   public void probeChannel() {
-    //does nothing, not required
+    //Incoming messages are processed by receiveSocketDisposable.
   }
 
   private static class SocketAcceptorImpl implements SocketAcceptor {
