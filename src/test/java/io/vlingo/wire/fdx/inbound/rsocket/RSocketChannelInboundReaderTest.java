@@ -87,7 +87,7 @@ public class RSocketChannelInboundReaderTest {
 
   @Before
   public void setUp() {
-    node = Node.with(Id.of(2), Name.of("node2"), Host.of("localhost"), 37373, 37374);
+    node = Node.with(Id.of(2), Name.of("node2"), Host.of("localhost"), 37477, 37478);
     final Logger logger = Logger.basicLogger();
     opChannel = new RSocketOutboundChannel(node, node.operationalAddress(), logger);
     appChannel = new RSocketOutboundChannel(node, node.applicationAddress(), logger);
