@@ -34,7 +34,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 public class RSocketClientChannelTest {
-  private static final int PORT = 37379;
+  private static final int PORT = 37380;
   private static final Logger LOGGER = Logger.basicLogger();
   private RSocketClientChannel clientChannel;
   private Disposable server;

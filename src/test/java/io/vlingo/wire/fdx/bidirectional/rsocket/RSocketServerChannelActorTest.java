@@ -31,7 +31,7 @@ import static org.junit.Assert.assertFalse;
 
 public class RSocketServerChannelActorTest {
   private static final int POOL_SIZE = 100;
-  private static int TEST_PORT = 37371;
+  private static int TEST_PORT = 37381;
 
   private ByteBuffer buffer;
   private ClientRequestResponseChannel client;
