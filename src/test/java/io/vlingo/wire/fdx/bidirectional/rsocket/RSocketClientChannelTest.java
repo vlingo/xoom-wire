@@ -76,7 +76,7 @@ public class RSocketClientChannelTest {
     }
 
     Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
-    Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(2, TimeUnit.SECONDS));
+    Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(4, TimeUnit.SECONDS));
   }
 
   @Test
@@ -88,7 +88,7 @@ public class RSocketClientChannelTest {
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final CountDownLatch serverReceivedMessages = new CountDownLatch(100);
 
-    server = RSocketFactory.receive().frameDecoder(PayloadDecoder.ZERO_COPY).acceptor((connectionSetupPayload, rSocket) -> Mono.just(new AbstractRSocket() {
+    final AbstractRSocket responseHandler = new AbstractRSocket() {
       @Override
       public Flux<Payload> requestChannel(final Publisher<Payload> payloads) {
         countDownLatch.countDown();
@@ -96,7 +96,14 @@ public class RSocketClientChannelTest {
 
         return Flux.error(new Exception("Random exception"));
       }
-    })).transport(TcpServerTransport.create(address.hostName(), PORT)).start().block();
+    };
+
+    server = RSocketFactory.receive()
+                           .frameDecoder(PayloadDecoder.ZERO_COPY)
+                           .acceptor((connectionSetupPayload, rSocket) -> Mono.just(responseHandler))
+                           .transport(TcpServerTransport.create(address.hostName(), PORT))
+                           .start()
+                           .block();
 
     Thread.sleep(100);
 
@@ -107,7 +114,7 @@ public class RSocketClientChannelTest {
     }
 
     Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
-    Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(2, TimeUnit.SECONDS));
+    Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(4, TimeUnit.SECONDS));
   }
 
   @Test
