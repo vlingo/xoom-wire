@@ -16,6 +16,7 @@ import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.Node;
 
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.Optional;
 
 public class RSocketOutboundChannel implements ManagedOutboundChannel {
@@ -23,10 +24,18 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
   private final Logger logger;
   private final RSocketFactory.Start<RSocket> socketFactory;
   private RSocket socket;
+  private final long connectionRetries;
+  private final Duration connectionRetryBackoff;
 
   public RSocketOutboundChannel(final Node node, final Address address, final Logger logger) {
+     this(node, address, 10, Duration.ofSeconds(1), logger);
+  }
+
+  public RSocketOutboundChannel(final Node node, final Address address, long connectionRetries, Duration connectionRetryBackoff, final Logger logger) {
     this.node = node;
     this.logger = logger;
+    this.connectionRetries = connectionRetries;
+    this.connectionRetryBackoff = connectionRetryBackoff;
 
     this.socketFactory = RSocketFactory
             .connect()
@@ -54,7 +63,9 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
   private Optional<RSocket> prepareSocket() {
     if (this.socket == null) {
       try {
-        this.socket = socketFactory.start().block();
+        this.socket = socketFactory.start()
+                                   .retryBackoff(connectionRetries, connectionRetryBackoff)
+                                   .block();
       } catch (final Exception e){
         logger.error("Failed to connect to {}", this.node);
         return Optional.empty();
