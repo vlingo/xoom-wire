@@ -116,14 +116,14 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
       return;
     }
 
-    logger.debug("SecureClientRequestResponseChannel: Probing");
+//    logger.debug("SecureClientRequestResponseChannel: Probing");
 
     try {
       if (selector.selectNow() > 0) {
         selectionKey.selector().select();
         Iterator<SelectionKey> keys = selectionKey.selector().selectedKeys().iterator();
 
-        logger.debug("SecureClientRequestResponseChannel: Probing selector");
+//        logger.debug("SecureClientRequestResponseChannel: Probing selector");
 
         while (keys.hasNext()) {
           final SelectionKey key = keys.next();
@@ -131,15 +131,15 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
 
           if (key.isValid()) {
             if (key.isReadable()) {
-              logger.debug("SecureClientRequestResponseChannel: Probing selector read key");
+//              logger.debug("SecureClientRequestResponseChannel: Probing selector read key");
               sslProvider.read();
             } else if (key.isWritable()) {
-              logger.debug("SecureClientRequestResponseChannel: Probing selector write key");
+//              logger.debug("SecureClientRequestResponseChannel: Probing selector write key");
               if (sslProvider.ready.get()) {
                 while (true) {
                   final ByteBuffer toSend = this.writeQueue.poll();
                   if (toSend != null) {
-                    logger.debug("SecureClientRequestResponseChannel: Writing");
+//                    logger.debug("SecureClientRequestResponseChannel: Writing");
                     sslProvider.write(toSend);
                   } else {
                     break;
@@ -172,7 +172,7 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
     engine.beginHandshake();
     final SSLProvider sslProvider = new SSLProvider(selectionKey, engine, worker, taskWorkers, readBufferPool);
 
-    logger.debug("SecureClientRequestResponseChannel: Connected");
+//    logger.debug("SecureClientRequestResponseChannel: Connected");
 
     return Tuple4.from(channel, sslProvider, selector, selectionKey);
   }
@@ -385,6 +385,7 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
         throw new IllegalStateException("failed to wrap");
 
       case CLOSED:
+        logger.debug("SecureClientRequestResponseChannel.SSLProvider: wrap closed");
         this.onClosed();
         return false;
       }
@@ -414,6 +415,7 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
         break;
 
       case CLOSED:
+        logger.debug("SecureClientRequestResponseChannel.SSLProvider: unwrap closed");
         this.onClosed();
         return false;
 
