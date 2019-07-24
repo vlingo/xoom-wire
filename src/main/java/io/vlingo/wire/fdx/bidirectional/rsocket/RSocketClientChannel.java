@@ -9,6 +9,7 @@ package io.vlingo.wire.fdx.bidirectional.rsocket;
 
 import io.rsocket.Payload;
 import io.rsocket.RSocketFactory;
+import io.rsocket.exceptions.ApplicationErrorException;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.netty.client.TcpClientTransport;
 import io.rsocket.util.ByteBufPayload;
@@ -20,71 +21,80 @@ import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.node.Address;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.UnicastProcessor;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class RSocketClientChannel implements ClientRequestResponseChannel {
-  private final Disposable connectSocket;
+  private final Disposable clientSocket;
   private final UnicastProcessor<Payload> publisher;
-  private final FluxSink<Payload> fluxSink;
 
   public RSocketClientChannel(final Address address, final ResponseChannelConsumer consumer, final int maxBufferPoolSize, final int maxMessageSize,
-          final Logger logger) {
+                              final Logger logger) {
     this(address, consumer, maxBufferPoolSize, maxMessageSize, logger, 10, Duration.ofSeconds(1));
   }
 
   public RSocketClientChannel(final Address address, final ResponseChannelConsumer consumer, final int maxBufferPoolSize, final int maxMessageSize,
-          final Logger logger, final int serverConnectRetries, final Duration serverConnectRetryBackoff) {
+                              final Logger logger, final int serverConnectRetries, final Duration serverConnectRetryBackoff) {
 
-    this.publisher = UnicastProcessor.create();
-    this.fluxSink = publisher.sink(FluxSink.OverflowStrategy.BUFFER);
+    this.publisher = UnicastProcessor.create(new ConcurrentLinkedQueue<>());
 
     final ChannelResponseHandler responseHandler = new ChannelResponseHandler(consumer, maxBufferPoolSize, maxMessageSize, logger);
-    this.connectSocket = RSocketFactory.connect()
-                                       .frameDecoder(PayloadDecoder.ZERO_COPY)
-                                       .keepAliveAckTimeout(Duration.ofMinutes(10))
-                                       .transport(TcpClientTransport.create(address.hostName(), address.port()))
-                                       .start()
-                                       .retryBackoff(serverConnectRetries, serverConnectRetryBackoff)
-                                       .subscribe(rSocket -> {
-                                         rSocket.requestChannel(this.publisher)
-                                                .doOnNext(payload -> responseHandler.handle(payload))
-                                                .onErrorResume((throwable) -> {
-                                                  logger.error("Failed request because: {}", throwable.getMessage(), throwable);
-                                                  return Flux.empty();
-                                                })
-                                                .subscribe();
-                                       }, throwable -> {
-                                         logger.error("Unexpected client socket error", throwable);
-                                       });
+    this.clientSocket = RSocketFactory.connect()
+                                      .frameDecoder(PayloadDecoder.ZERO_COPY)
+                                      .keepAliveAckTimeout(Duration.ofMinutes(10))
+                                      .transport(TcpClientTransport.create(address.hostName(), address.port()))
+                                      .start()
+                                      .retryBackoff(serverConnectRetries, serverConnectRetryBackoff)
+                                      .subscribe(rSocket -> {
+                                        rSocket.requestChannel(this.publisher)
+                                               .onErrorResume((throwable) -> {
+                                                 if (throwable instanceof ApplicationErrorException) {
+                                                   //We can resume processing on an application error
+                                                   logger.error("Server replied with an error: {}", throwable.getMessage(), throwable);
+                                                   return Flux.empty();
+                                                 } else {
+                                                   //Can not be resumed, propagate.
+                                                   return Flux.error(throwable);
+                                                 }
+                                               })
+                                               .subscribe(responseHandler::handle, //process server response
+                                                          throwable -> {    //process any errors that are unrecoverable
+                                                            logger.error("Received an unrecoverable error. Channel will be closed", throwable);
+                                                            rSocket.dispose();
+                                                            close();
+                                                          });
+                                      }, throwable -> {
+                                        logger.error("Unexpected socket error", throwable);
+                                        close();
+                                      });
   }
 
   @Override
   public void close() {
-    if (this.publisher != null) {
-      this.publisher.cancel();
+    if (this.publisher != null && !this.publisher.isDisposed()) {
+      this.publisher.dispose();
     }
 
-    if (this.fluxSink != null && !this.fluxSink.isCancelled()) {
-      this.fluxSink.complete();
-    }
-
-    if (this.connectSocket != null && !this.connectSocket.isDisposed()) {
-      this.connectSocket.dispose();
+    if (this.clientSocket != null && !this.clientSocket.isDisposed()) {
+      this.clientSocket.dispose();
     }
   }
 
   @Override
   public void requestWith(final ByteBuffer buffer) {
-    this.fluxSink.next(ByteBufPayload.create(buffer));
+    if (!this.publisher.isTerminated()) {
+      this.publisher.onNext(ByteBufPayload.create(buffer));
+    } else {
+      throw new IllegalStateException("Channel closed");
+    }
   }
 
   @Override
   public void probeChannel() {
-    //Incoming messages are processed by connectSocket
+    //Incoming messages are processed by clientSocket
   }
 
   private static class ChannelResponseHandler {
