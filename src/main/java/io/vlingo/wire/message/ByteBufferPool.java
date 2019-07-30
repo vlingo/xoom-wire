@@ -108,7 +108,7 @@ public class ByteBufferPool {
       inUse.set(false);
     }
 
-    private boolean isInUse() {
+    public boolean isInUse() {
       return inUse.get();
     }
   }

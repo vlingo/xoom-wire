@@ -7,16 +7,17 @@
 
 package io.vlingo.wire.fdx.outbound;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.TreeMap;
-
+import io.vlingo.wire.fdx.outbound.tcp.ManagedOutboundSocketChannel;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Configuration;
 import io.vlingo.wire.node.Id;
 import io.vlingo.wire.node.Node;
+
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class ManagedOutboundSocketChannelProvider implements ManagedOutboundChannelProvider {
   private final Configuration configuration;

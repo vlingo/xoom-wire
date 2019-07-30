@@ -7,16 +7,15 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
+import io.vlingo.actors.Logger;
+import io.vlingo.wire.channel.ResponseChannelConsumer;
+import io.vlingo.wire.message.ByteBufferPool;
+import io.vlingo.wire.node.Address;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
-
-import io.vlingo.actors.Logger;
-import io.vlingo.wire.channel.ResponseChannelConsumer;
-import io.vlingo.wire.message.ByteBufferPool;
-import io.vlingo.wire.message.ConsumerByteBuffer;
-import io.vlingo.wire.node.Address;
 
 public class BasicClientRequestResponseChannel implements ClientRequestResponseChannel {
   private final Address address;
@@ -124,7 +123,7 @@ public class BasicClientRequestResponseChannel implements ClientRequestResponseC
   }
 
   private void readConsume(final SocketChannel channel) throws IOException {
-    final ConsumerByteBuffer pooledBuffer = readBufferPool.accessFor("client-response", 25);
+    final ByteBufferPool.PooledByteBuffer pooledBuffer = readBufferPool.accessFor("client-response", 25);
     final ByteBuffer readBuffer = pooledBuffer.asByteBuffer();
     int totalBytesRead = 0;
     int bytesRead = 0;
@@ -140,7 +139,9 @@ public class BasicClientRequestResponseChannel implements ClientRequestResponseC
         pooledBuffer.release();
       }
     } catch (Exception e) {
-      pooledBuffer.release();
+      if (pooledBuffer.isInUse()){
+        pooledBuffer.release();
+      }
       throw e;
     }
   }

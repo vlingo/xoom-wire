@@ -5,7 +5,7 @@
 // was not distributed with this file, You can obtain
 // one at https://mozilla.org/MPL/2.0/.
 
-package io.vlingo.wire.fdx.inbound;
+package io.vlingo.wire.fdx.inbound.tcp;
 
 import io.vlingo.actors.Logger;
 import io.vlingo.wire.channel.ChannelMessageDispatcher;

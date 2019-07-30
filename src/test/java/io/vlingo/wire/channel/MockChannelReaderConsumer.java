@@ -7,23 +7,22 @@
 
 package io.vlingo.wire.channel;
 
+import io.vlingo.actors.testkit.AccessSafely;
+import io.vlingo.wire.message.RawMessage;
+
 import java.util.ArrayList;
 import java.util.List;
-
-import io.vlingo.actors.testkit.AccessSafely;
-import io.vlingo.wire.channel.ChannelReaderConsumer;
-import io.vlingo.wire.message.RawMessage;
 
 public class MockChannelReaderConsumer implements ChannelReaderConsumer {
   private AccessSafely access = AccessSafely.afterCompleting(0);
   public int consumeCount;
   public List<String> messages = new ArrayList<>();
-  
+
   @Override
   public void consume(final RawMessage message) {
     access.writeUsing("add", message.asTextMessage() );
   }
-  
+
   public AccessSafely afterCompleting( final int times )
   {
     access =
@@ -33,5 +32,14 @@ public class MockChannelReaderConsumer implements ChannelReaderConsumer {
               .readingWith("consumeCount", () -> consumeCount )
               .readingWith("message", (index) -> messages.get( (int)index ));
     return access;
+  }
+
+  public int getConsumeCount(){
+   return access.readFrom("consumeCount");
+  }
+
+
+  public String getMessage(int index){
+   return access.readFrom("message", index);
   }
 }

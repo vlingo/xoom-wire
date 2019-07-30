@@ -5,9 +5,10 @@
 // was not distributed with this file, You can obtain
 // one at https://mozilla.org/MPL/2.0/.
 
-package io.vlingo.wire.fdx.outbound;
+package io.vlingo.wire.fdx.outbound.tcp;
 
 import io.vlingo.actors.Logger;
+import io.vlingo.wire.fdx.outbound.ManagedOutboundChannel;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.Node;
 

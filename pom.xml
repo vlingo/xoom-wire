@@ -101,6 +101,17 @@
       <artifactId>vlingo-actors</artifactId>
       <version>0.8.6</version>
     </dependency>
+    <dependency>
+      <groupId>io.rsocket</groupId>
+      <artifactId>rsocket-core</artifactId>
+      <version>0.12.2-RC4</version>
+      <scope></scope>
+    </dependency>
+    <dependency>
+      <groupId>io.rsocket</groupId>
+      <artifactId>rsocket-transport-netty</artifactId>
+      <version>0.12.2-RC4</version>
+    </dependency>
   </dependencies>
   <distributionManagement>
     <repository>
