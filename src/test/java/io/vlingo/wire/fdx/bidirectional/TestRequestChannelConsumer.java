@@ -10,7 +10,7 @@ package io.vlingo.wire.fdx.bidirectional;
 import java.util.ArrayList;
 import java.util.List;
 
-import io.vlingo.actors.testkit.TestUntil;
+import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.channel.RequestChannelConsumer;
 import io.vlingo.wire.channel.RequestResponseContext;
 import io.vlingo.wire.message.BasicConsumerByteBuffer;
@@ -21,15 +21,48 @@ public class TestRequestChannelConsumer implements RequestChannelConsumer {
   public int currentExpectedRequestLength;
   public int consumeCount;
   public List<String> requests = new ArrayList<>();
-  public TestUntil untilClosed;
-  public TestUntil untilConsume;
-  
+
+  private AccessSafely closeWithCalls = AccessSafely.afterCompleting(0);
+  private AccessSafely consumeCalls = AccessSafely.afterCompleting(0);;
+
   private StringBuilder requestBuilder = new StringBuilder();
   private String remaining = "";
 
-  @Override
+  /**
+   * Answer with an AccessSafely which writes context, data to "closeWith" and reads the write count from "completed".
+   * <p>
+   * Note: Clients can replace the default lambdas with their own via readingWith/writingWith.
+   * 
+   * @param n Number of times closeWith(context, data) must be called before readFrom(...) will return.
+   * @return
+   */
+  public AccessSafely expectCloseWithTimes(final int n) {
+    closeWithCalls = AccessSafely.afterCompleting(n)
+        .writingWith("closeWith", (context, data) -> {})
+        .readingWith("completed", () -> closeWithCalls.totalWrites())
+        ;
+    return closeWithCalls;
+  }
+
+  /**
+   * Answer with an AccessSafely which writes context, buffer to "consume" and reads the write count from "completed".
+   * <p>
+   * Note: Clients can replace the default lambdas with their own via readingWith/writingWith.
+   * 
+   * @param n Number of times consume(context, buffer) must be called before readFrom(...) will return.
+   * @return
+   */
+  public AccessSafely expectConsumeTimes(final int n) {
+    consumeCalls = AccessSafely.afterCompleting(n)
+        .writingWith("consume", (context, data) -> {})
+        .readingWith("completed", () -> consumeCalls.totalWrites())
+        ;
+    return consumeCalls;
+  }
+
+@Override
   public void closeWith(final RequestResponseContext<?> requestResponseContext, final Object data) {
-    if (untilClosed != null) untilClosed.happened();
+    closeWithCalls.writeUsing("closeWith", requestResponseContext, data);
   }
 
   @Override
@@ -63,7 +96,7 @@ public class TestRequestChannelConsumer implements RequestChannelConsumer {
         
         last = currentIndex == combinedLength;
         
-        if (untilConsume != null) untilConsume.happened();
+        consumeCalls.writeUsing("consume", context, buffer);
       }
     }
   }
