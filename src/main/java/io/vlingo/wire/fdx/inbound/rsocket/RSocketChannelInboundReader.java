@@ -13,13 +13,13 @@ import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.SocketAcceptor;
 import io.rsocket.frame.decoder.PayloadDecoder;
+import io.rsocket.transport.netty.server.CloseableChannel;
 import io.rsocket.transport.netty.server.TcpServerTransport;
 import io.vlingo.actors.Logger;
 import io.vlingo.wire.channel.ChannelMessageDispatcher;
 import io.vlingo.wire.channel.ChannelReader;
 import io.vlingo.wire.channel.ChannelReaderConsumer;
 import io.vlingo.wire.message.RawMessageBuilder;
-import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
@@ -30,7 +30,7 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
   private final int port;
   private boolean closed = false;
   private final int maxMessageSize;
-  private Disposable receiveSocketDisposable;
+  private CloseableChannel channel;
   private ChannelReaderConsumer consumer;
 
   public RSocketChannelInboundReader(final int port, final String name, final int maxMessageSize, final Logger logger) {
@@ -57,8 +57,8 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
 
     closed = true;
 
-    if (this.receiveSocketDisposable != null) {
-      this.receiveSocketDisposable.dispose();
+    if (this.channel != null && !this.channel.isDisposed()) {
+      this.channel.dispose();
     }
   }
 
@@ -75,21 +75,23 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
     this.consumer = consumer;
 
     //Close existing receiving socket
-    if (this.receiveSocketDisposable != null) {
-      this.receiveSocketDisposable.dispose();
+    if (this.channel != null && !this.channel.isDisposed()) {
+      this.channel.dispose();
     }
 
-    this.receiveSocketDisposable = RSocketFactory.receive()
-                                                 .frameDecoder(PayloadDecoder.ZERO_COPY)
-                                                 .acceptor(new SocketAcceptorImpl(this, maxMessageSize, logger))
-                                                 .transport(TcpServerTransport.create(this.port))
-                                                 .start()
-                                                 .subscribe();
+    channel = RSocketFactory.receive()
+                            .frameDecoder(PayloadDecoder.ZERO_COPY)
+                            .acceptor(new SocketAcceptorImpl(this, maxMessageSize, logger))
+                            .transport(TcpServerTransport.create(this.port))
+                            .start()
+                            .doOnError(throwable -> logger.error("Unexpected exception in channel", throwable))
+                            .doAfterTerminate(() -> logger.debug("Channel closed"))
+                            .block();
   }
 
   @Override
   public void probeChannel() {
-    //Incoming messages are processed by receiveSocketDisposable.
+    //Incoming messages are processed by channel.
   }
 
   private static class SocketAcceptorImpl implements SocketAcceptor {
@@ -103,14 +105,16 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
         public Mono<Void> fireAndForget(Payload payload) {
           try {
             final ByteBuffer payloadData = payload.getData();
-
             rawMessageBuilder.workBuffer().put(payloadData);
 
             dispatcher.dispatchMessagesFor(rawMessageBuilder);
           } catch (Exception e) {
-            logger.error("Unexpected error", e);
+            logger.error("Unexpected error. Message ignored.", e);
+            //Clear builder resources in case of error. Otherwise we will get a BufferOverflow.
+            rawMessageBuilder.prepareForNextMessage();
+            rawMessageBuilder.workBuffer().clear();
           } finally {
-            //Important because using PayloadDecoder.ZERO_COPY frame decoder
+            //Important! Because using PayloadDecoder.ZERO_COPY frame decoder
             payload.release();
           }
           return Mono.empty();
