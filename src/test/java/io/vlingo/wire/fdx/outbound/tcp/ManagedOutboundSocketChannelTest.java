@@ -5,14 +5,13 @@
 // was not distributed with this file, You can obtain
 // one at https://mozilla.org/MPL/2.0/.
 
-package io.vlingo.wire.fdx.outbound;
+package io.vlingo.wire.fdx.outbound.tcp;
 
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.channel.ChannelReader;
 import io.vlingo.wire.channel.MockChannelReaderConsumer;
 import io.vlingo.wire.fdx.inbound.tcp.SocketChannelInboundReader;
-import io.vlingo.wire.fdx.outbound.tcp.ManagedOutboundSocketChannel;
 import io.vlingo.wire.message.AbstractMessageTool;
 import io.vlingo.wire.message.ByteBufferAllocator;
 import io.vlingo.wire.message.RawMessage;

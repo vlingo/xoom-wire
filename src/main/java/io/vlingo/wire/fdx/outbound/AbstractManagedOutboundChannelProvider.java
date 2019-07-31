@@ -4,11 +4,8 @@
 // Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain
 // one at https://mozilla.org/MPL/2.0/.
-
 package io.vlingo.wire.fdx.outbound;
 
-import io.vlingo.wire.fdx.outbound.tcp.ManagedOutboundSocketChannel;
-import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Configuration;
 import io.vlingo.wire.node.Id;
@@ -19,22 +16,17 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class ManagedOutboundSocketChannelProvider implements ManagedOutboundChannelProvider {
+public abstract class AbstractManagedOutboundChannelProvider implements ManagedOutboundChannelProvider {
   private final Configuration configuration;
   private final Node node;
-  private final Map<Id, ManagedOutboundChannel> nodeChannels;
+  private final Map<Id, ManagedOutboundChannel> nodeChannels = new HashMap<>();
   private final AddressType type;
 
-  public ManagedOutboundSocketChannelProvider(
-          final Node node,
-          final AddressType type,
-          final Configuration configuration) {
-    
+  protected AbstractManagedOutboundChannelProvider(final Node node, final AddressType type, final Configuration configuration) {
+    this.configuration = configuration;
     this.node = node;
     this.type = type;
-    this.configuration = configuration;
-    this.nodeChannels = new HashMap<Id, ManagedOutboundChannel>();
-    
+
     configureKnownChannels();
   }
 
@@ -51,10 +43,10 @@ public class ManagedOutboundSocketChannelProvider implements ManagedOutboundChan
       return channel;
     }
 
-    final ManagedOutboundChannel unopenedChannel = unopenedChannelFor(configuration.nodeMatching(id));
-    
+    final ManagedOutboundChannel unopenedChannel = unopenedChannelFor(configuration.nodeMatching(id), configuration, type);
+
     nodeChannels.put(id, unopenedChannel);
-    
+
     return unopenedChannel;
   }
 
@@ -66,7 +58,7 @@ public class ManagedOutboundSocketChannelProvider implements ManagedOutboundChan
       ManagedOutboundChannel channel = nodeChannels.get(node.id());
 
       if (channel == null) {
-        channel = unopenedChannelFor(node);
+        channel = unopenedChannelFor(node, configuration, type);
         nodeChannels.put(node.id(), channel);
       }
 
@@ -81,14 +73,14 @@ public class ManagedOutboundSocketChannelProvider implements ManagedOutboundChan
     for (final ManagedOutboundChannel channel : nodeChannels.values()) {
       channel.close();
     }
-    
+
     nodeChannels.clear();
   }
 
   @Override
   public void close(final Id id) {
     final ManagedOutboundChannel channel = nodeChannels.remove(id);
-    
+
     if (channel != null) {
       channel.close();
     }
@@ -96,14 +88,10 @@ public class ManagedOutboundSocketChannelProvider implements ManagedOutboundChan
 
   private void configureKnownChannels() {
     for (final Node node : configuration.allOtherNodes(node.id())) {
-      nodeChannels.put(node.id(), unopenedChannelFor(node));
+      nodeChannels.put(node.id(), unopenedChannelFor(node, configuration, type));
     }
   }
 
-  private ManagedOutboundChannel unopenedChannelFor(final Node node) {
-    final Address address = (type == AddressType.OP ?
-        node.operationalAddress() : node.applicationAddress());
+  protected abstract ManagedOutboundChannel unopenedChannelFor(final Node node, final Configuration configuration, final AddressType type);
 
-    return new ManagedOutboundSocketChannel(node, address, configuration.logger());
-  }
 }
