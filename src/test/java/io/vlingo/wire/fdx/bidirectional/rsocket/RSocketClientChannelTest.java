@@ -11,6 +11,7 @@ import io.rsocket.Payload;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.frame.decoder.PayloadDecoder;
+import io.rsocket.transport.netty.server.CloseableChannel;
 import io.rsocket.transport.netty.server.TcpServerTransport;
 import io.rsocket.util.DefaultPayload;
 import io.vlingo.actors.Logger;
@@ -22,7 +23,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 import org.reactivestreams.Publisher;
-import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -38,7 +38,7 @@ public class RSocketClientChannelTest {
   private static final int PORT = 37380;
   private static final Logger LOGGER = Logger.basicLogger();
   private RSocketClientChannel clientChannel;
-  private Disposable server;
+  private CloseableChannel server;
 
   @Test(expected = IllegalStateException.class)
   public void testServerNotAvailable() throws InterruptedException {
