@@ -86,7 +86,11 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
   @Override
   public void requestWith(final ByteBuffer buffer) {
     if (!this.publisher.isTerminated()) {
-      this.publisher.onNext(ByteBufPayload.create(buffer));
+      ByteBuffer data = ByteBuffer.allocate(buffer.capacity());
+      data.put(buffer);
+      data.flip();
+
+      this.publisher.onNext(ByteBufPayload.create(data));
     } else {
       throw new IllegalStateException("Channel closed");
     }

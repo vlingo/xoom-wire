@@ -6,8 +6,10 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.outbound.rsocket;
 
+import io.rsocket.Payload;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
+import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.netty.client.TcpClientTransport;
 import io.rsocket.util.ByteBufPayload;
 import io.vlingo.actors.Logger;
@@ -39,6 +41,7 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
     this.connectionRetryBackoff = connectionRetryBackoff;
 
     this.socketFactory = RSocketFactory.connect()
+                                       .frameDecoder(PayloadDecoder.ZERO_COPY)
                                        .transport(TcpClientTransport.create(address.hostName(), address.port()));
   }
 
@@ -52,7 +55,12 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
   @Override
   public void write(final ByteBuffer buffer) {
     prepareSocket().ifPresent(rSocket -> {
-      rSocket.fireAndForget(ByteBufPayload.create(buffer))
+      ByteBuffer data = ByteBuffer.allocate(buffer.capacity());
+      data.put(buffer);
+      data.flip();
+
+      final Payload payload = ByteBufPayload.create(data);
+      rSocket.fireAndForget(payload)
              .doOnError(throwable -> {
                if (throwable instanceof ClosedChannelException) {
                  //close outbound channel

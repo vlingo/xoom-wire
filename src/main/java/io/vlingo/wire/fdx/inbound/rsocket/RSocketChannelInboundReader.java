@@ -85,7 +85,6 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
                             .transport(TcpServerTransport.create(this.port))
                             .start()
                             .doOnError(throwable -> logger.error("Unexpected exception in channel", throwable))
-                            .doAfterTerminate(() -> logger.debug("Channel closed"))
                             .block();
   }
 
