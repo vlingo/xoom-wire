@@ -32,6 +32,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
   private final RSocket clientSocket;
   private final UnicastProcessor<Payload> publisher;
   private final Disposable subscribeFlow;
+  private final Logger logger;
 
   public RSocketClientChannel(final Address address, final ResponseChannelConsumer consumer, final int maxBufferPoolSize, final int maxMessageSize,
                               final Logger logger) {
@@ -42,6 +43,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
                               final Logger logger, final int serverConnectRetries, final Duration serverConnectRetryBackoff) {
 
     this.publisher = UnicastProcessor.create(new ConcurrentLinkedQueue<>());
+    this.logger = logger;
 
     final ChannelResponseHandler responseHandler = new ChannelResponseHandler(consumer, maxBufferPoolSize, maxMessageSize, logger);
     this.clientSocket = RSocketFactory.connect()
@@ -54,21 +56,21 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
 
     if (this.clientSocket != null) {
       this.subscribeFlow = this.clientSocket.requestChannel(this.publisher)
-                                       .onErrorResume((throwable) -> {
-                                         if (throwable instanceof ApplicationErrorException) {
-                                           //We can resume processing on an application error
-                                           logger.error("Server replied with an error: {}", throwable.getMessage(), throwable);
-                                           return Flux.empty();
-                                         } else {
-                                           //Can not be resumed, propagate.
-                                           return Flux.error(throwable);
-                                         }
-                                       })
-                                       .doOnTerminate(this.publisher::dispose)
-                                       .subscribe(responseHandler::handle, //process server response
-                                                  throwable -> {    //process any errors that are unrecoverable
-                                                    logger.error("Received an unrecoverable error. Channel will be closed", throwable);
-                                                  });
+                                            .onErrorResume((throwable) -> {
+                                              if (throwable instanceof ApplicationErrorException) {
+                                                //We can resume processing on an application error
+                                                logger.error("Server replied with an error: {}", throwable.getMessage(), throwable);
+                                                return Flux.empty();
+                                              } else {
+                                                //Can not be resumed, propagate.
+                                                return Flux.error(throwable);
+                                              }
+                                            })
+                                            .doOnTerminate(this.publisher::dispose)
+                                            .subscribe(responseHandler::handle, //process server response
+                                                       throwable -> {    //process any errors that are unrecoverable
+                                                         this.logger.error("Received an unrecoverable error. Channel will be closed", throwable);
+                                                       });
     } else {
       this.subscribeFlow = null;
     }
@@ -76,12 +78,19 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
 
   @Override
   public void close() {
-    if (this.clientSocket != null && !this.clientSocket.isDisposed()) {
-      this.clientSocket.dispose();
-    }
-
     if (this.subscribeFlow != null && !this.subscribeFlow.isDisposed()) {
-      this.subscribeFlow.dispose();
+      try {
+        this.subscribeFlow.dispose();
+      } catch (final Throwable t) {
+        logger.error("Unexpected error on closing request channel");
+      }
+    }
+    if (this.clientSocket != null && !this.clientSocket.isDisposed()) {
+      try {
+        this.clientSocket.dispose();
+      } catch (final Throwable t) {
+        logger.error("Unexpected error on closing client socket");
+      }
     }
   }
 
