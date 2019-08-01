@@ -84,6 +84,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
   @Override
   public void requestWith(final ByteBuffer buffer) {
     if (!this.publisher.isTerminated()) {
+      //Copy original buffer data because payload might not be sent immediately.
       ByteBuffer data = ByteBuffer.allocate(buffer.capacity());
       data.put(buffer);
       data.flip();

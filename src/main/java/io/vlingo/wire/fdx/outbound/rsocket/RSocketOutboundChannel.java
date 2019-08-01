@@ -11,7 +11,7 @@ import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.netty.client.TcpClientTransport;
-import io.rsocket.util.ByteBufPayload;
+import io.rsocket.util.DefaultPayload;
 import io.vlingo.actors.Logger;
 import io.vlingo.wire.fdx.outbound.ManagedOutboundChannel;
 import io.vlingo.wire.node.Address;
@@ -55,11 +55,12 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
   @Override
   public void write(final ByteBuffer buffer) {
     prepareSocket().ifPresent(rSocket -> {
+      //Copy original buffer data because payload might not be sent immediately.
       ByteBuffer data = ByteBuffer.allocate(buffer.capacity());
       data.put(buffer);
       data.flip();
 
-      final Payload payload = ByteBufPayload.create(data);
+      final Payload payload = DefaultPayload.create(data);
       rSocket.fireAndForget(payload)
              .doOnError(throwable -> {
                if (throwable instanceof ClosedChannelException) {
