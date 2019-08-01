@@ -8,18 +8,18 @@
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
 import io.rsocket.Payload;
+import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.exceptions.ApplicationErrorException;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.netty.client.TcpClientTransport;
-import io.rsocket.util.ByteBufPayload;
+import io.rsocket.util.DefaultPayload;
 import io.vlingo.actors.Logger;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.fdx.bidirectional.ClientRequestResponseChannel;
 import io.vlingo.wire.message.ByteBufferPool;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.node.Address;
-import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.UnicastProcessor;
 
@@ -28,7 +28,7 @@ import java.time.Duration;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class RSocketClientChannel implements ClientRequestResponseChannel {
-  private final Disposable clientSocket;
+  private final RSocket clientSocket;
   private final UnicastProcessor<Payload> publisher;
 
   public RSocketClientChannel(final Address address, final ResponseChannelConsumer consumer, final int maxBufferPoolSize, final int maxMessageSize,
@@ -48,28 +48,26 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
                                       .transport(TcpClientTransport.create(address.hostName(), address.port()))
                                       .start()
                                       .retryBackoff(serverConnectRetries, serverConnectRetryBackoff)
-                                      .subscribe(rSocket -> {
-                                        rSocket.requestChannel(this.publisher)
-                                               .onErrorResume((throwable) -> {
-                                                 if (throwable instanceof ApplicationErrorException) {
-                                                   //We can resume processing on an application error
-                                                   logger.error("Server replied with an error: {}", throwable.getMessage(), throwable);
-                                                   return Flux.empty();
-                                                 } else {
-                                                   //Can not be resumed, propagate.
-                                                   return Flux.error(throwable);
-                                                 }
-                                               })
-                                               .subscribe(responseHandler::handle, //process server response
-                                                          throwable -> {    //process any errors that are unrecoverable
-                                                            logger.error("Received an unrecoverable error. Channel will be closed", throwable);
-                                                            rSocket.dispose();
-                                                            close();
-                                                          });
-                                      }, throwable -> {
-                                        logger.error("Unexpected socket error", throwable);
-                                        close();
-                                      });
+                                      .block();
+
+    if (this.clientSocket != null) {
+      this.clientSocket.requestChannel(this.publisher)
+                       .onErrorResume((throwable) -> {
+                         if (throwable instanceof ApplicationErrorException) {
+                           //We can resume processing on an application error
+                           logger.error("Server replied with an error: {}", throwable.getMessage(), throwable);
+                           return Flux.empty();
+                         } else {
+                           //Can not be resumed, propagate.
+                           return Flux.error(throwable);
+                         }
+                       })
+                       .subscribe(responseHandler::handle, //process server response
+                                  throwable -> {    //process any errors that are unrecoverable
+                                    logger.error("Received an unrecoverable error. Channel will be closed", throwable);
+                                    close();
+                                  });
+    }
   }
 
   @Override
@@ -90,7 +88,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
       data.put(buffer);
       data.flip();
 
-      this.publisher.onNext(ByteBufPayload.create(data));
+      this.publisher.onNext(DefaultPayload.create(data));
     } else {
       throw new IllegalStateException("Channel closed");
     }
