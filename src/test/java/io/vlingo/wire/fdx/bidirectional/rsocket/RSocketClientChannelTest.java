@@ -89,7 +89,8 @@ public class RSocketClientChannelTest {
       }
 
       Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
-      Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(4, TimeUnit.SECONDS));
+      Assert.assertTrue("Server should have received all messages, but got only " + serverReceivedMessages.getCount(),
+                        serverReceivedMessages.await(4, TimeUnit.SECONDS));
     } finally {
       close(clientChannel, server);
     }
