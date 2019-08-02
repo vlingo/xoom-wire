@@ -30,7 +30,7 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
   private final int port;
   private boolean closed = false;
   private final int maxMessageSize;
-  private CloseableChannel channel;
+  private CloseableChannel serverSocket;
   private ChannelReaderConsumer consumer;
 
   public RSocketChannelInboundReader(final int port, final String name, final int maxMessageSize, final Logger logger) {
@@ -57,8 +57,12 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
 
     closed = true;
 
-    if (this.channel != null && !this.channel.isDisposed()) {
-      this.channel.dispose();
+    if (this.serverSocket != null && !this.serverSocket.isDisposed()) {
+      try {
+        this.serverSocket.dispose();
+      } catch (final Throwable t) {
+        logger.error("Unexpected error on closing server socket");
+      }
     }
   }
 
@@ -75,22 +79,22 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
     this.consumer = consumer;
 
     //Close existing receiving socket
-    if (this.channel != null && !this.channel.isDisposed()) {
-      this.channel.dispose();
+    if (this.serverSocket != null && !this.serverSocket.isDisposed()) {
+      this.serverSocket.dispose();
     }
 
-    channel = RSocketFactory.receive()
-                            .frameDecoder(PayloadDecoder.ZERO_COPY)
-                            .acceptor(new SocketAcceptorImpl(this, maxMessageSize, logger))
-                            .transport(TcpServerTransport.create(this.port))
-                            .start()
-                            .doOnError(throwable -> logger.error("Unexpected exception in channel", throwable))
-                            .block();
+    serverSocket = RSocketFactory.receive()
+                                 .frameDecoder(PayloadDecoder.ZERO_COPY)
+                                 .acceptor(new SocketAcceptorImpl(this, maxMessageSize, logger))
+                                 .transport(TcpServerTransport.create(this.port))
+                                 .start()
+                                 .doOnError(throwable -> logger.error("Unexpected exception in server socket", throwable))
+                                 .block();
   }
 
   @Override
   public void probeChannel() {
-    //Incoming messages are processed by channel.
+    //Incoming messages are processed by serverSocket.
   }
 
   private static class SocketAcceptorImpl implements SocketAcceptor {
@@ -104,14 +108,16 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
         public Mono<Void> fireAndForget(Payload payload) {
           try {
             final ByteBuffer payloadData = payload.getData();
-            rawMessageBuilder.workBuffer().put(payloadData);
+            rawMessageBuilder.workBuffer()
+                             .put(payloadData);
 
             dispatcher.dispatchMessagesFor(rawMessageBuilder);
           } catch (Exception e) {
             logger.error("Unexpected error. Message ignored.", e);
             //Clear builder resources in case of error. Otherwise we will get a BufferOverflow.
             rawMessageBuilder.prepareForNextMessage();
-            rawMessageBuilder.workBuffer().clear();
+            rawMessageBuilder.workBuffer()
+                             .clear();
           } finally {
             //Important! Because using PayloadDecoder.ZERO_COPY frame decoder
             payload.release();
