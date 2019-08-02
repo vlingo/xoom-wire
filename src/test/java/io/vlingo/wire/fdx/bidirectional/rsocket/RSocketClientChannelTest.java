@@ -68,7 +68,7 @@ public class RSocketClientChannelTest {
                                                       return Flux.empty();
                                                     }
                                                   }))
-                                                  .transport(TcpServerTransport.create(ADDRESS.hostName(), ADDRESS.port()))
+                                                  .transport(TcpServerTransport.create(ADDRESS.port()))
                                                   .start()
                                                   .block();
 
@@ -114,7 +114,7 @@ public class RSocketClientChannelTest {
     final CloseableChannel server = RSocketFactory.receive()
                                                   .frameDecoder(PayloadDecoder.ZERO_COPY)
                                                   .acceptor((connectionSetupPayload, rSocket) -> Mono.just(responseHandler))
-                                                  .transport(TcpServerTransport.create(ADDRESS.hostName(), ADDRESS.port()))
+                                                  .transport(TcpServerTransport.create(ADDRESS.port()))
                                                   .start()
                                                   .block();
 
@@ -159,7 +159,7 @@ public class RSocketClientChannelTest {
   @Test
   public void testServerApplicationErrorsProcess() throws InterruptedException {
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
-    
+
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final CountDownLatch serverReceivedMessages = new CountDownLatch(100);
 
@@ -180,7 +180,7 @@ public class RSocketClientChannelTest {
     final CloseableChannel server = RSocketFactory.receive()
                                                   .frameDecoder(PayloadDecoder.ZERO_COPY)
                                                   .acceptor((connectionSetupPayload, rSocket) -> Mono.just(responseHandler))
-                                                  .transport(TcpServerTransport.create(ADDRESS.hostName(), ADDRESS.port()))
+                                                  .transport(TcpServerTransport.create(ADDRESS.port()))
                                                   .start()
                                                   .block();
 
@@ -214,7 +214,7 @@ public class RSocketClientChannelTest {
                                                     countDownLatch.countDown();
                                                     return Mono.error(new RuntimeException("Channel could not be created"));
                                                   })
-                                                  .transport(TcpServerTransport.create(ADDRESS.hostName(), ADDRESS.port()))
+                                                  .transport(TcpServerTransport.create(ADDRESS.port()))
                                                   .start()
                                                   .block();
 
@@ -247,7 +247,7 @@ public class RSocketClientChannelTest {
     }
     Thread.sleep(500);
   }
-  
+
   private void request(final RSocketClientChannel clientChannel, final String request) {
     clientChannel.requestWith(ByteBuffer.wrap(request.getBytes()));
   }
