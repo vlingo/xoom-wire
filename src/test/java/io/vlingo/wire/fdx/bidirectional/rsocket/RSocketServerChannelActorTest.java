@@ -201,7 +201,7 @@ public class RSocketServerChannelActorTest {
 
     clientConsumer = new TestResponseChannelConsumer();
 
-    client = new RSocketClientChannel(Address.from(Host.of("localhost"), TEST_PORT, AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger);
+    client = new RSocketClientChannel(Address.from(Host.of("127.0.0.1"), TEST_PORT, AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger);
 
     ++TEST_PORT;
   }
