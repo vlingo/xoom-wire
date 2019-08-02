@@ -19,7 +19,6 @@ import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 import org.reactivestreams.Publisher;
@@ -37,8 +36,7 @@ import java.util.concurrent.TimeUnit;
 public class RSocketClientChannelTest {
   private static final int PORT = 37380;
   private static final Logger LOGGER = Logger.basicLogger();
-  private RSocketClientChannel clientChannel;
-  private CloseableChannel server;
+  private static final Address ADDRESS = Address.from(Host.of("localhost"), PORT, AddressType.NONE);
 
   @Test(expected = IllegalStateException.class)
   public void testServerNotAvailable() throws InterruptedException {
@@ -46,10 +44,11 @@ public class RSocketClientChannelTest {
 
     final Address address = Address.from(Host.of("localhost"), PORT, AddressType.NONE);
 
-    clientChannel = new RSocketClientChannel(address, consumer, 100, 1024, LOGGER, 1, Duration.ofMillis(10));
+    final RSocketClientChannel clientChannel = new RSocketClientChannel(address, consumer, 100, 1024, LOGGER, 1, Duration.ofMillis(10));
     Thread.sleep(400);
 
     request(clientChannel, "TEST");
+    clientChannel.close();
   }
 
   @Test
@@ -60,37 +59,40 @@ public class RSocketClientChannelTest {
 
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final CountDownLatch serverReceivedMessages = new CountDownLatch(100);
-    server = RSocketFactory.receive()
-                           .frameDecoder(PayloadDecoder.ZERO_COPY)
-                           .acceptor((connectionSetupPayload, rSocket) -> Mono.just(new AbstractRSocket() {
-                             @Override
-                             public Flux<Payload> requestChannel(final Publisher<Payload> payloads) {
-                               countDownLatch.countDown();
-                               Flux.from(payloads)
-                                   .subscribe(payload -> serverReceivedMessages.countDown());
-                               return Flux.empty();
-                             }
-                           }))
-                           .transport(TcpServerTransport.create(address.hostName(), address.port()))
-                           .start()
-                           .block();
+    final CloseableChannel server = RSocketFactory.receive()
+                                                  .frameDecoder(PayloadDecoder.ZERO_COPY)
+                                                  .acceptor((connectionSetupPayload, rSocket) -> Mono.just(new AbstractRSocket() {
+                                                    @Override
+                                                    public Flux<Payload> requestChannel(final Publisher<Payload> payloads) {
+                                                      countDownLatch.countDown();
+                                                      Flux.from(payloads)
+                                                          .subscribe(payload -> serverReceivedMessages.countDown());
+                                                      return Flux.empty();
+                                                    }
+                                                  }))
+                                                  .transport(TcpServerTransport.create(address.hostName(), address.port()))
+                                                  .start()
+                                                  .block();
 
     Thread.sleep(100);
 
-    clientChannel = new RSocketClientChannel(address, consumer, 1, 1024, LOGGER);
+    final RSocketClientChannel clientChannel = new RSocketClientChannel(address, consumer, 1, 1024, LOGGER);
 
-    for (int i = 0; i < 100; i++) {
-      request(clientChannel, UUID.randomUUID()
-                                 .toString());
+    try {
+      for (int i = 0; i < 100; i++) {
+        request(clientChannel, UUID.randomUUID()
+                                   .toString());
+      }
+
+      Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
+      Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(4, TimeUnit.SECONDS));
+    } finally {
+      close(clientChannel, server);
     }
-
-    Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
-    Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(4, TimeUnit.SECONDS));
   }
 
   @Test
   public void testServerRequestReply() throws InterruptedException {
-    final Address address = Address.from(Host.of("localhost"), PORT, AddressType.NONE);
 
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final CountDownLatch serverReceivedMessages = new CountDownLatch(100);
@@ -111,12 +113,12 @@ public class RSocketClientChannelTest {
       }
     };
 
-    server = RSocketFactory.receive()
-                           .frameDecoder(PayloadDecoder.ZERO_COPY)
-                           .acceptor((connectionSetupPayload, rSocket) -> Mono.just(responseHandler))
-                           .transport(TcpServerTransport.create(address.hostName(), address.port()))
-                           .start()
-                           .block();
+    final CloseableChannel server = RSocketFactory.receive()
+                                                  .frameDecoder(PayloadDecoder.ZERO_COPY)
+                                                  .acceptor((connectionSetupPayload, rSocket) -> Mono.just(responseHandler))
+                                                  .transport(TcpServerTransport.create(ADDRESS.hostName(), ADDRESS.port()))
+                                                  .start()
+                                                  .block();
 
     Thread.sleep(100);
 
@@ -129,27 +131,31 @@ public class RSocketClientChannelTest {
       serverReplies.add(new String(buffer.array(), 0, buffer.remaining()));
     };
 
-    this.clientChannel = new RSocketClientChannel(address, consumer, 1, 1024, LOGGER);
+    final RSocketClientChannel clientChannel = new RSocketClientChannel(ADDRESS, consumer, 1, 1024, LOGGER);
 
-    Set<String> clientRequests = new LinkedHashSet<>();
-    for (int i = 0; i < 100; i++) {
-      final String request = "Request_" + i + "_" + UUID.randomUUID()
-                                                        .toString();
-      request(clientChannel, request);
-      clientRequests.add(request);
+    try {
+      Set<String> clientRequests = new LinkedHashSet<>();
+      for (int i = 0; i < 100; i++) {
+        final String request = "Request_" + i + "_" + UUID.randomUUID()
+                                                          .toString();
+        request(clientChannel, request);
+        clientRequests.add(request);
+      }
+
+      Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
+      Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(4, TimeUnit.SECONDS));
+      Assert.assertTrue("Client should have received all server replies", clientReceivedMessages.await(4, TimeUnit.SECONDS));
+
+      for (int i = 1; i <= 100; i++) {
+        Assert.assertTrue(serverReplies.contains("Reply " + i));
+      }
+
+      clientRequests.forEach(clientRequest -> {
+        Assert.assertTrue("Server should have received request: " + clientRequest, serverReceivedMessage.contains(clientRequest));
+      });
+    } finally {
+      close(clientChannel, server);
     }
-
-    Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
-    Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(4, TimeUnit.SECONDS));
-    Assert.assertTrue("Client should have received all server replies", clientReceivedMessages.await(4, TimeUnit.SECONDS));
-
-    for (int i = 1; i <= 100; i++) {
-      Assert.assertTrue(serverReplies.contains("Reply " + i));
-    }
-
-    clientRequests.forEach(clientRequest -> {
-      Assert.assertTrue("Server should have received request: " + clientRequest, serverReceivedMessage.contains(clientRequest));
-    });
   }
 
   @Test
@@ -175,24 +181,29 @@ public class RSocketClientChannelTest {
       }
     };
 
-    server = RSocketFactory.receive()
-                           .frameDecoder(PayloadDecoder.ZERO_COPY)
-                           .acceptor((connectionSetupPayload, rSocket) -> Mono.just(responseHandler))
-                           .transport(TcpServerTransport.create(address.hostName(), address.port()))
-                           .start()
-                           .block();
+    final CloseableChannel server = RSocketFactory.receive()
+                                                  .frameDecoder(PayloadDecoder.ZERO_COPY)
+                                                  .acceptor((connectionSetupPayload, rSocket) -> Mono.just(responseHandler))
+                                                  .transport(TcpServerTransport.create(address.hostName(), address.port()))
+                                                  .start()
+                                                  .block();
 
     Thread.sleep(100);
 
-    clientChannel = new RSocketClientChannel(address, consumer, 1, 1024, LOGGER);
+    final RSocketClientChannel clientChannel = new RSocketClientChannel(address, consumer, 1, 1024, LOGGER);
 
-    for (int i = 0; i < 100; i++) {
-      request(clientChannel, UUID.randomUUID()
-                                 .toString());
+    try {
+      for (int i = 0; i < 100; i++) {
+        request(clientChannel, UUID.randomUUID()
+                                   .toString());
+      }
+
+      Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
+      Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(4, TimeUnit.SECONDS));
+
+    } finally {
+      close(clientChannel, server);
     }
-
-    Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
-    Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(4, TimeUnit.SECONDS));
   }
 
   @Test(expected = IllegalStateException.class)
@@ -203,43 +214,46 @@ public class RSocketClientChannelTest {
 
     final CountDownLatch countDownLatch = new CountDownLatch(1);
 
-    server = RSocketFactory.receive()
-                           .frameDecoder(PayloadDecoder.ZERO_COPY)
-                           .acceptor((connectionSetupPayload, rSocket) -> {
-                             countDownLatch.countDown();
-                             return Mono.error(new RuntimeException("Channel could not be created"));
-                           })
-                           .transport(TcpServerTransport.create(address.hostName(), address.port()))
-                           .start()
-                           .block();
+    final CloseableChannel server = RSocketFactory.receive()
+                                                  .frameDecoder(PayloadDecoder.ZERO_COPY)
+                                                  .acceptor((connectionSetupPayload, rSocket) -> {
+                                                    countDownLatch.countDown();
+                                                    return Mono.error(new RuntimeException("Channel could not be created"));
+                                                  })
+                                                  .transport(TcpServerTransport.create(address.hostName(), address.port()))
+                                                  .start()
+                                                  .block();
 
-    clientChannel = new RSocketClientChannel(address, consumer, 1, 1024, LOGGER);
+    final RSocketClientChannel clientChannel = new RSocketClientChannel(address, consumer, 1, 1024, LOGGER);
 
     Thread.sleep(400);
 
-    for (int i = 0; i < 100; i++) {
-      request(clientChannel, UUID.randomUUID()
-                                 .toString());
-    }
+    try {
+      for (int i = 0; i < 100; i++) {
+        request(clientChannel, UUID.randomUUID()
+                                   .toString());
+      }
 
-    Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
+      Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
+    } finally {
+      close(clientChannel, server);
+    }
   }
 
-  @After
-  public void tearDown() throws Exception {
-    if (this.clientChannel != null) {
-      this.clientChannel.close();
+  private void close(final RSocketClientChannel clientChannel, final CloseableChannel server) throws InterruptedException {
+    if (clientChannel != null) {
+      clientChannel.close();
     }
-    if (this.server != null) {
+    if (server != null) {
       try {
-        this.server.dispose();
+        server.dispose();
       } catch (final Throwable t) {
         //ignore
       }
     }
     Thread.sleep(500);
   }
-
+  
   private void request(final RSocketClientChannel clientChannel, final String request) {
     clientChannel.requestWith(ByteBuffer.wrap(request.getBytes()));
   }
