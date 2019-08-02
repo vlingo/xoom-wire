@@ -7,6 +7,16 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
+import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.World;
 import io.vlingo.actors.testkit.TestUntil;
@@ -14,18 +24,10 @@ import io.vlingo.wire.message.ByteBufferAllocator;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.nio.ByteBuffer;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 
 public class SocketRequestResponseChannelTest {
   private static final int POOL_SIZE = 100;
-  private static int TEST_PORT = 37371;
+  private static AtomicInteger TEST_PORT = new AtomicInteger(37371);
 
   private ByteBuffer buffer;
   private ClientRequestResponseChannel client;
@@ -185,10 +187,12 @@ public class SocketRequestResponseChannelTest {
     provider = new TestRequestChannelConsumerProvider();
     serverConsumer = (TestRequestChannelConsumer) provider.consumer;
 
+    final int testPort = TEST_PORT.getAndIncrement();
+
     server = ServerRequestResponseChannel.start(
                     world.stage(),
                     provider,
-                    TEST_PORT,
+                    testPort,
                     "test-server",
                     1,
                     POOL_SIZE,
@@ -197,9 +201,7 @@ public class SocketRequestResponseChannelTest {
 
     clientConsumer = new TestResponseChannelConsumer();
 
-    client = new BasicClientRequestResponseChannel(Address.from(Host.of("localhost"), TEST_PORT,  AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger);
-
-    ++TEST_PORT;
+    client = new BasicClientRequestResponseChannel(Address.from(Host.of("localhost"), testPort,  AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger);
   }
 
   @After
