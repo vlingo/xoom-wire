@@ -7,6 +7,10 @@
 
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
+import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 import io.rsocket.Payload;
 import io.rsocket.RSocketFactory;
 import io.rsocket.exceptions.ApplicationErrorException;
@@ -23,12 +27,9 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.UnicastProcessor;
 
-import java.nio.ByteBuffer;
-import java.time.Duration;
-import java.util.concurrent.ConcurrentLinkedQueue;
-
 public class RSocketClientChannel implements ClientRequestResponseChannel {
   private final Disposable clientSocket;
+  private final Logger logger;
   private final UnicastProcessor<Payload> publisher;
 
   public RSocketClientChannel(final Address address, final ResponseChannelConsumer consumer, final int maxBufferPoolSize, final int maxMessageSize,
@@ -40,6 +41,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
                               final Logger logger, final int serverConnectRetries, final Duration serverConnectRetryBackoff) {
 
     this.publisher = UnicastProcessor.create(new ConcurrentLinkedQueue<>());
+    this.logger = logger;
 
     final ChannelResponseHandler responseHandler = new ChannelResponseHandler(consumer, maxBufferPoolSize, maxMessageSize, logger);
     this.clientSocket = RSocketFactory.connect()
@@ -74,12 +76,20 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
 
   @Override
   public void close() {
-    if (this.publisher != null && !this.publisher.isDisposed()) {
-      this.publisher.dispose();
+    try {
+      if (this.publisher != null && !this.publisher.isDisposed()) {
+        this.publisher.dispose();
+      }
+    } catch (Exception e) {
+      logger.error(getClass().getName() + ": Problem closing publisher because: " + e.getMessage(), e);
     }
 
-    if (this.clientSocket != null && !this.clientSocket.isDisposed()) {
-      this.clientSocket.dispose();
+    try {
+      if (this.clientSocket != null && !this.clientSocket.isDisposed()) {
+        this.clientSocket.dispose();
+      }
+    }  catch (Exception e) {
+      logger.error(getClass().getName() + ": Problem closing client socket because: " + e.getMessage(), e);
     }
   }
 
