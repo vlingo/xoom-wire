@@ -26,7 +26,7 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
   private final Node node;
   private final Logger logger;
   private final RSocketFactory.Start<RSocket> socketFactory;
-  private RSocket socket;
+  private RSocket clientSocket;
   private final long connectionRetries;
   private final Duration connectionRetryBackoff;
 
@@ -47,46 +47,52 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
 
   @Override
   public void close() {
-    if (this.socket != null && !this.socket.isDisposed()) {
-      this.socket.dispose();
+    if (this.clientSocket != null && !this.clientSocket.isDisposed()) {
+      try {
+        this.clientSocket.dispose();
+      } catch (final Throwable t) {
+        logger.error("Unexpected error on closing client socket");
+      }
     }
   }
 
   @Override
   public void write(final ByteBuffer buffer) {
     prepareSocket().ifPresent(rSocket -> {
-      //Copy original buffer data because payload might not be sent immediately.
-      ByteBuffer data = ByteBuffer.allocate(buffer.capacity());
-      data.put(buffer);
-      data.flip();
+      if (!rSocket.isDisposed()) {
+        //Copy original buffer data because payload might not be sent immediately.
+        ByteBuffer data = ByteBuffer.allocate(buffer.capacity());
+        data.put(buffer);
+        data.flip();
 
-      final Payload payload = DefaultPayload.create(data);
-      rSocket.fireAndForget(payload)
-             .doOnError(throwable -> {
-               if (throwable instanceof ClosedChannelException) {
-                 //close outbound channel
-                 rSocket.dispose();
-                 logger.error("Connection with {} closed", node, throwable);
-               } else {
-                 logger.error("Failed write to node {}, because: {}", node, throwable.getMessage(), throwable);
-               }
-             })
-             .subscribe();
+        final Payload payload = DefaultPayload.create(data);
+        rSocket.fireAndForget(payload)
+               .doOnError(throwable -> {
+                 if (throwable instanceof ClosedChannelException) {
+                   //close outbound channel
+                   rSocket.dispose();
+                   logger.error("Connection with {} closed", node, throwable);
+                 } else {
+                   logger.error("Failed write to node {}, because: {}", node, throwable.getMessage(), throwable);
+                 }
+               })
+               .subscribe();
+      }
     });
   }
 
   private Optional<RSocket> prepareSocket() {
-    if (this.socket == null) {
+    if (this.clientSocket == null) {
       try {
-        this.socket = socketFactory.start()
-                                   .retryBackoff(connectionRetries, connectionRetryBackoff)
-                                   .block();
+        this.clientSocket = socketFactory.start()
+                                         .retryBackoff(connectionRetries, connectionRetryBackoff)
+                                         .block();
       } catch (final Exception e) {
         logger.error("Failed to connect to {}", this.node);
         return Optional.empty();
       }
     }
 
-    return Optional.ofNullable(this.socket);
+    return Optional.ofNullable(this.clientSocket);
   }
 }
