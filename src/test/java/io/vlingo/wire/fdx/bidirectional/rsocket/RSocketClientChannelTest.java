@@ -6,6 +6,20 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
+import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Test;
+import org.reactivestreams.Publisher;
+
 import io.rsocket.AbstractRSocket;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
@@ -18,25 +32,16 @@ import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Test;
-import org.reactivestreams.Publisher;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.nio.ByteBuffer;
-import java.time.Duration;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
 public class RSocketClientChannelTest {
-  private static final int PORT = 37380;
+  private static final AtomicInteger TEST_PORT = new AtomicInteger(37380);
   private static final Logger LOGGER = Logger.basicLogger();
+
+  private final int testPort = TEST_PORT.incrementAndGet();
+
   private RSocketClientChannel clientChannel;
   private Disposable server;
 
@@ -44,7 +49,7 @@ public class RSocketClientChannelTest {
   public void testServerNotAvailable() throws InterruptedException {
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
 
-    final Address address = Address.from(Host.of("localhost"), PORT, AddressType.NONE);
+    final Address address = Address.from(Host.of("localhost"), testPort, AddressType.NONE);
 
     clientChannel = new RSocketClientChannel(address, consumer, 100, 1024, LOGGER, 1, Duration.ofMillis(10));
     Thread.sleep(400);
@@ -56,7 +61,7 @@ public class RSocketClientChannelTest {
   public void testServerDoesNotReply() throws InterruptedException {
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
 
-    final Address address = Address.from(Host.of("localhost"), PORT, AddressType.NONE);
+    final Address address = Address.from(Host.of("localhost"), testPort, AddressType.NONE);
 
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final CountDownLatch serverReceivedMessages = new CountDownLatch(100);
@@ -90,7 +95,7 @@ public class RSocketClientChannelTest {
 
   @Test
   public void testServerRequestReply() throws InterruptedException {
-    final Address address = Address.from(Host.of("localhost"), PORT, AddressType.NONE);
+    final Address address = Address.from(Host.of("localhost"), testPort, AddressType.NONE);
 
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final CountDownLatch serverReceivedMessages = new CountDownLatch(100);
@@ -156,7 +161,7 @@ public class RSocketClientChannelTest {
   public void testServerApplicationErrorsProcess() throws InterruptedException {
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
 
-    final Address address = Address.from(Host.of("localhost"), PORT, AddressType.NONE);
+    final Address address = Address.from(Host.of("localhost"), testPort, AddressType.NONE);
 
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final CountDownLatch serverReceivedMessages = new CountDownLatch(100);
@@ -199,7 +204,7 @@ public class RSocketClientChannelTest {
   public void testServerUnrecoverableError() throws InterruptedException {
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
 
-    final Address address = Address.from(Host.of("localhost"), PORT, AddressType.NONE);
+    final Address address = Address.from(Host.of("localhost"), testPort, AddressType.NONE);
 
     final CountDownLatch countDownLatch = new CountDownLatch(1);
 
