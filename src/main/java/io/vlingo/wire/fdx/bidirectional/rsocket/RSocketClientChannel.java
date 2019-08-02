@@ -26,6 +26,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.UnicastProcessor;
 
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.time.Duration;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -68,21 +69,23 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
                                                          })
                                                          .subscribe(responseHandler::handle, //process server response
                                                                     throwable -> {    //process any errors that are unrecoverable
-                                                                      this.logger.error("Received an unrecoverable error. Channel will be closed", throwable);
                                                                       this.publisher.cancel();
-                                                                      //Propagate the error in order to close the channel
-                                                                      throw Exceptions.propagate(throwable);
+                                                                      if (!(throwable instanceof ClosedChannelException)) {
+                                                                        this.logger.error("Received an unrecoverable error. Channel will be closed", throwable);
+                                                                        //Propagate the error in order to close the channel
+                                                                        throw Exceptions.propagate(throwable);
+                                                                      }
                                                                     });
+      logger.info("RSocket client channel opened for address {}", address);
 
       this.channelSocket.onClose()
                         .doFinally(signalType -> {
                           if (!subscribeFlow.isDisposed()) {
                             subscribeFlow.dispose();
                           }
+                          logger.info("RSocket client channel for address {} is closed", address);
                         })
-                        .subscribe(ignored -> {}, throwable -> {
-                          logger.error("Unexpected error on closing channel socket");
-                        });
+                        .subscribe(ignored -> {}, throwable -> logger.error("Unexpected error on closing channel socket"));
     }
   }
 

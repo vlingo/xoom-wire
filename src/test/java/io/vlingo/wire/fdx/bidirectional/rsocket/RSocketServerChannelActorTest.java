@@ -208,12 +208,14 @@ public class RSocketServerChannelActorTest {
 
   @After
   public void tearDown() {
-    server.close();
     client.close();
+    server.close();
 
     try { Thread.sleep(1000); } catch (Exception e) {  }
 
     world.terminate();
+    this.server = null;
+    this.client = null;
   }
 
   private void request(final String request) {

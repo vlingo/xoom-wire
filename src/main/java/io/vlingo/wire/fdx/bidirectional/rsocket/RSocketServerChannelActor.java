@@ -28,18 +28,24 @@ import reactor.core.scheduler.Schedulers;
 
 public class RSocketServerChannelActor extends Actor implements ServerRequestResponseChannel {
   private final String name;
-  private final CloseableChannel receiveSocketDisposable;
+  private final CloseableChannel serverSocket;
 
   public RSocketServerChannelActor(final RequestChannelConsumerProvider provider, final int port, final String name, final int maxBufferPoolSize,
-          final int messageBufferSize) {
+                                   final int messageBufferSize) {
     this.name = name;
-    this.receiveSocketDisposable = RSocketFactory.receive()
-                                                 .frameDecoder(PayloadDecoder.ZERO_COPY)
-                                                 .acceptor(new SocketAcceptorImpl(provider, maxBufferPoolSize, messageBufferSize, logger()))
-                                                 .transport(TcpServerTransport.create(port))
-                                                 .start()
-                                                 .block();
+    this.serverSocket = RSocketFactory.receive()
+                                      .frameDecoder(PayloadDecoder.ZERO_COPY)
+                                      .acceptor(new SocketAcceptorImpl(provider, maxBufferPoolSize, messageBufferSize, logger()))
+                                      .transport(TcpServerTransport.create(port))
+                                      .start()
+                                      .block();
     logger().info("RSocket server channel opened at port {}", port);
+
+    if (this.serverSocket != null) {
+      this.serverSocket.onClose()
+                       .doFinally(signalType -> logger().info("RSocket server channel closed"))
+                       .subscribe();
+    }
   }
 
   @Override
@@ -47,9 +53,9 @@ public class RSocketServerChannelActor extends Actor implements ServerRequestRes
     if (isStopped())
       return;
 
-    if (this.receiveSocketDisposable != null) {
+    if (this.serverSocket != null) {
       try {
-        this.receiveSocketDisposable.dispose();
+        this.serverSocket.dispose();
       } catch (final Exception e) {
         logger().error("Failed to close receive socket for: {}", name, e);
       }
@@ -68,7 +74,7 @@ public class RSocketServerChannelActor extends Actor implements ServerRequestRes
     private final RSocket acceptor;
 
     private SocketAcceptorImpl(final RequestChannelConsumerProvider consumerProvider, final int maxBufferPoolSize, final int maxMessageSize,
-            final Logger logger) {
+                               final Logger logger) {
       this.acceptor = new AbstractRSocket() {
         @Override
         public Flux<Payload> requestChannel(final Publisher<Payload> payloads) {
