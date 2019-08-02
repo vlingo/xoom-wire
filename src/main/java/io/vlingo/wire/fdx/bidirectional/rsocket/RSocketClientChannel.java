@@ -21,6 +21,7 @@ import io.vlingo.wire.message.ByteBufferPool;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.node.Address;
 import reactor.core.Disposable;
+import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.UnicastProcessor;
 
@@ -29,9 +30,8 @@ import java.time.Duration;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class RSocketClientChannel implements ClientRequestResponseChannel {
-  private final RSocket clientSocket;
+  private final RSocket channelSocket;
   private final UnicastProcessor<Payload> publisher;
-  private final Disposable subscribeFlow;
   private final Logger logger;
 
   public RSocketClientChannel(final Address address, final ResponseChannelConsumer consumer, final int maxBufferPoolSize, final int maxMessageSize,
@@ -46,57 +46,60 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
     this.logger = logger;
 
     final ChannelResponseHandler responseHandler = new ChannelResponseHandler(consumer, maxBufferPoolSize, maxMessageSize, logger);
-    this.clientSocket = RSocketFactory.connect()
-                                      .frameDecoder(PayloadDecoder.ZERO_COPY)
-                                      .keepAliveAckTimeout(Duration.ofMinutes(10))
-                                      .transport(TcpClientTransport.create(address.hostName(), address.port()))
-                                      .start()
-                                      .retryBackoff(serverConnectRetries, serverConnectRetryBackoff)
-                                      .block();
+    this.channelSocket = RSocketFactory.connect()
+                                       .frameDecoder(PayloadDecoder.ZERO_COPY)
+                                       .keepAliveAckTimeout(Duration.ofMinutes(10))
+                                       .transport(TcpClientTransport.create(address.hostName(), address.port()))
+                                       .start()
+                                       .retryBackoff(serverConnectRetries, serverConnectRetryBackoff)
+                                       .block();
 
-    if (this.clientSocket != null) {
-      this.subscribeFlow = this.clientSocket.requestChannel(this.publisher)
-                                            .onErrorResume((throwable) -> {
-                                              if (throwable instanceof ApplicationErrorException) {
-                                                //We can resume processing on an application error
-                                                logger.error("Server replied with an error: {}", throwable.getMessage(), throwable);
-                                                return Flux.empty();
-                                              } else {
-                                                //Can not be resumed, propagate.
-                                                return Flux.error(throwable);
-                                              }
-                                            })
-                                            .doOnTerminate(this.publisher::dispose)
-                                            .subscribe(responseHandler::handle, //process server response
-                                                       throwable -> {    //process any errors that are unrecoverable
-                                                         this.logger.error("Received an unrecoverable error. Channel will be closed", throwable);
-                                                       });
-    } else {
-      this.subscribeFlow = null;
+    if (this.channelSocket != null) {
+      final Disposable subscribeFlow = this.channelSocket.requestChannel(this.publisher)
+                                                         .onErrorResume((throwable) -> {
+                                                           if (throwable instanceof ApplicationErrorException) {
+                                                             //We can resume processing on an application error
+                                                             logger.error("Server replied with an error: {}", throwable.getMessage(), throwable);
+                                                             return Flux.empty();
+                                                           } else {
+                                                             //Can not be resumed, propagate.
+                                                             return Flux.error(throwable);
+                                                           }
+                                                         })
+                                                         .subscribe(responseHandler::handle, //process server response
+                                                                    throwable -> {    //process any errors that are unrecoverable
+                                                                      this.logger.error("Received an unrecoverable error. Channel will be closed", throwable);
+                                                                      this.publisher.cancel();
+                                                                      //Propagate the error in order to close the channel
+                                                                      throw Exceptions.propagate(throwable);
+                                                                    });
+
+      this.channelSocket.onClose()
+                        .doFinally(signalType -> {
+                          if (!subscribeFlow.isDisposed()) {
+                            subscribeFlow.dispose();
+                          }
+                        })
+                        .subscribe(ignored -> {}, throwable -> {
+                          logger.error("Unexpected error on closing channel socket");
+                        });
     }
   }
 
   @Override
   public void close() {
-    if (this.subscribeFlow != null && !this.subscribeFlow.isDisposed()) {
+    if (this.channelSocket != null && !this.channelSocket.isDisposed()) {
       try {
-        this.subscribeFlow.dispose();
+        this.channelSocket.dispose();
       } catch (final Throwable t) {
-        logger.error("Unexpected error on closing request channel");
-      }
-    }
-    if (this.clientSocket != null && !this.clientSocket.isDisposed()) {
-      try {
-        this.clientSocket.dispose();
-      } catch (final Throwable t) {
-        logger.error("Unexpected error on closing client socket");
+        logger.error("Unexpected error on closing channel socket");
       }
     }
   }
 
   @Override
   public void requestWith(final ByteBuffer buffer) {
-    if (!this.publisher.isTerminated()) {
+    if (!this.channelSocket.isDisposed()) {
       //Copy original buffer data because payload might not be sent immediately.
       ByteBuffer data = ByteBuffer.allocate(buffer.capacity());
       data.put(buffer);
@@ -111,7 +114,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
 
   @Override
   public void probeChannel() {
-    //Incoming messages are processed by clientSocket
+    //Incoming messages are processed by channelSocket
   }
 
   private static class ChannelResponseHandler {

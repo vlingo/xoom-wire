@@ -227,13 +227,17 @@ public class RSocketClientChannelTest {
 
   @After
   public void tearDown() throws Exception {
-    if (this.server != null) {
-      this.server.dispose();
-    }
     if (this.clientChannel != null) {
       this.clientChannel.close();
     }
-    Thread.sleep(200);
+    if (this.server != null) {
+      try {
+        this.server.dispose();
+      } catch (final Throwable t) {
+        //ignore
+      }
+    }
+    Thread.sleep(500);
   }
 
   private void request(final RSocketClientChannel clientChannel, final String request) {
