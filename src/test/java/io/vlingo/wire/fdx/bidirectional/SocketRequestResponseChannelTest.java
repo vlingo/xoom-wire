@@ -27,7 +27,7 @@ import io.vlingo.wire.node.Host;
 
 public class SocketRequestResponseChannelTest {
   private static final int POOL_SIZE = 100;
-  private static AtomicInteger TEST_PORT = new AtomicInteger(37371);
+  private static AtomicInteger TEST_PORT = new AtomicInteger(37370);
 
   private ByteBuffer buffer;
   private ClientRequestResponseChannel client;
@@ -187,7 +187,7 @@ public class SocketRequestResponseChannelTest {
     provider = new TestRequestChannelConsumerProvider();
     serverConsumer = (TestRequestChannelConsumer) provider.consumer;
 
-    final int testPort = TEST_PORT.getAndIncrement();
+    final int testPort = TEST_PORT.incrementAndGet();
 
     server = ServerRequestResponseChannel.start(
                     world.stage(),
