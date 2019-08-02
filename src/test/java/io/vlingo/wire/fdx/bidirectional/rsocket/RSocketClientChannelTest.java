@@ -19,7 +19,6 @@ import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 import org.reactivestreams.Publisher;
@@ -33,18 +32,16 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class RSocketClientChannelTest {
-  private static int port = 37400;
+  private static AtomicInteger TEST_PORT = new AtomicInteger(37400);
   private static final Logger LOGGER = Logger.basicLogger();
-
-  @After
-  public void teardown() {
-    port = port + 1;
-  }
 
   @Test(expected = IllegalStateException.class)
   public void testServerNotAvailable() throws InterruptedException {
+    final int port = TEST_PORT.incrementAndGet();
+
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
 
     final Address address = Address.from(Host.of("127.0.0.1"), port, AddressType.NONE);
@@ -58,6 +55,7 @@ public class RSocketClientChannelTest {
 
   @Test
   public void testServerDoesNotReply() throws InterruptedException {
+    final int port = TEST_PORT.incrementAndGet();
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
 
     final Address address = Address.from(Host.of("127.0.0.1"), port, AddressType.NONE);
@@ -98,6 +96,7 @@ public class RSocketClientChannelTest {
 
   @Test
   public void testServerRequestReply() throws InterruptedException {
+    final int port = TEST_PORT.incrementAndGet();
 
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final CountDownLatch serverReceivedMessages = new CountDownLatch(100);
@@ -167,6 +166,7 @@ public class RSocketClientChannelTest {
 
   @Test
   public void testServerApplicationErrorsProcess() throws InterruptedException {
+    final int port = TEST_PORT.incrementAndGet();
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
 
     final CountDownLatch countDownLatch = new CountDownLatch(1);
@@ -214,6 +214,7 @@ public class RSocketClientChannelTest {
 
   @Test(expected = IllegalStateException.class)
   public void testServerUnrecoverableError() throws InterruptedException {
+    final int port = TEST_PORT.incrementAndGet();
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
     final Address address = Address.from(Host.of("127.0.0.1"), port, AddressType.NONE);
 

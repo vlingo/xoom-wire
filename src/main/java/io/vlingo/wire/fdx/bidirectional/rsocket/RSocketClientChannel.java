@@ -53,6 +53,9 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
                                        .transport(TcpClientTransport.create(address.hostName(), address.port()))
                                        .start()
                                        .retryBackoff(serverConnectRetries, serverConnectRetryBackoff)
+                                       .doOnError(throwable -> {
+                                         logger.error("Failed to create channel socket for address {}", address, throwable);
+                                       })
                                        .block();
 
     if (this.channelSocket != null) {
