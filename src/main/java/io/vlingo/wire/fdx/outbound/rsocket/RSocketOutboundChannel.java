@@ -76,6 +76,7 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
                    logger.error("Failed write to node {}, because: {}", node, throwable.getMessage(), throwable);
                  }
                })
+               .doFinally(signalType -> data.clear())
                .subscribe();
       }
     });
