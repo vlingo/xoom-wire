@@ -7,10 +7,6 @@
 
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
-import java.nio.ByteBuffer;
-import java.time.Duration;
-import java.util.concurrent.ConcurrentLinkedQueue;
-
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
@@ -83,6 +79,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
                                                                         throw Exceptions.propagate(throwable);
                                                                       }
                                                                     });
+      
       logger.info("RSocket client channel opened for address {}", address);
 
       this.channelSocket.onClose()

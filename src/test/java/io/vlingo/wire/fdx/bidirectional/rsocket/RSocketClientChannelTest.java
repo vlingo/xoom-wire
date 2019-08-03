@@ -6,22 +6,6 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
-import java.nio.ByteBuffer;
-import java.time.Duration;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Test;
-import org.reactivestreams.Publisher;
-
 import io.rsocket.AbstractRSocket;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
@@ -45,8 +29,10 @@ import reactor.core.publisher.Mono;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -63,11 +49,17 @@ public class RSocketClientChannelTest {
 
     final Address address = Address.from(Host.of("127.0.0.1"), port, AddressType.NONE);
 
-    final RSocketClientChannel clientChannel = new RSocketClientChannel(address, consumer, 100, 1024, LOGGER, 1, Duration.ofMillis(10));
-    Thread.sleep(400);
+    RSocketClientChannel clientChannel = null;
+    try {
+      clientChannel = new RSocketClientChannel(address, consumer, 100, 1024, LOGGER, 1, Duration.ofMillis(10));
+      Thread.sleep(400);
 
-    request(clientChannel, "TEST");
-    clientChannel.close();
+      request(clientChannel, "TEST");
+    } finally {
+      if (clientChannel != null) {
+        clientChannel.close();
+      }
+    }
   }
 
   @Test
@@ -77,7 +69,7 @@ public class RSocketClientChannelTest {
 
     final Address address = Address.from(Host.of("127.0.0.1"), port, AddressType.NONE);
     final AccessSafely access = expected(101);
-    final CountDownLatch serverReceivedMessages = new CountDownLatch(100);
+
     final CloseableChannel server = RSocketFactory.receive()
                                                   .frameDecoder(PayloadDecoder.ZERO_COPY)
                                                   .acceptor((connectionSetupPayload, rSocket) -> Mono.just(new AbstractRSocket() {
@@ -97,13 +89,18 @@ public class RSocketClientChannelTest {
 
     final RSocketClientChannel clientChannel = new RSocketClientChannel(address, consumer, 1, 1024, LOGGER);
 
-    for (int i = 0; i < 100; i++) {
+    try {
+
+      for (int i = 0; i < 100; i++) {
         request(clientChannel, UUID.randomUUID()
                                    .toString());
       }
 
-    Assert.assertEquals("Server should have received requestChannel request", 1, (int) access.readFrom("count"));
-    Assert.assertEquals("Server should have received all messages", 100, (int) access.readFrom("messagesCount"));
+      Assert.assertEquals("Server should have received requestChannel request", 1, (int) access.readFrom("count"));
+      Assert.assertEquals("Server should have received all messages", 100, (int) access.readFrom("messagesCount"));
+    } finally {
+      close(clientChannel, server);
+    }
   }
 
   @Test
