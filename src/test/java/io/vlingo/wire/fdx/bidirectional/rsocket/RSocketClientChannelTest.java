@@ -38,7 +38,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class RSocketClientChannelTest {
-  private static final AtomicInteger TEST_PORT = new AtomicInteger(37380);
+  private static final AtomicInteger TEST_PORT = new AtomicInteger(49240);
   private static final Logger LOGGER = Logger.basicLogger();
 
   @Test(expected = IllegalStateException.class)
