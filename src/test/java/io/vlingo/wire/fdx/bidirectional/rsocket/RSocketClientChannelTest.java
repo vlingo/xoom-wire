@@ -47,7 +47,7 @@ public class RSocketClientChannelTest {
 
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
 
-    final Address address = Address.from(Host.of("127.0.0.1"), port, AddressType.NONE);
+    final Address address = buildAddress(port);
 
     RSocketClientChannel clientChannel = null;
     try {
@@ -67,7 +67,7 @@ public class RSocketClientChannelTest {
     final int port = TEST_PORT.incrementAndGet();
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
 
-    final Address address = Address.from(Host.of("127.0.0.1"), port, AddressType.NONE);
+    final Address address = buildAddress(port);
     final AccessSafely access = expected(101);
 
     final CloseableChannel server = RSocketFactory.receive()
@@ -126,7 +126,7 @@ public class RSocketClientChannelTest {
       }
     };
 
-    final Address address = Address.from(Host.of("127.0.0.1"), port, AddressType.NONE);
+    final Address address = buildAddress(port);
 
     final CloseableChannel server = RSocketFactory.receive()
                                                   .frameDecoder(PayloadDecoder.ZERO_COPY)
@@ -194,7 +194,7 @@ public class RSocketClientChannelTest {
                    });
       }
     };
-    final Address address = Address.from(Host.of("127.0.0.1"), port, AddressType.NONE);
+    final Address address = buildAddress(port);
 
     final CloseableChannel server = RSocketFactory.receive()
                                                   .frameDecoder(PayloadDecoder.ZERO_COPY)
@@ -225,7 +225,7 @@ public class RSocketClientChannelTest {
   public void testServerUnrecoverableError() throws InterruptedException {
     final int port = TEST_PORT.incrementAndGet();
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
-    final Address address = Address.from(Host.of("127.0.0.1"), port, AddressType.NONE);
+    final Address address = buildAddress(port);
 
     final CountDownLatch countDownLatch = new CountDownLatch(1);
 
@@ -271,6 +271,10 @@ public class RSocketClientChannelTest {
 
   private void request(final RSocketClientChannel clientChannel, final String request) {
     clientChannel.requestWith(ByteBuffer.wrap(request.getBytes()));
+  }
+
+  private Address buildAddress(final int port) {
+    return Address.from(Host.of("localhost"), port, AddressType.NONE);
   }
 
   private final AtomicInteger count = new AtomicInteger(0);
