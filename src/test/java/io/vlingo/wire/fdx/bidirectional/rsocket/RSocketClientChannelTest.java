@@ -21,6 +21,7 @@ import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -41,6 +42,7 @@ public class RSocketClientChannelTest {
   private static final AtomicInteger TEST_PORT = new AtomicInteger(49240);
   private static final Logger LOGGER = Logger.basicLogger();
 
+  @Ignore
   @Test(expected = IllegalStateException.class)
   public void testServerNotAvailable() throws InterruptedException {
     final int port = TEST_PORT.incrementAndGet();
@@ -62,6 +64,7 @@ public class RSocketClientChannelTest {
     }
   }
 
+  @Ignore
   @Test
   public void testServerDoesNotReply() throws InterruptedException {
     final int port = TEST_PORT.incrementAndGet();
@@ -137,6 +140,7 @@ public class RSocketClientChannelTest {
 
     Thread.sleep(100);
 
+
     final CountDownLatch clientReceivedMessages = new CountDownLatch(100);
 
     Set<String> serverReplies = new LinkedHashSet<>();
@@ -151,8 +155,7 @@ public class RSocketClientChannelTest {
     try {
       Set<String> clientRequests = new LinkedHashSet<>();
       for (int i = 0; i < 100; i++) {
-        final String request = "Request_" + i + "_" + UUID.randomUUID()
-                                                          .toString();
+        final String request = "Request_" + i + "_" + UUID.randomUUID().toString();
         request(clientChannel, request);
         clientRequests.add(request);
       }
@@ -221,6 +224,7 @@ public class RSocketClientChannelTest {
     }
   }
 
+  @Ignore
   @Test(expected = IllegalStateException.class)
   public void testServerUnrecoverableError() throws InterruptedException {
     final int port = TEST_PORT.incrementAndGet();
