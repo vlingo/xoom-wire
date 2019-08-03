@@ -6,6 +6,17 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.World;
@@ -15,25 +26,14 @@ import io.vlingo.wire.fdx.bidirectional.ServerRequestResponseChannel;
 import io.vlingo.wire.fdx.bidirectional.TestRequestChannelConsumer;
 import io.vlingo.wire.fdx.bidirectional.TestRequestChannelConsumerProvider;
 import io.vlingo.wire.fdx.bidirectional.TestResponseChannelConsumer;
-import io.vlingo.wire.message.ByteBufferAllocator;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.nio.ByteBuffer;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 
 public class RSocketServerChannelActorTest {
   private static final int POOL_SIZE = 100;
-  private static int TEST_PORT = 37381;
+  private static AtomicInteger TEST_PORT = new AtomicInteger(37380);
 
-  private ByteBuffer buffer;
   private ClientRequestResponseChannel client;
   private TestResponseChannelConsumer clientConsumer;
   private TestRequestChannelConsumerProvider provider;
@@ -147,7 +147,7 @@ public class RSocketServerChannelActorTest {
       assertEquals(clientConsumer.responses.get(idx), serverConsumer.requests.get(idx));
     }
   }
-  
+
   @Test
   public void testThatRequestResponsePoolLimitsNotExceeded() throws Exception {
     final int TOTAL = POOL_SIZE * 2;
@@ -182,17 +182,18 @@ public class RSocketServerChannelActorTest {
       assertEquals(clientConsumer.responses.get(idx), serverConsumer.requests.get(idx));
     }
   }
-  
+
   @Before
   public void setUp() throws Exception {
     world = World.startWithDefaults("test-request-response-channel");
 
-    buffer = ByteBufferAllocator.allocate(1024);
     final Logger logger = Logger.basicLogger();
     provider = new TestRequestChannelConsumerProvider();
     serverConsumer = (TestRequestChannelConsumer) provider.consumer;
 
-    final List<Object> params = Definition.parameters(provider, TEST_PORT, "test-server",  POOL_SIZE, 10240);
+    final int testPort = TEST_PORT.incrementAndGet();
+
+    final List<Object> params = Definition.parameters(provider, testPort, "test-server",  POOL_SIZE, 10240);
 
     server = world.actorFor(
                     ServerRequestResponseChannel.class,
@@ -201,21 +202,29 @@ public class RSocketServerChannelActorTest {
 
     clientConsumer = new TestResponseChannelConsumer();
 
-    client = new RSocketClientChannel(Address.from(Host.of("127.0.0.1"), TEST_PORT, AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger);
-
-    ++TEST_PORT;
+    client = new RSocketClientChannel(Address.from(Host.of("localhost"), testPort, AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger);
   }
 
   @After
   public void tearDown() {
-    client.close();
-    server.close();
+    try {
+      server.close();
+    } catch (Exception e) {
+      // ignore
+    }
+    try {
+      client.close();
+    } catch (Exception e) {
+      // ignore
+    }
 
     try { Thread.sleep(1000); } catch (Exception e) {  }
 
-    world.terminate();
-    this.server = null;
-    this.client = null;
+    try {
+      world.terminate();
+    } catch (Exception e) {
+      // ignore
+    }
   }
 
   private void request(final String request) {

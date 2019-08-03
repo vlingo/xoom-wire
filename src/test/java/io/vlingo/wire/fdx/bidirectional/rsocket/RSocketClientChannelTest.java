@@ -6,6 +6,22 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
+import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Test;
+import org.reactivestreams.Publisher;
+
 import io.rsocket.AbstractRSocket;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
@@ -15,6 +31,7 @@ import io.rsocket.transport.netty.server.CloseableChannel;
 import io.rsocket.transport.netty.server.TcpServerTransport;
 import io.rsocket.util.DefaultPayload;
 import io.vlingo.actors.Logger;
+import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
@@ -35,7 +52,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class RSocketClientChannelTest {
-  private static AtomicInteger TEST_PORT = new AtomicInteger(37400);
+  private static final AtomicInteger TEST_PORT = new AtomicInteger(37380);
   private static final Logger LOGGER = Logger.basicLogger();
 
   @Test(expected = IllegalStateException.class)
@@ -59,16 +76,16 @@ public class RSocketClientChannelTest {
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
 
     final Address address = Address.from(Host.of("127.0.0.1"), port, AddressType.NONE);
-    final CountDownLatch countDownLatch = new CountDownLatch(1);
+    final AccessSafely access = expected(101);
     final CountDownLatch serverReceivedMessages = new CountDownLatch(100);
     final CloseableChannel server = RSocketFactory.receive()
                                                   .frameDecoder(PayloadDecoder.ZERO_COPY)
                                                   .acceptor((connectionSetupPayload, rSocket) -> Mono.just(new AbstractRSocket() {
                                                     @Override
                                                     public Flux<Payload> requestChannel(final Publisher<Payload> payloads) {
-                                                      countDownLatch.countDown();
+                                                      access.writeUsing("count", 1);
                                                       Flux.from(payloads)
-                                                          .subscribe(payload -> serverReceivedMessages.countDown());
+                                                          .subscribe(payload -> access.writeUsing("messages", payload));
                                                       return Flux.empty();
                                                     }
                                                   }))
@@ -80,18 +97,13 @@ public class RSocketClientChannelTest {
 
     final RSocketClientChannel clientChannel = new RSocketClientChannel(address, consumer, 1, 1024, LOGGER);
 
-    try {
-      for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 100; i++) {
         request(clientChannel, UUID.randomUUID()
                                    .toString());
       }
 
-      Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
-      Assert.assertTrue("Server should have received all messages, but got only " + serverReceivedMessages.getCount(),
-                        serverReceivedMessages.await(4, TimeUnit.SECONDS));
-    } finally {
-      close(clientChannel, server);
-    }
+    Assert.assertEquals("Server should have received requestChannel request", 1, (int) access.readFrom("count"));
+    Assert.assertEquals("Server should have received all messages", 100, (int) access.readFrom("messagesCount"));
   }
 
   @Test
@@ -264,4 +276,21 @@ public class RSocketClientChannelTest {
     clientChannel.requestWith(ByteBuffer.wrap(request.getBytes()));
   }
 
+  private final AtomicInteger count = new AtomicInteger(0);
+  private final List<String> payloads = new CopyOnWriteArrayList<>();
+
+  private AccessSafely expected(final int total) {
+    final AccessSafely access = AccessSafely.afterCompleting(total);
+
+    access.writingWith("messages", (Payload p) -> payloads.add(p.getDataUtf8()));
+    access.writingWith("textMessages", (String text) -> payloads.add(text));
+    access.readingWith("messages", () -> payloads);
+    access.readingWith("message", (Integer index) -> payloads.get(index));
+    access.readingWith("messagesCount", () -> payloads.size());
+
+    access.writingWith("count", (Integer dummy) -> count.incrementAndGet());
+    access.readingWith("count", () -> count.get());
+
+    return access;
+  }
 }
