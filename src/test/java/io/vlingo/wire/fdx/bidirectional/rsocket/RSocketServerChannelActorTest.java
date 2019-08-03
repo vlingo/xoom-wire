@@ -207,12 +207,24 @@ public class RSocketServerChannelActorTest {
 
   @After
   public void tearDown() {
-    server.close();
-    client.close();
+    try {
+      server.close();
+    } catch (Exception e) {
+      // ignore
+    }
+    try {
+      client.close();
+    } catch (Exception e) {
+      // ignore
+    }
 
     try { Thread.sleep(1000); } catch (Exception e) {  }
 
-    world.terminate();
+    try {
+      world.terminate();
+    } catch (Exception e) {
+      // ignore
+    }
   }
 
   private void request(final String request) {
