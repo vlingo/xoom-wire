@@ -108,16 +108,16 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
         public Mono<Void> fireAndForget(Payload payload) {
           try {
             final ByteBuffer payloadData = payload.getData();
-            rawMessageBuilder.workBuffer()
-                             .put(payloadData);
+
+            rawMessageBuilder.prepareForNextMessage();
+            
+            rawMessageBuilder.workBuffer().put(payloadData);
 
             dispatcher.dispatchMessagesFor(rawMessageBuilder);
-          } catch (Exception e) {
-            logger.error("Unexpected error. Message ignored.", e);
+          } catch (final Throwable t) {
+            logger.error("Unexpected error. Message ignored.", t);
             //Clear builder resources in case of error. Otherwise we will get a BufferOverflow.
-            rawMessageBuilder.prepareForNextMessage();
-            rawMessageBuilder.workBuffer()
-                             .clear();
+            rawMessageBuilder.workBuffer().clear();
           } finally {
             //Important! Because using PayloadDecoder.ZERO_COPY frame decoder
             payload.release();
