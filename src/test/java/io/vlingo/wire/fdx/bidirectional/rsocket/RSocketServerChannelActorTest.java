@@ -6,17 +6,6 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-
-import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.World;
@@ -29,6 +18,16 @@ import io.vlingo.wire.fdx.bidirectional.TestResponseChannelConsumer;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class RSocketServerChannelActorTest {
   private static final int POOL_SIZE = 100;
@@ -202,7 +201,7 @@ public class RSocketServerChannelActorTest {
 
     clientConsumer = new TestResponseChannelConsumer();
 
-    client = new RSocketClientChannel(Address.from(Host.of("localhost"), testPort, AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger);
+    client = new RSocketClientChannel(Address.from(Host.of("127.0.0.1"), testPort, AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger);
   }
 
   @After
