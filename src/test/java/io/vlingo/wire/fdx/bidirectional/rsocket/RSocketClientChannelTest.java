@@ -9,8 +9,10 @@ package io.vlingo.wire.fdx.bidirectional.rsocket;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,6 +30,7 @@ import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.netty.server.TcpServerTransport;
 import io.rsocket.util.DefaultPayload;
 import io.vlingo.actors.Logger;
+import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
@@ -63,16 +66,16 @@ public class RSocketClientChannelTest {
 
     final Address address = Address.from(Host.of("localhost"), testPort, AddressType.NONE);
 
-    final CountDownLatch countDownLatch = new CountDownLatch(1);
-    final CountDownLatch serverReceivedMessages = new CountDownLatch(100);
+    final AccessSafely access = expected(101);
+
     server = RSocketFactory.receive()
                            .frameDecoder(PayloadDecoder.ZERO_COPY)
                            .acceptor((connectionSetupPayload, rSocket) -> Mono.just(new AbstractRSocket() {
                              @Override
                              public Flux<Payload> requestChannel(final Publisher<Payload> payloads) {
-                               countDownLatch.countDown();
+                               access.writeUsing("count", 1);
                                Flux.from(payloads)
-                                   .subscribe(payload -> serverReceivedMessages.countDown());
+                                   .subscribe(payload -> access.writeUsing("messages", payload));
                                return Flux.empty();
                              }
                            }))
@@ -89,9 +92,10 @@ public class RSocketClientChannelTest {
                                  .toString());
     }
 
-    Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
-    Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(4, TimeUnit.SECONDS));
+    Assert.assertEquals("Server should have received requestChannel request", 1, (int) access.readFrom("count"));
+    Assert.assertEquals("Server should have received all messages", 100, (int) access.readFrom("messagesCount"));
   }
+  int countcount = 0;
 
   @Test
   public void testServerRequestReply() throws InterruptedException {
@@ -245,4 +249,21 @@ public class RSocketClientChannelTest {
     clientChannel.requestWith(ByteBuffer.wrap(request.getBytes()));
   }
 
+  private final AtomicInteger count = new AtomicInteger(0);
+  private final List<String> payloads = new CopyOnWriteArrayList<>();
+
+  private AccessSafely expected(final int total) {
+    final AccessSafely access = AccessSafely.afterCompleting(total);
+
+    access.writingWith("messages", (Payload p) -> payloads.add(p.getDataUtf8()));
+    access.writingWith("textMessages", (String text) -> payloads.add(text));
+    access.readingWith("messages", () -> payloads);
+    access.readingWith("message", (Integer index) -> payloads.get(index));
+    access.readingWith("messagesCount", () -> payloads.size());
+
+    access.writingWith("count", (Integer dummy) -> count.incrementAndGet());
+    access.readingWith("count", () -> count.get());
+
+    return access;
+  }
 }
