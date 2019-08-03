@@ -61,7 +61,7 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
       try {
         this.serverSocket.dispose();
       } catch (final Throwable t) {
-        logger.error("Unexpected error on closing server socket");
+        logger.error("Unexpected error on closing inbound channel {}", this.name, t);
       }
     }
   }
@@ -75,7 +75,6 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
   public void openFor(final ChannelReaderConsumer consumer) {
     if (closed)
       return; // for some tests it's possible to receive close() before start()
-    this.logger.debug(getClass().getSimpleName() + ": OPENING PORT: {}", port);
     this.consumer = consumer;
 
     //Close existing receiving socket
@@ -85,11 +84,18 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
 
     serverSocket = RSocketFactory.receive()
                                  .frameDecoder(PayloadDecoder.ZERO_COPY)
-                                 .acceptor(new SocketAcceptorImpl(this, maxMessageSize, logger))
+                                 .acceptor(new SocketAcceptorImpl(this, name, maxMessageSize, logger))
                                  .transport(TcpServerTransport.create(this.port))
                                  .start()
-                                 .doOnError(throwable -> logger.error("Unexpected exception in server socket", throwable))
+                                 .doOnError(throwable -> logger.error("Failed to create RSocket inbound channel {} at port {}", name, port, throwable))
                                  .block();
+
+    if (serverSocket != null) {
+      this.serverSocket.onClose()
+                       .doFinally(signalType -> logger.info("RSocket inbound channel {} at port {} is closed", name, port))
+                       .subscribe(ignored -> {}, throwable -> logger.error("Unexpected error on closing inbound channel {}", name, throwable));
+      logger().info("RSocket inbound channel {} opened at port {}", name, port);
+    }
   }
 
   @Override
@@ -100,7 +106,7 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
   private static class SocketAcceptorImpl implements SocketAcceptor {
     private final RSocket acceptor;
 
-    private SocketAcceptorImpl(final ChannelMessageDispatcher dispatcher, final int maxMessageSize, final Logger logger) {
+    private SocketAcceptorImpl(final ChannelMessageDispatcher dispatcher, final String name, final int maxMessageSize, final Logger logger) {
       final RawMessageBuilder rawMessageBuilder = new RawMessageBuilder(maxMessageSize);
 
       this.acceptor = new AbstractRSocket() {
@@ -108,15 +114,13 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
         public Mono<Void> fireAndForget(Payload payload) {
           try {
             final ByteBuffer payloadData = payload.getData();
-
-            rawMessageBuilder.prepareForNextMessage();
-            
             rawMessageBuilder.workBuffer().put(payloadData);
-
+            
             dispatcher.dispatchMessagesFor(rawMessageBuilder);
           } catch (final Throwable t) {
-            logger.error("Unexpected error. Message ignored.", t);
+            logger.error("Unexpected error in inbound channel {}. Message ignored.", name, t);
             //Clear builder resources in case of error. Otherwise we will get a BufferOverflow.
+            rawMessageBuilder.prepareForNextMessage();
             rawMessageBuilder.workBuffer().clear();
           } finally {
             //Important! Because using PayloadDecoder.ZERO_COPY frame decoder

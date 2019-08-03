@@ -79,7 +79,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
                                                                         throw Exceptions.propagate(throwable);
                                                                       }
                                                                     });
-      
+
       logger.info("RSocket client channel opened for address {}", address);
 
       this.channelSocket.onClose()
@@ -89,7 +89,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
                           }
                           logger.info("RSocket client channel for address {} is closed", address);
                         })
-                        .subscribe(ignored -> {}, throwable -> logger.error("Unexpected error on closing channel socket"));
+                        .subscribe(ignored -> {}, throwable -> logger.error("Unexpected error on closing channel socket", throwable));
     }
   }
 
@@ -99,7 +99,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
       try {
         this.channelSocket.dispose();
       } catch (final Throwable t) {
-        logger.error("Unexpected error on closing channel socket");
+        logger.error("Unexpected error on closing channel socket", t);
       }
     }
   }
