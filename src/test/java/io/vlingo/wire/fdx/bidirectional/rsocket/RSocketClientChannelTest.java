@@ -140,7 +140,6 @@ public class RSocketClientChannelTest {
 
     Thread.sleep(100);
 
-
     final CountDownLatch clientReceivedMessages = new CountDownLatch(100);
 
     Set<String> serverReplies = new LinkedHashSet<>();
@@ -155,7 +154,8 @@ public class RSocketClientChannelTest {
     try {
       Set<String> clientRequests = new LinkedHashSet<>();
       for (int i = 0; i < 100; i++) {
-        final String request = "Request_" + i + "_" + UUID.randomUUID().toString();
+        final String request = "Request_" + i + "_" + UUID.randomUUID()
+                                                          .toString();
         request(clientChannel, request);
         clientRequests.add(request);
       }
@@ -224,21 +224,16 @@ public class RSocketClientChannelTest {
     }
   }
 
-  @Ignore
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testServerUnrecoverableError() throws InterruptedException {
     final int port = TEST_PORT.incrementAndGet();
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
     final Address address = buildAddress(port);
 
-    final CountDownLatch countDownLatch = new CountDownLatch(1);
-
     final CloseableChannel server = RSocketFactory.receive()
                                                   .frameDecoder(PayloadDecoder.ZERO_COPY)
-                                                  .acceptor((connectionSetupPayload, rSocket) -> {
-                                                    countDownLatch.countDown();
-                                                    return Mono.error(new RuntimeException("Channel could not be created"));
-                                                  })
+                                                  .acceptor(
+                                                          (connectionSetupPayload, rSocket) -> Mono.error(new RuntimeException("Channel could not be created")))
                                                   .transport(TcpServerTransport.create(address.port()))
                                                   .start()
                                                   .block();
@@ -248,12 +243,12 @@ public class RSocketClientChannelTest {
     Thread.sleep(400);
 
     try {
-      for (int i = 0; i < 100; i++) {
-        request(clientChannel, UUID.randomUUID()
-                                   .toString());
-      }
 
-      Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
+      request(clientChannel, UUID.randomUUID()
+                                 .toString());
+      Assert.fail("Should have failed");
+    } catch (IllegalStateException expected) {
+      //expected
     } finally {
       close(clientChannel, server);
     }
