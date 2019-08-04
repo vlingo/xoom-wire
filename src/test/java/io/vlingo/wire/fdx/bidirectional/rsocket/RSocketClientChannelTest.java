@@ -225,6 +225,7 @@ public class RSocketClientChannelTest {
   }
 
   @Test
+  @Ignore
   public void testServerUnrecoverableError() throws InterruptedException {
     final int port = TEST_PORT.incrementAndGet();
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
