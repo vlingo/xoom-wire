@@ -43,6 +43,7 @@ public class RSocketClientChannelTest {
   private static final Logger LOGGER = Logger.basicLogger();
 
   @Test
+  @Ignore
   public void testServerNotAvailable() throws InterruptedException {
     final int port = TEST_PORT.incrementAndGet();
 
