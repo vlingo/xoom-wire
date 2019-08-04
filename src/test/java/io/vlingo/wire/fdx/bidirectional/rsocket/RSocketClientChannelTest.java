@@ -42,8 +42,7 @@ public class RSocketClientChannelTest {
   private static final AtomicInteger TEST_PORT = new AtomicInteger(49240);
   private static final Logger LOGGER = Logger.basicLogger();
 
-  @Ignore
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testServerNotAvailable() throws InterruptedException {
     final int port = TEST_PORT.incrementAndGet();
 
@@ -57,6 +56,9 @@ public class RSocketClientChannelTest {
       Thread.sleep(400);
 
       request(clientChannel, "TEST");
+      Assert.fail("Should have failed");
+    } catch (IllegalStateException expected) {
+      //expected
     } finally {
       if (clientChannel != null) {
         clientChannel.close();
