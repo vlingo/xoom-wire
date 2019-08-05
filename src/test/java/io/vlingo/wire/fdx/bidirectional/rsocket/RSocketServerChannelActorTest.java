@@ -23,6 +23,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -201,7 +202,7 @@ public class RSocketServerChannelActorTest {
 
     clientConsumer = new TestResponseChannelConsumer();
 
-    client = new RSocketClientChannel(Address.from(Host.of("127.0.0.1"), testPort, AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger);
+    client = new RSocketClientChannel(Address.from(Host.of("127.0.0.1"), testPort, AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger, Duration.ofSeconds(1));
   }
 
   @After
