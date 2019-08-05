@@ -31,66 +31,26 @@ import java.time.Duration;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class RSocketClientChannel implements ClientRequestResponseChannel {
-  private final RSocket channelSocket;
   private final UnicastProcessor<Payload> publisher;
   private final Logger logger;
+  private final ChannelResponseHandler responseHandler;
+  private final Address address;
+  private final Duration connectionTimeout;
+  private RSocket channelSocket;
 
   public RSocketClientChannel(final Address address, final ResponseChannelConsumer consumer, final int maxBufferPoolSize, final int maxMessageSize,
                               final Logger logger) {
-    this(address, consumer, maxBufferPoolSize, maxMessageSize, logger, 10, Duration.ofSeconds(1));
+    this(address, consumer, maxBufferPoolSize, maxMessageSize, logger, Duration.ofMillis(100));
   }
 
   public RSocketClientChannel(final Address address, final ResponseChannelConsumer consumer, final int maxBufferPoolSize, final int maxMessageSize,
-                              final Logger logger, final int serverConnectRetries, final Duration serverConnectRetryBackoff) {
+                              final Logger logger, final Duration connectionTimeout) {
 
     this.publisher = UnicastProcessor.create(new ConcurrentLinkedQueue<>());
     this.logger = logger;
-
-    final ChannelResponseHandler responseHandler = new ChannelResponseHandler(consumer, maxBufferPoolSize, maxMessageSize, logger);
-    this.channelSocket = RSocketFactory.connect()
-                                       .frameDecoder(PayloadDecoder.ZERO_COPY)
-                                       .keepAliveAckTimeout(Duration.ofMinutes(10))
-                                       .transport(TcpClientTransport.create(address.hostName(), address.port()))
-                                       .start()
-                                       .retryBackoff(serverConnectRetries, serverConnectRetryBackoff)
-                                       .doOnError(throwable -> {
-                                         logger.error("Failed to create channel socket for address {}", address, throwable);
-                                       })
-                                       .block();
-
-    if (this.channelSocket != null) {
-      final Disposable subscribeFlow = this.channelSocket.requestChannel(this.publisher)
-                                                         .onErrorResume((throwable) -> {
-                                                           if (throwable instanceof ApplicationErrorException) {
-                                                             //We can resume processing on an application error
-                                                             logger.error("Server replied with an error: {}", throwable.getMessage(), throwable);
-                                                             return Flux.empty();
-                                                           } else {
-                                                             //Can not be resumed, propagate.
-                                                             return Flux.error(throwable);
-                                                           }
-                                                         })
-                                                         .subscribe(responseHandler::handle, //process server response
-                                                                    throwable -> {    //process any errors that are unrecoverable
-                                                                      this.publisher.cancel();
-                                                                      if (!(throwable instanceof ClosedChannelException)) {
-                                                                        this.logger.error("Received an unrecoverable error. Channel will be closed", throwable);
-                                                                        //Propagate the error in order to close the channel
-                                                                        throw Exceptions.propagate(throwable);
-                                                                      }
-                                                                    });
-
-      logger.info("RSocket client channel opened for address {}", address);
-
-      this.channelSocket.onClose()
-                        .doFinally(signalType -> {
-                          if (!subscribeFlow.isDisposed()) {
-                            subscribeFlow.dispose();
-                          }
-                          logger.info("RSocket client channel for address {} is closed", address);
-                        })
-                        .subscribe(ignored -> {}, throwable -> logger.error("Unexpected error on closing channel socket", throwable));
-    }
+    this.address = address;
+    this.connectionTimeout = connectionTimeout;
+    this.responseHandler = new ChannelResponseHandler(consumer, maxBufferPoolSize, maxMessageSize, logger);
   }
 
   @Override
@@ -102,11 +62,13 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
         logger.error("Unexpected error on closing channel socket", t);
       }
     }
+    this.channelSocket = null;
   }
 
   @Override
   public void requestWith(final ByteBuffer buffer) {
-    if (!this.channelSocket.isDisposed()) {
+    prepareChannel();
+    if (this.channelSocket != null && !this.channelSocket.isDisposed()) {
       //Copy original buffer data because payload might not be sent immediately.
       ByteBuffer data = ByteBuffer.allocate(buffer.capacity());
       data.put(buffer);
@@ -114,14 +76,68 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
 
       this.publisher.onNext(DefaultPayload.create(data));
     } else {
-      close();
-      throw new IllegalStateException("Channel closed");
+      logger.debug("RSocket client channel for {} not ready. Message dropped", this.address);
     }
   }
 
   @Override
   public void probeChannel() {
+    prepareChannel();
     //Incoming messages are processed by channelSocket
+  }
+
+  private void prepareChannel() {
+    try {
+      if (this.channelSocket == null) {
+        this.channelSocket = RSocketFactory.connect()
+                                           .frameDecoder(PayloadDecoder.ZERO_COPY)
+                                           .transport(TcpClientTransport.create(this.address.hostName(), this.address.port()))
+                                           .start()
+                                           .timeout(this.connectionTimeout)
+                                           .doOnError(throwable -> {
+                                             logger.error("Failed to create channel socket for address {}", this.address, throwable);
+                                           })
+                                           .block();
+
+        if (this.channelSocket != null) {
+          final Disposable subscribeFlow = this.channelSocket.requestChannel(this.publisher)
+                                                             .onErrorResume((throwable) -> {
+                                                               if (throwable instanceof ApplicationErrorException) {
+                                                                 //We can resume processing on an application error
+                                                                 logger.error("Server replied with an error: {}", throwable.getMessage(), throwable);
+                                                                 return Flux.empty();
+                                                               } else {
+                                                                 //Can not be resumed, propagate.
+                                                                 return Flux.error(throwable);
+                                                               }
+                                                             })
+                                                             .subscribe(responseHandler::handle, //process server response
+                                                                        throwable -> {    //process any errors that are unrecoverable
+                                                                          this.publisher.cancel();
+                                                                          if (!(throwable instanceof ClosedChannelException)) {
+                                                                            this.logger.error("Received an unrecoverable error. Channel will be closed",
+                                                                                              throwable);
+                                                                            //Propagate the error in order to close the channel
+                                                                            throw Exceptions.propagate(throwable);
+                                                                          }
+                                                                        });
+
+          logger.info("RSocket client channel opened for address {}", this.address);
+
+          this.channelSocket.onClose()
+                            .doFinally(signalType -> {
+                              if (!subscribeFlow.isDisposed()) {
+                                subscribeFlow.dispose();
+                              }
+                              logger.info("RSocket client channel for address {} is closed", this.address);
+                            })
+                            .subscribe(ignored -> {}, throwable -> logger.error("Unexpected error on closing channel socket", throwable));
+        }
+      }
+    } catch (final Throwable t) {
+      logger.warn("Failed to create RSocket client channel for {}, because {}", this.address, t.getMessage());
+      close();
+    }
   }
 
   private static class ChannelResponseHandler {

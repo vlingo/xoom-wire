@@ -21,7 +21,6 @@ import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
@@ -43,8 +42,7 @@ public class RSocketClientChannelTest {
   private static final Logger LOGGER = Logger.basicLogger();
 
   @Test
-  @Ignore
-  public void testServerNotAvailable() throws InterruptedException {
+  public void testServerNotAvailable() {
     final int port = TEST_PORT.incrementAndGet();
 
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
@@ -53,13 +51,12 @@ public class RSocketClientChannelTest {
 
     RSocketClientChannel clientChannel = null;
     try {
-      clientChannel = new RSocketClientChannel(address, consumer, 100, 1024, LOGGER, 1, Duration.ofMillis(10));
-      Thread.sleep(400);
+      clientChannel = buildClientChannel(consumer, address);
 
-      request(clientChannel, "TEST");
-      Assert.fail("Should have failed");
-    } catch (IllegalStateException expected) {
-      //expected
+      for (int i = 0; i < 10; i++) {
+        request(clientChannel, UUID.randomUUID().toString());
+      }
+      //all messages should be dropped
     } finally {
       if (clientChannel != null) {
         clientChannel.close();
@@ -67,7 +64,6 @@ public class RSocketClientChannelTest {
     }
   }
 
-  @Ignore
   @Test
   public void testServerDoesNotReply() throws InterruptedException {
     final int port = TEST_PORT.incrementAndGet();
@@ -91,11 +87,12 @@ public class RSocketClientChannelTest {
                                                   .start()
                                                   .block();
 
-    Thread.sleep(100);
+    Thread.sleep(400);
 
-    final RSocketClientChannel clientChannel = new RSocketClientChannel(address, consumer, 1, 1024, LOGGER);
+    RSocketClientChannel clientChannel = null;
 
     try {
+      clientChannel = buildClientChannel(consumer, address);
 
       for (int i = 0; i < 100; i++) {
         request(clientChannel, UUID.randomUUID()
@@ -152,9 +149,11 @@ public class RSocketClientChannelTest {
       serverReplies.add(new String(buffer.array(), 0, buffer.remaining()));
     };
 
-    final RSocketClientChannel clientChannel = new RSocketClientChannel(address, consumer, 1, 1024, LOGGER);
+    RSocketClientChannel clientChannel = null;
 
     try {
+      clientChannel = buildClientChannel(consumer, address);
+
       Set<String> clientRequests = new LinkedHashSet<>();
       for (int i = 0; i < 100; i++) {
         final String request = "Request_" + i + "_" + UUID.randomUUID()
@@ -209,11 +208,13 @@ public class RSocketClientChannelTest {
                                                   .start()
                                                   .block();
 
-    Thread.sleep(100);
+    Thread.sleep(400);
 
-    final RSocketClientChannel clientChannel = new RSocketClientChannel(address, consumer, 1, 1024, LOGGER);
+    RSocketClientChannel clientChannel = null;
 
     try {
+      clientChannel = buildClientChannel(consumer, address);
+
       for (int i = 0; i < 100; i++) {
         request(clientChannel, UUID.randomUUID()
                                    .toString());
@@ -221,14 +222,12 @@ public class RSocketClientChannelTest {
 
       Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
       Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(4, TimeUnit.SECONDS));
-
     } finally {
       close(clientChannel, server);
     }
   }
 
   @Test
-  @Ignore
   public void testServerUnrecoverableError() throws InterruptedException {
     final int port = TEST_PORT.incrementAndGet();
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
@@ -242,17 +241,16 @@ public class RSocketClientChannelTest {
                                                   .start()
                                                   .block();
 
-    final RSocketClientChannel clientChannel = new RSocketClientChannel(address, consumer, 1, 1024, LOGGER);
-
     Thread.sleep(400);
 
+    RSocketClientChannel clientChannel = null;
     try {
+      clientChannel = buildClientChannel(consumer, address);
 
-      request(clientChannel, UUID.randomUUID()
-                                 .toString());
-      Assert.fail("Should have failed");
-    } catch (IllegalStateException expected) {
-      //expected
+      for (int i = 0; i < 10; i++) {
+        request(clientChannel, UUID.randomUUID().toString());
+      }
+      //all messages should be dropped
     } finally {
       close(clientChannel, server);
     }
@@ -272,12 +270,17 @@ public class RSocketClientChannelTest {
     Thread.sleep(100);
   }
 
+
   private void request(final RSocketClientChannel clientChannel, final String request) {
     clientChannel.requestWith(ByteBuffer.wrap(request.getBytes()));
   }
 
   private Address buildAddress(final int port) {
     return Address.from(Host.of("localhost"), port, AddressType.NONE);
+  }
+
+  private RSocketClientChannel buildClientChannel(final ResponseChannelConsumer consumer, final Address address) {
+    return new RSocketClientChannel(address, consumer, 100, 1024, LOGGER, Duration.ofMillis(100));
   }
 
   private final AtomicInteger count = new AtomicInteger(0);
