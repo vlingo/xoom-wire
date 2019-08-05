@@ -126,7 +126,7 @@ public class RSocketChannelInboundReaderTest {
   }
 
   private static void testInboundOutbound(final Address address, BiConsumer<ChannelReader, ManagedOutboundChannel> consumer){
-    final RSocketOutboundChannel outbound = new RSocketOutboundChannel(node, address, logger);
+    final RSocketOutboundChannel outbound = new RSocketOutboundChannel(address, logger);
     final RSocketChannelInboundReader inbound = new RSocketChannelInboundReader(address.port(), "test" + address.port(), 1024, logger);
     try {
       consumer.accept(inbound, outbound);

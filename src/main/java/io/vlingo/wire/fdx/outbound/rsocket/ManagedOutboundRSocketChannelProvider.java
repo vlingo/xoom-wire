@@ -23,6 +23,6 @@ public class ManagedOutboundRSocketChannelProvider extends AbstractManagedOutbou
   protected ManagedOutboundChannel unopenedChannelFor(final Node node, final Configuration configuration, final AddressType type) {
     final Address address = (type == AddressType.OP ? node.operationalAddress() : node.applicationAddress());
 
-    return new RSocketOutboundChannel(node, address, configuration.logger());
+    return new RSocketOutboundChannel(address, configuration.logger());
   }
 }
