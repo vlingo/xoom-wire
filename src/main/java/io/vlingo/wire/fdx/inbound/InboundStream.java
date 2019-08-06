@@ -12,31 +12,27 @@ import io.vlingo.actors.Stage;
 import io.vlingo.actors.Startable;
 import io.vlingo.actors.Stoppable;
 import io.vlingo.wire.channel.ChannelReader;
-import io.vlingo.wire.fdx.inbound.tcp.SocketChannelInboundReader;
 import io.vlingo.wire.node.AddressType;
 
 public interface InboundStream extends Startable, Stoppable {
   public static InboundStream instance(
           final Stage stage,
+          final InboundChannelReaderProvider channelReaderProvider,
           final InboundStreamInterest interest,
           final int port,
           final AddressType addressType,
           final String inboundName,
-          final int maxMessageSize,
           final long probeInterval)
   throws Exception {
-    
-    final ChannelReader reader =
-            new SocketChannelInboundReader(port, inboundName, maxMessageSize, stage.world().defaultLogger());
-    
+
+    final ChannelReader reader = channelReaderProvider.channelFor(port, inboundName);
+
     final Definition definition =
             Definition.has(
                     InboundStreamActor.class,
                     Definition.parameters(interest, addressType, reader, probeInterval),
                     inboundName + "-inbound");
-    
-    final InboundStream inboundStream = stage.actorFor(InboundStream.class, definition);
-    
-    return inboundStream;
+
+    return stage.actorFor(InboundStream.class, definition);
   }
 }

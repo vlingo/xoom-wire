@@ -6,72 +6,107 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.outbound.rsocket;
 
+import io.rsocket.Payload;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
+import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.netty.client.TcpClientTransport;
-import io.rsocket.util.ByteBufPayload;
+import io.rsocket.util.DefaultPayload;
 import io.vlingo.actors.Logger;
 import io.vlingo.wire.fdx.outbound.ManagedOutboundChannel;
 import io.vlingo.wire.node.Address;
-import io.vlingo.wire.node.Node;
+import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.time.Duration;
 import java.util.Optional;
 
 public class RSocketOutboundChannel implements ManagedOutboundChannel {
-  private final Node node;
+  private final Address address;
   private final Logger logger;
-  private final RSocketFactory.Start<RSocket> socketFactory;
-  private RSocket socket;
-  private final long connectionRetries;
-  private final Duration connectionRetryBackoff;
+  private RSocket clientSocket;
+  private final Duration connectionTimeout;
 
-  public RSocketOutboundChannel(final Node node, final Address address, final Logger logger) {
-     this(node, address, 10, Duration.ofSeconds(1), logger);
+  public RSocketOutboundChannel(final Address address, final Logger logger) {
+    this(address, Duration.ofMillis(100), logger);
   }
 
-  public RSocketOutboundChannel(final Node node, final Address address, long connectionRetries, Duration connectionRetryBackoff, final Logger logger) {
-    this.node = node;
+  public RSocketOutboundChannel(final Address address, Duration connectionTimeout, final Logger logger) {
+    this.address = address;
     this.logger = logger;
-    this.connectionRetries = connectionRetries;
-    this.connectionRetryBackoff = connectionRetryBackoff;
-
-    this.socketFactory = RSocketFactory
-            .connect()
-            .transport(TcpClientTransport.create(address.hostName(), address.port()));
+    this.connectionTimeout = connectionTimeout;
   }
 
   @Override
   public void close() {
-    if (this.socket != null && !this.socket.isDisposed()){
-      this.socket.dispose();
+    if (this.clientSocket != null && !this.clientSocket.isDisposed()) {
+      try {
+        this.clientSocket.dispose();
+      } catch (final Throwable t) {
+        logger.error("Unexpected error on closing outbound channel", t);
+      }
     }
+    this.clientSocket = null;
   }
 
   @Override
   public void write(final ByteBuffer buffer) {
-    prepareSocket().ifPresent(rSocket -> {
-      rSocket.fireAndForget(ByteBufPayload.create(buffer))
-             .doOnError(throwable -> {
-              logger.error("Failed write to node {}, because: {}", node, throwable.getMessage(), throwable);
-             })
-             .subscribe();
-    });
+    final Optional<RSocket> socket = prepareSocket();
+    if (socket.isPresent()) {
+      final RSocket rSocket = socket.get();
+      //check if channel still open
+      if (!rSocket.isDisposed()) {
+        //Copy original buffer data because payload might not be sent immediately.
+        ByteBuffer data = ByteBuffer.allocate(buffer.capacity());
+        data.put(buffer);
+        data.flip();
+
+        final Payload payload = DefaultPayload.create(data);
+        rSocket.fireAndForget(payload)
+               .onErrorResume(throwable -> {
+                 if (throwable instanceof ClosedChannelException) {
+                   //close outbound channel
+                   rSocket.dispose();
+                   logger.error("Connection with {} closed", address, throwable);
+                   return Mono.error(throwable);
+                 } else {
+                   logger.error("Failed write to {}, because: {}", address, throwable.getMessage(), throwable);
+                   return Mono.empty();
+                 }
+               })
+               .doFinally(signalType -> data.clear())
+               .subscribe();
+      } else {
+        logger.warn("RSocket outbound channel for {} is closed. Message dropped", this.address);
+      }
+    } else {
+      logger.debug("RSocket outbound channel for {} not ready. Message dropped", this.address);
+    }
   }
 
   private Optional<RSocket> prepareSocket() {
-    if (this.socket == null) {
+    if (this.clientSocket == null) {
       try {
-        this.socket = socketFactory.start()
-                                   .retryBackoff(connectionRetries, connectionRetryBackoff)
-                                   .block();
-      } catch (final Exception e){
-        logger.error("Failed to connect to {}", this.node);
+        this.clientSocket = RSocketFactory.connect()
+                                          .frameDecoder(PayloadDecoder.ZERO_COPY)
+                                          .transport(TcpClientTransport.create(address.hostName(), address.port()))
+                                          .start()
+                                          .timeout(connectionTimeout)
+                                          .block();
+        
+        logger.info("RSocket outbound channel opened for {}", this.address);
+
+        this.clientSocket.onClose()
+                         .doFinally(signalType -> logger.info("RSocket outbound channel for {} is closed", this.address))
+                         .subscribe(ignored -> {}, throwable -> logger.error("Unexpected error on closing outbound channel", throwable));
+      } catch (final Throwable t) {
+        logger.warn("Failed to create RSocket outbound channel for {}, because {}", this.address, t.getMessage());
+        close();
         return Optional.empty();
       }
     }
 
-    return Optional.ofNullable(this.socket);
+    return Optional.ofNullable(this.clientSocket);
   }
 }
