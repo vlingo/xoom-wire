@@ -10,19 +10,29 @@ package io.vlingo.wire.fdx.bidirectional;
 import java.util.ArrayList;
 import java.util.List;
 
-import io.vlingo.actors.testkit.TestUntil;
+import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.Converters;
 
 public class TestResponseChannelConsumer implements ResponseChannelConsumer {
-  public int currentExpectedResponseLength;
-  public int consumeCount;
-  public List<String> responses = new ArrayList<>();
-  public TestUntil untilConsume;
-  
+  private static final String ID_RESPONSES = "responses";
+
+  private final int happenings;
+  private final int currentExpectedResponseLength;
+  private final AccessSafely accessSafely;
+
   private final StringBuilder responseBuilder = new StringBuilder();
-  
+
+  public TestResponseChannelConsumer(int happenings, int currentExpectedResponseLength) {
+    this.happenings = happenings;
+    this.currentExpectedResponseLength = currentExpectedResponseLength;
+    List<String> responses = new ArrayList<>();
+    this.accessSafely = AccessSafely.afterCompleting(happenings)
+      .writingWith(ID_RESPONSES, msg -> responses.add((String) msg))
+      .readingWith(ID_RESPONSES, () -> new ArrayList<>(responses));
+  }
+
   @Override
   public void consume(final ConsumerByteBuffer buffer) {
     final String responsePart = Converters.bytesToText(buffer.array(), 0, buffer.limit());
@@ -40,14 +50,23 @@ public class TestResponseChannelConsumer implements ResponseChannelConsumer {
       while (!last) {
         final String request = combinedResponse.substring(currentIndex, currentIndex+currentExpectedResponseLength);
         currentIndex += currentExpectedResponseLength;
-        
-        responses.add(request);
-        ++consumeCount;
-        
+
+        accessSafely.writeUsing(ID_RESPONSES, request);
+
         last = currentIndex == combinedLength;
-        
-        untilConsume.happened();
       }
     }
+  }
+
+  public int remaining() {
+    return happenings - accessSafely.totalWrites();
+  }
+
+  public int consumeCount() {
+    return accessSafely.totalWrites();
+  }
+
+  public List<String> responses() {
+    return accessSafely.readFrom(ID_RESPONSES);
   }
 }
