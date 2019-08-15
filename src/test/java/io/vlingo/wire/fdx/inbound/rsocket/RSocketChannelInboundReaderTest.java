@@ -21,8 +21,8 @@ import io.vlingo.wire.node.Node;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
@@ -47,7 +47,7 @@ public class RSocketChannelInboundReaderTest {
 
       try {
         channelReader.openFor(consumer);
-      } catch (IOException e) {
+      } catch (Throwable e) {
         Assert.fail(e.getMessage());
       }
 
@@ -77,7 +77,7 @@ public class RSocketChannelInboundReaderTest {
 
       try {
         channelReader.openFor(consumer);
-      } catch (IOException e) {
+      } catch (Throwable e) {
         Assert.fail(e.getMessage());
       }
 
@@ -109,7 +109,7 @@ public class RSocketChannelInboundReaderTest {
 
       try {
         channelReader.openFor(consumer);
-      } catch (IOException e) {
+      } catch (Throwable e) {
         Assert.fail(e.getMessage());
       }
 
@@ -132,13 +132,13 @@ public class RSocketChannelInboundReaderTest {
   }
 
   private Node getNode() {
-    return Node.with(Id.of(2), Name.of("node2"), Host.of("localhost"), TEST_OP_PORT.incrementAndGet(), TEST_AP_PORT.incrementAndGet());
+    return Node.with(Id.of(2), Name.of("node2"), Host.of("127.0.0.1"), TEST_OP_PORT.incrementAndGet(), TEST_AP_PORT.incrementAndGet());
   }
 
   private static void testInboundOutbound(final Address address, BiConsumer<ChannelReader, ManagedOutboundChannel> consumer) throws InterruptedException {
     final RSocketChannelInboundReader inbound = new RSocketChannelInboundReader(address.port(), "test" + address.port(), 1024, logger);
     Thread.sleep(200); //give some time for the inbound to initialize
-    final RSocketOutboundChannel outbound = new RSocketOutboundChannel(address, logger);
+    final RSocketOutboundChannel outbound = new RSocketOutboundChannel(address, Duration.ofMillis(200), logger);
     try {
       consumer.accept(inbound, outbound);
     } finally {
