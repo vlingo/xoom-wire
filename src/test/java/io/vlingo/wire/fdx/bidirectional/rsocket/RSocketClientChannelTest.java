@@ -276,7 +276,7 @@ public class RSocketClientChannelTest {
   }
 
   private Address buildAddress(final int port) {
-    return Address.from(Host.of("localhost"), port, AddressType.NONE);
+    return Address.from(Host.of("127.0.0.1"), port, AddressType.NONE);
   }
 
   private RSocketClientChannel buildClientChannel(final ResponseChannelConsumer consumer, final Address address) {
