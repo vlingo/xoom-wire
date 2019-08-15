@@ -24,6 +24,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
 import static org.junit.Assert.assertEquals;
@@ -32,10 +33,13 @@ public class RSocketChannelInboundReaderTest {
   private static final String AppMessage = "APP TEST ";
   private static final String OpMessage = "OP TEST ";
   private static final Logger logger = Logger.basicLogger();
-  private static Node node = Node.with(Id.of(2), Name.of("node2"), Host.of("localhost"), 37477, 37478);
+  private static final AtomicInteger TEST_AP_PORT = new AtomicInteger(37470);
+  private static final AtomicInteger TEST_OP_PORT = new AtomicInteger(37480);
 
   @Test
-  public void testInvalidMessageContinueConsuming() throws IOException {
+  public void testInvalidMessageContinueConsuming() throws Exception {
+    final Node node = getNode();
+
     testInboundOutbound(node.operationalAddress(), (channelReader, outboundChannel) -> {
       final MockChannelReaderConsumer consumer = new MockChannelReaderConsumer();
       final int nrOfMessages = 10;
@@ -65,6 +69,7 @@ public class RSocketChannelInboundReaderTest {
 
   @Test
   public void testOpInboundChannel() throws Exception {
+    final Node node = getNode();
     testInboundOutbound(node.operationalAddress(), (channelReader, outboundChannel) -> {
       final MockChannelReaderConsumer consumer = new MockChannelReaderConsumer();
       final int nrOfMessages = 100;
@@ -96,6 +101,7 @@ public class RSocketChannelInboundReaderTest {
 
   @Test
   public void testAppInboundChannel() throws Exception {
+    final Node node = getNode();
     testInboundOutbound(node.applicationAddress(), (channelReader, outboundChannel) -> {
       final MockChannelReaderConsumer consumer = new MockChannelReaderConsumer();
       final int nrOfMessages = 100;
@@ -125,9 +131,14 @@ public class RSocketChannelInboundReaderTest {
     });
   }
 
-  private static void testInboundOutbound(final Address address, BiConsumer<ChannelReader, ManagedOutboundChannel> consumer){
-    final RSocketOutboundChannel outbound = new RSocketOutboundChannel(address, logger);
+  private Node getNode() {
+    return Node.with(Id.of(2), Name.of("node2"), Host.of("localhost"), TEST_OP_PORT.incrementAndGet(), TEST_AP_PORT.incrementAndGet());
+  }
+
+  private static void testInboundOutbound(final Address address, BiConsumer<ChannelReader, ManagedOutboundChannel> consumer) throws InterruptedException {
     final RSocketChannelInboundReader inbound = new RSocketChannelInboundReader(address.port(), "test" + address.port(), 1024, logger);
+    Thread.sleep(200); //give some time for the inbound to initialize
+    final RSocketOutboundChannel outbound = new RSocketOutboundChannel(address, logger);
     try {
       consumer.accept(inbound, outbound);
     } finally {
