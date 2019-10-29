@@ -126,7 +126,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
     try {
       selector.close();
     } catch (Exception e) {
-      logger().error("Failed to close selctor for " + name + " while stopping because: " + e.getMessage(), e);
+      logger().error("Failed to close selector for " + name + " while stopping because: " + e.getMessage(), e);
     }
   }
 
