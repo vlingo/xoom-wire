@@ -89,7 +89,7 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
     try {
       selector.close();
     } catch (Exception e) {
-      logger.error("Failed to close multicast publisher selctor for: '" + name + "'", e);
+      logger.error("Failed to close multicast publisher selector for: '" + name + "'", e);
     }
     
     try {
