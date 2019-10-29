@@ -59,7 +59,7 @@ public class SocketChannelInboundReader implements ChannelReader, ChannelMessage
     try {
       selector.close();
     } catch (Exception e) {
-      logger.error("Failed to close selctor for: '" + name + "'", e);
+      logger.error("Failed to close selector for: '" + name + "'", e);
     }
     
     try {

@@ -96,7 +96,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
     try {
       selector.close();
     } catch (Exception e) {
-      logger().error("Failed to close selctor for: '" + name + "'", e);
+      logger().error("Failed to close selector for: '" + name + "'", e);
     }
 
     try {
