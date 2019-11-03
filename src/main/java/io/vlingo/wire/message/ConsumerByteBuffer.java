@@ -20,7 +20,7 @@ public interface ConsumerByteBuffer {
   
   void release();
   String tag();
-  
+
   byte[] array();
   int arrayOffset();
   boolean hasArray();

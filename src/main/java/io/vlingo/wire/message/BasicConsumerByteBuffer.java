@@ -7,6 +7,7 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
+import java.util.Objects;
 
 public class BasicConsumerByteBuffer implements ConsumerByteBuffer {
   private final ByteBuffer buffer;
@@ -23,16 +24,21 @@ public class BasicConsumerByteBuffer implements ConsumerByteBuffer {
   }
 
   @Override
-  public boolean equals(final Object other) {
-    if (other == null || other.getClass() != BasicConsumerByteBuffer.class) {
-      return false;
-    }
-    return this.id == ((BasicConsumerByteBuffer) other).id;
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (!(o instanceof BasicConsumerByteBuffer)) return false;
+    BasicConsumerByteBuffer that = (BasicConsumerByteBuffer) o;
+    return id == that.id;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(id);
   }
 
   @Override
   public String toString() {
-    return "BasicConsumerByteBuffer[id=" + id + "]";
+    return String.format("BasicConsumerByteBuffer[id=%d]", id);
   }
 
   protected void tag(final String tag) {
