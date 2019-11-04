@@ -104,13 +104,13 @@
     <dependency>
       <groupId>io.rsocket</groupId>
       <artifactId>rsocket-core</artifactId>
-      <version>0.12.2-RC4</version>
+      <version>1.0.0-RC5</version>
       <scope/>
     </dependency>
     <dependency>
       <groupId>io.rsocket</groupId>
       <artifactId>rsocket-transport-netty</artifactId>
-      <version>0.12.2-RC4</version>
+      <version>1.0.0-RC5</version>
     </dependency>
   </dependencies>
   <distributionManagement>
