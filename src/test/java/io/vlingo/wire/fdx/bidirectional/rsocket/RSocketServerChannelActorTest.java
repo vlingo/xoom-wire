@@ -25,15 +25,14 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 
 public class RSocketServerChannelActorTest {
   private static final int POOL_SIZE = 100;
-  private static AtomicInteger TEST_PORT = new AtomicInteger(49560);
-
+  
   private ClientRequestResponseChannel client;
   private TestResponseChannelConsumer clientConsumer;
   private TestRequestChannelConsumerProvider provider;
@@ -190,19 +189,20 @@ public class RSocketServerChannelActorTest {
     final Logger logger = Logger.basicLogger();
     provider = new TestRequestChannelConsumerProvider();
     serverConsumer = (TestRequestChannelConsumer) provider.consumer;
-
-    final int testPort = TEST_PORT.incrementAndGet();
-
-    final List<Object> params = Definition.parameters(provider, testPort, "test-server",  POOL_SIZE, 10240);
+    
+    final List<Object> params = Definition.parameters(provider, 0, "test-server",  POOL_SIZE, 10240);
 
     server = world.actorFor(
                     ServerRequestResponseChannel.class,
                     Definition.has(RSocketServerChannelActor.class, params));
 
+    final Integer serverPort = server.port().<Integer>await();
 
+    assertNotNull("Server failed to start", serverPort);
+    
     clientConsumer = new TestResponseChannelConsumer();
 
-    client = new RSocketClientChannel(Address.from(Host.of("127.0.0.1"), testPort, AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger, Duration.ofSeconds(1));
+    client = new RSocketClientChannel(Address.from(Host.of("127.0.0.1"), serverPort, AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger, Duration.ofSeconds(1));
   }
 
   @After

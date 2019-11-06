@@ -75,6 +75,11 @@ public class SocketChannelInboundReader implements ChannelReader, ChannelMessage
   }
 
   @Override
+  public int port() {
+    return this.port;
+  }
+
+  @Override
   public void openFor(final ChannelReaderConsumer consumer) throws IOException {
     if (closed) return; // for some tests it's possible to receive close() before start()
     

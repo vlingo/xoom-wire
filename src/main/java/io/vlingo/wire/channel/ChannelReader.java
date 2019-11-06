@@ -12,6 +12,7 @@ import java.io.IOException;
 public interface ChannelReader {
   void close();
   String name();
+  int port();
   void openFor(final ChannelReaderConsumer consumer) throws IOException;
   void probeChannel();
 }

@@ -38,6 +38,7 @@ public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatc
   private final RawMessage message;
   private final String name;
   private final NetworkInterface networkInterface;
+  private final int port;
 
   public MulticastSubscriber(
           final String name,
@@ -63,7 +64,8 @@ public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatc
     
     this.channel = DatagramChannel.open(StandardProtocolFamily.INET);
     this.channel.setOption(StandardSocketOptions.SO_REUSEADDR, true);
-    this.channel.bind(new InetSocketAddress(group.port()));
+    this.port = group.port();
+    this.channel.bind(new InetSocketAddress(port));
     this.networkInterface = assignNetworkInterfaceTo(this.channel, networkInterfaceName);
     this.groupAddress = InetAddress.getByName(group.address());
     this.membershipKey = channel.join(groupAddress, networkInterface);
@@ -98,6 +100,11 @@ public class MulticastSubscriber implements ChannelReader, ChannelMessageDispatc
   @Override
   public String name() {
     return name;
+  }
+
+  @Override
+  public int port() {
+    return this.port;
   }
 
   @Override

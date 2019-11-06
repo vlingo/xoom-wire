@@ -7,11 +7,11 @@
 
 package io.vlingo.wire.channel;
 
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import io.vlingo.wire.message.AbstractMessageTool;
 import io.vlingo.wire.message.RawMessage;
+
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class MockChannelReader extends AbstractMessageTool implements ChannelReader {
   public static final String MessagePrefix = "Message-";
@@ -31,6 +31,11 @@ public class MockChannelReader extends AbstractMessageTool implements ChannelRea
   @Override
   public String name() {
     return "mock";
+  }
+
+  @Override
+  public int port() {
+    return 0;
   }
 
   @Override

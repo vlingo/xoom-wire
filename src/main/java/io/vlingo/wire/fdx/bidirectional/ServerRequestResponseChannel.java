@@ -7,13 +7,14 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
-import java.util.List;
-
 import io.vlingo.actors.Address;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Stage;
 import io.vlingo.actors.Stoppable;
+import io.vlingo.common.Completes;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
+
+import java.util.List;
 
 public interface ServerRequestResponseChannel extends Stoppable {
   static ServerRequestResponseChannel start(
@@ -61,4 +62,6 @@ public interface ServerRequestResponseChannel extends Stoppable {
   }
 
   void close();
+
+  Completes<Integer> port();
 }

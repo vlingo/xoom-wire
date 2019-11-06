@@ -19,6 +19,7 @@ import io.rsocket.transport.netty.server.TcpServerTransport;
 import io.vlingo.actors.Actor;
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.Stoppable;
+import io.vlingo.common.Completes;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.fdx.bidirectional.ServerRequestResponseChannel;
 import org.reactivestreams.Publisher;
@@ -39,9 +40,11 @@ public class RSocketServerChannelActor extends Actor implements ServerRequestRes
                                       .transport(TcpServerTransport.create(port))
                                       .start()
                                       .block();
-    logger().info("RSocket server channel opened at port {}", port);
+
 
     if (this.serverSocket != null) {
+      logger().info("RSocket server channel opened at port {}", serverSocket.address().getPort());
+
       this.serverSocket.onClose()
                        .doFinally(signalType -> logger().info("RSocket server channel closed"))
                        .subscribe();
@@ -65,8 +68,12 @@ public class RSocketServerChannelActor extends Actor implements ServerRequestRes
   }
 
   @Override
-  public void stop() {
+  public Completes<Integer> port() {
+    return completes().with(this.serverSocket.address().getPort());
+  }
 
+  @Override
+  public void stop() {
     super.stop();
   }
 

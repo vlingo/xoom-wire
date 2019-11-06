@@ -72,6 +72,16 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
   }
 
   @Override
+  public int port() {
+    if (this.serverSocket != null) {
+      //if initialized, return the assigned port
+      return this.serverSocket.address().getPort();
+    } else {
+      return this.port;
+    }
+  }
+
+  @Override
   public void openFor(final ChannelReaderConsumer consumer) {
     if (closed)
       return; // for some tests it's possible to receive close() before start()
@@ -114,14 +124,16 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
         public Mono<Void> fireAndForget(Payload payload) {
           try {
             final ByteBuffer payloadData = payload.getData();
-            rawMessageBuilder.workBuffer().put(payloadData);
-            
+            rawMessageBuilder.workBuffer()
+                             .put(payloadData);
+
             dispatcher.dispatchMessagesFor(rawMessageBuilder);
           } catch (final Throwable t) {
             logger.error("Unexpected error in inbound channel {}. Message ignored.", name, t);
             //Clear builder resources in case of error. Otherwise we will get a BufferOverflow.
             rawMessageBuilder.prepareForNextMessage();
-            rawMessageBuilder.workBuffer().clear();
+            rawMessageBuilder.workBuffer()
+                             .clear();
           } finally {
             //Important! Because using PayloadDecoder.ZERO_COPY frame decoder
             payload.release();

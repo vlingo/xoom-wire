@@ -6,21 +6,6 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
-import java.nio.ByteBuffer;
-import java.time.Duration;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.junit.Assert;
-import org.junit.Test;
-import org.reactivestreams.Publisher;
-
 import io.rsocket.AbstractRSocket;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
@@ -35,20 +20,31 @@ import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
+import org.junit.Assert;
+import org.junit.Test;
+import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class RSocketClientChannelTest {
-  private static final AtomicInteger TEST_PORT = new AtomicInteger(49240);
   private static final Logger LOGGER = Logger.basicLogger();
 
   @Test
   public void testServerNotAvailable() {
-    final int port = TEST_PORT.incrementAndGet();
-
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
 
-    final Address address = buildAddress(port);
+    final Address address = buildAddress(49240);
 
     RSocketClientChannel clientChannel = null;
     try {
@@ -67,10 +63,8 @@ public class RSocketClientChannelTest {
 
   @Test
   public void testServerDoesNotReply() throws InterruptedException {
-    final int port = TEST_PORT.incrementAndGet();
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
 
-    final Address address = buildAddress(port);
     final AccessSafely access = expected(101);
 
     final CloseableChannel server = RSocketFactory.receive()
@@ -84,13 +78,16 @@ public class RSocketClientChannelTest {
                                                       return Flux.empty();
                                                     }
                                                   }))
-                                                  .transport(TcpServerTransport.create(address.port()))
+                                                  .transport(TcpServerTransport.create(0))
                                                   .start()
                                                   .block();
 
+    Assert.assertNotNull("Server failed to start", server);
     Thread.sleep(400);
 
     RSocketClientChannel clientChannel = null;
+
+    final Address address = buildAddress(server.address().getPort());
 
     try {
       clientChannel = buildClientChannel(consumer, address);
@@ -109,8 +106,6 @@ public class RSocketClientChannelTest {
 
   @Test
   public void testServerRequestReply() throws InterruptedException {
-    final int port = TEST_PORT.incrementAndGet();
-
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final CountDownLatch serverReceivedMessages = new CountDownLatch(100);
 
@@ -130,16 +125,17 @@ public class RSocketClientChannelTest {
       }
     };
 
-    final Address address = buildAddress(port);
-
     final CloseableChannel server = RSocketFactory.receive()
                                                   .frameDecoder(PayloadDecoder.ZERO_COPY)
                                                   .acceptor((connectionSetupPayload, rSocket) -> Mono.just(responseHandler))
-                                                  .transport(TcpServerTransport.create(address.port()))
+                                                  .transport(TcpServerTransport.create(0))
                                                   .start()
                                                   .block();
 
     Thread.sleep(100);
+
+    Assert.assertNotNull("Server failed to start", server);
+    final Address address = buildAddress(server.address().getPort());
 
     final CountDownLatch clientReceivedMessages = new CountDownLatch(100);
 
@@ -186,7 +182,6 @@ public class RSocketClientChannelTest {
 
   @Test
   public void testServerApplicationErrorsProcess() throws InterruptedException {
-    final int port = TEST_PORT.incrementAndGet();
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
 
     final CountDownLatch countDownLatch = new CountDownLatch(1);
@@ -205,16 +200,18 @@ public class RSocketClientChannelTest {
                    });
       }
     };
-    final Address address = buildAddress(port);
 
     final CloseableChannel server = RSocketFactory.receive()
                                                   .frameDecoder(PayloadDecoder.ZERO_COPY)
                                                   .acceptor((connectionSetupPayload, rSocket) -> Mono.just(responseHandler))
-                                                  .transport(TcpServerTransport.create(address.port()))
+                                                  .transport(TcpServerTransport.create(0))
                                                   .start()
                                                   .block();
 
     Thread.sleep(400);
+
+    Assert.assertNotNull("Server failed to start", server);
+    final Address address = buildAddress(server.address().getPort());
 
     RSocketClientChannel clientChannel = null;
 
@@ -235,19 +232,20 @@ public class RSocketClientChannelTest {
 
   @Test
   public void testServerUnrecoverableError() throws InterruptedException {
-    final int port = TEST_PORT.incrementAndGet();
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
-    final Address address = buildAddress(port);
 
     final CloseableChannel server = RSocketFactory.receive()
                                                   .frameDecoder(PayloadDecoder.ZERO_COPY)
                                                   .acceptor(
                                                           (connectionSetupPayload, rSocket) -> Mono.error(new RuntimeException("Channel could not be created")))
-                                                  .transport(TcpServerTransport.create(address.port()))
+                                                  .transport(TcpServerTransport.create(0))
                                                   .start()
                                                   .block();
 
     Thread.sleep(400);
+
+    Assert.assertNotNull("Server failed to start", server);
+    final Address address = buildAddress(server.address().getPort());
 
     RSocketClientChannel clientChannel = null;
     try {

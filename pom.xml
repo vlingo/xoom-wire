@@ -133,9 +133,6 @@
             <configuration>
               <excludes>
                 <exclude>**/SecureClientRequestResponseChannelTest.java</exclude>
-                <exclude>**/RSocketChannelInboundReaderTest.java</exclude>
-                <exclude>**/RSocketClientChannelTest.java</exclude>
-                <exclude>**/RSocketServerChannelActorTest.java</exclude>
               </excludes>
             </configuration>
           </plugin>
