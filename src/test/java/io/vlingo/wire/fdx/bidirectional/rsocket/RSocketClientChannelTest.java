@@ -153,27 +153,32 @@ public class RSocketClientChannelTest {
     RSocketClientChannel clientChannel = null;
 
     try {
-      clientChannel = buildClientChannel(consumer, address);
-
       Set<String> clientRequests = new LinkedHashSet<>();
-      for (int i = 0; i < 100; i++) {
-        final String request = "Request_" + i + "_" + UUID.randomUUID()
-                                                          .toString();
-        request(clientChannel, request);
-        clientRequests.add(request);
+
+      synchronized (clientReceivedMessages) {
+        clientChannel = buildClientChannel(consumer, address);
+
+        for (int i = 0; i < 100; i++) {
+          final String request = "Request_" + i + "_" + UUID.randomUUID()
+                                                            .toString();
+          request(clientChannel, request);
+          clientRequests.add(request);
+        }
       }
 
-      Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
-      Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(4, TimeUnit.SECONDS));
-      Assert.assertTrue("Client should have received all server replies", clientReceivedMessages.await(4, TimeUnit.SECONDS));
+      synchronized (clientReceivedMessages) {
+        Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(2, TimeUnit.SECONDS));
+        Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(4, TimeUnit.SECONDS));
+        Assert.assertTrue("Client should have received all server replies", clientReceivedMessages.await(4, TimeUnit.SECONDS));
 
-      for (int i = 1; i <= 100; i++) {
-        Assert.assertTrue(serverReplies.contains("Reply " + i));
+        for (int i = 1; i <= 100; i++) {
+          Assert.assertTrue(serverReplies.contains("Reply " + i));
+        }
+
+        clientRequests.forEach(clientRequest -> {
+          Assert.assertTrue("Server should have received request: " + clientRequest, serverReceivedMessage.contains(clientRequest));
+        });
       }
-
-      clientRequests.forEach(clientRequest -> {
-        Assert.assertTrue("Server should have received request: " + clientRequest, serverReceivedMessage.contains(clientRequest));
-      });
     } finally {
       close(clientChannel, server);
     }
