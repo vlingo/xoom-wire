@@ -12,8 +12,11 @@ import io.vlingo.actors.Actor;
 import io.vlingo.actors.Stoppable;
 import io.vlingo.common.Cancellable;
 import io.vlingo.common.Scheduled;
+import io.vlingo.common.pool.ElasticResourcePool;
+import io.vlingo.common.pool.ResourcePool;
 import io.vlingo.wire.message.BasicConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
+import io.vlingo.wire.message.ConsumerByteBufferPool;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -28,15 +31,14 @@ import java.util.Queue;
 public class SocketChannelSelectionProcessorActor extends Actor
     implements SocketChannelSelectionProcessor, ResponseSenderChannel, Scheduled<Object>, Stoppable {
 
-  private int bufferId;
   private final Cancellable cancellable;
   private int contextId;
-  private final int messageBufferSize;
-  //private final int maxBufferPoolSize;
   private final String name;
   private final RequestChannelConsumerProvider provider;
   private final ResponseSenderChannel responder;
   private final Selector selector;
+
+  private final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool;
 
   @SuppressWarnings("unchecked")
   public SocketChannelSelectionProcessorActor(
@@ -48,9 +50,9 @@ public class SocketChannelSelectionProcessorActor extends Actor
 
     this.provider = provider;
     this.name = name;
-    this.messageBufferSize = messageBufferSize;
     this.selector = open();
-    //this.maxBufferPoolSize = maxBufferPoolSize;
+    this.requestBufferPool = new ConsumerByteBufferPool(
+        ElasticResourcePool.Config.of(maxBufferPoolSize), messageBufferSize);
     this.responder = selfAs(ResponseSenderChannel.class);
 
     this.cancellable = stage().scheduler().schedule(selfAs(Scheduled.class), null, 100, probeInterval);
@@ -303,7 +305,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
     Context(final SocketChannel clientChannel) {
       this.clientChannel = clientChannel;
       this.consumer = provider.requestChannelConsumer();
-      this.buffer = BasicConsumerByteBuffer.allocate(++bufferId, messageBufferSize);
+      this.buffer = requestBufferPool.acquire();
       this.id = "" + (++contextId);
       this.writables = new LinkedList<>();
     }

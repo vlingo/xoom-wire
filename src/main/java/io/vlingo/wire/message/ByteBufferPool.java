@@ -9,6 +9,10 @@ package io.vlingo.wire.message;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/**
+ * use {@link ConsumerByteBufferPool} instead
+ */
+@Deprecated
 public class ByteBufferPool {
   public final int maxBufferSize;
 
