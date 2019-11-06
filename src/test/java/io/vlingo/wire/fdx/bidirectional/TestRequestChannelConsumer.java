@@ -9,8 +9,9 @@ package io.vlingo.wire.fdx.bidirectional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import io.vlingo.actors.testkit.TestUntil;
+import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.channel.RequestChannelConsumer;
 import io.vlingo.wire.channel.RequestResponseContext;
 import io.vlingo.wire.message.BasicConsumerByteBuffer;
@@ -18,18 +19,30 @@ import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.Converters;
 
 public class TestRequestChannelConsumer implements RequestChannelConsumer {
-  public int currentExpectedRequestLength;
-  public int consumeCount;
-  public List<String> requests = new ArrayList<>();
-  public TestUntil untilClosed;
-  public TestUntil untilConsume;
-  
+  private static final String ID_REQUESTS = "requests";
+
+
+  private final AtomicBoolean untilClosed;
+  private final AccessSafely accessSafely;
+  private final int happenings;
+  private final int currentExpectedRequestLength;
+
   private StringBuilder requestBuilder = new StringBuilder();
   private String remaining = "";
 
+  public TestRequestChannelConsumer(int happenings, int currentExpectedRequestLength) {
+    this.happenings = happenings;
+    this.currentExpectedRequestLength = currentExpectedRequestLength;
+    List<String> requests = new ArrayList<>();
+    this.untilClosed = new AtomicBoolean(false);
+    this.accessSafely = AccessSafely.afterCompleting(happenings)
+      .writingWith(ID_REQUESTS, msg -> requests.add((String) msg))
+      .readingWith(ID_REQUESTS, () -> new ArrayList<>(requests));
+  }
+
   @Override
   public void closeWith(final RequestResponseContext<?> requestResponseContext, final Object data) {
-    if (untilClosed != null) untilClosed.happened();
+    untilClosed.set(true);
   }
 
   @Override
@@ -44,27 +57,36 @@ public class TestRequestChannelConsumer implements RequestChannelConsumer {
       final String combinedRequests = requestBuilder.toString();
       final int combinedLength = combinedRequests.length();
       requestBuilder.setLength(0); // reuse
-      
+
       int currentIndex = 0;
       boolean last = false;
       while (!last) {
-        final int endIndex = currentIndex+currentExpectedRequestLength;
+        final int endIndex = currentIndex + currentExpectedRequestLength;
         if (endIndex > combinedRequests.length()) {
           remaining = combinedRequests.substring(currentIndex);
           return;
         }
         final String request = combinedRequests.substring(currentIndex, endIndex);
         currentIndex += currentExpectedRequestLength;
-        requests.add(request);
-        ++consumeCount;
-        
+        accessSafely.writeUsing(ID_REQUESTS, request);
+
         final ConsumerByteBuffer responseBuffer = new BasicConsumerByteBuffer(1, currentExpectedRequestLength);
         context.respondWith(responseBuffer.clear().put(request.getBytes()).flip()); // echo back
-        
+
         last = currentIndex == combinedLength;
-        
-        if (untilConsume != null) untilConsume.happened();
       }
     }
+  }
+
+  public int remaining() {
+    return happenings - accessSafely.totalWrites();
+  }
+
+  public int consumeCount() {
+    return accessSafely.totalWrites();
+  }
+
+  public List<String> requests() {
+    return accessSafely.readFrom(ID_REQUESTS);
   }
 }

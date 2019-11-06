@@ -7,6 +7,7 @@
 
 package io.vlingo.wire.channel;
 
+@FunctionalInterface
 public interface RequestChannelConsumerProvider {
   RequestChannelConsumer requestChannelConsumer();
 }

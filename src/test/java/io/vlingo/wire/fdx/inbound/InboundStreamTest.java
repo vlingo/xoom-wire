@@ -16,7 +16,6 @@ import org.junit.Test;
 
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.testkit.TestActor;
-import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.actors.testkit.TestWorld;
 import io.vlingo.wire.channel.MockChannelReader;
 import io.vlingo.wire.message.AbstractMessageTool;
@@ -30,18 +29,16 @@ public class InboundStreamTest extends AbstractMessageTool {
   
   @Test
   public void testInbound() throws Exception {
-    interest.testResults.untilStops = TestUntil.happenings(1);
     while (reader.probeChannelCount.get() == 0)
       ;
     inboundStream.actor().stop();
     int count = 0;
-    for (final String message : interest.testResults.messages) {
+    for (final String message : interest.testResults.getMessages()) {
       ++count;
       assertEquals(MockChannelReader.MessagePrefix + count, message);
     }
-    interest.testResults.untilStops.completes();
-    
-    assertTrue(interest.testResults.messageCount.get() > 0);
+
+    assertTrue(interest.testResults.messageCount() > 0);
     assertEquals(count, reader.probeChannelCount.get());
   }
 
@@ -49,7 +46,7 @@ public class InboundStreamTest extends AbstractMessageTool {
   public void setUp() throws Exception {
     world = TestWorld.start("test-inbound-stream");
     
-    interest = new MockInboundStreamInterest();
+    interest = new MockInboundStreamInterest(1);
     
     reader = new MockChannelReader();
     
