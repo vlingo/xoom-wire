@@ -7,20 +7,24 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
-import io.vlingo.actors.Actor;
-import io.vlingo.actors.Definition;
-import io.vlingo.actors.Stoppable;
-import io.vlingo.common.Cancellable;
-import io.vlingo.common.Scheduled;
-import io.vlingo.wire.channel.RequestChannelConsumerProvider;
-import io.vlingo.wire.channel.SocketChannelSelectionProcessor;
-import io.vlingo.wire.channel.SocketChannelSelectionProcessorActor;
-
 import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.util.Iterator;
+
+import io.vlingo.actors.Actor;
+import io.vlingo.actors.Definition;
+import io.vlingo.actors.Stoppable;
+import io.vlingo.common.Cancellable;
+import io.vlingo.common.Scheduled;
+import io.vlingo.common.pool.ElasticResourcePool;
+import io.vlingo.common.pool.ResourcePool;
+import io.vlingo.wire.channel.RequestChannelConsumerProvider;
+import io.vlingo.wire.channel.SocketChannelSelectionProcessor;
+import io.vlingo.wire.channel.SocketChannelSelectionProcessorActor;
+import io.vlingo.wire.message.ConsumerByteBuffer;
+import io.vlingo.wire.message.ConsumerByteBufferPool;
 
 public class ServerRequestResponseChannelActor extends Actor implements ServerRequestResponseChannel, Scheduled<Object> {
   private final Cancellable cancellable;
@@ -28,6 +32,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
   private final String name;
   private final SocketChannelSelectionProcessor[] processors;
   private int processorPoolIndex;
+  private final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool;
   private final Selector selector;
 
   @SuppressWarnings("unchecked")
@@ -41,9 +46,12 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
           final long probeInterval) {
 
     this.name = name;
-    this.processors = startProcessors(provider, name, processorPoolSize, maxBufferPoolSize, maxMessageSize, probeInterval);
 
     try {
+      this.requestBufferPool = new ConsumerByteBufferPool(ElasticResourcePool.Config.of(maxBufferPoolSize), maxMessageSize);
+
+      this.processors = startProcessors(provider, name, processorPoolSize, this.requestBufferPool, probeInterval);
+
       logger().info(getClass().getSimpleName() + ": OPENING PORT: " + port);
       this.channel = ServerSocketChannel.open();
       this.selector = Selector.open();
@@ -151,17 +159,22 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
           final RequestChannelConsumerProvider provider,
           final String name,
           final int processorPoolSize,
-          final int maxBufferPoolSize,
-          final int maxMessageSize,
-          final long probeInterval) {
+          final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool,
+          final long probeInterval)
+  throws Exception {
 
     final SocketChannelSelectionProcessor[] processors = new SocketChannelSelectionProcessor[processorPoolSize];
 
-    for (int idx = 0; idx < processors.length; ++idx) {
-      processors[idx] = childActorFor(
-              SocketChannelSelectionProcessor.class,
-              Definition.has(SocketChannelSelectionProcessorActor.class,
-                      Definition.parameters(provider, name + "-processor-" + idx, maxBufferPoolSize, maxMessageSize, probeInterval)));
+    try {
+      for (int idx = 0; idx < processors.length; ++idx) {
+        processors[idx] = childActorFor(
+                SocketChannelSelectionProcessor.class,
+                Definition.has(SocketChannelSelectionProcessorActor.class,
+                        Definition.parameters(provider, name + "-processor-" + idx, requestBufferPool, probeInterval)));
+      }
+    } catch (Exception e) {
+      logger().error("FATAL: Socket channel processors cannot be started because: " + e.getMessage(), e);
+      throw e;
     }
 
     return processors;
