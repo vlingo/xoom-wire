@@ -235,6 +235,10 @@ public class SocketChannelSelectionProcessorActor extends Actor
   }
 
   private void write(final Context context) throws Exception {
+    if (context.isChannelClosed()) {
+      context.close();
+      return;
+    }
     if (!context.writeMode) {
       if (context.hasNextWritable()) {
         writeWithCachedData(context, context.clientChannel);
@@ -318,6 +322,10 @@ public class SocketChannelSelectionProcessorActor extends Actor
       this.id = "" + (++contextId);
       this.writables = new LinkedList<>();
       this.writeMode = false;
+    }
+
+    boolean isChannelClosed() {
+      return !clientChannel.isOpen();
     }
 
     void close() {
