@@ -359,7 +359,10 @@ public class SocketChannelSelectionProcessorActor extends Actor
 
     void queueWritable(final ConsumerByteBuffer buffer) {
       writables.add(buffer);
-      writableContexts.add(this);
+
+      if (!writeMode) {
+        writableContexts.add(this);
+      }
     }
 
     ConsumerByteBuffer requestBuffer() {
