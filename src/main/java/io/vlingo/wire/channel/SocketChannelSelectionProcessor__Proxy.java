@@ -20,6 +20,7 @@ public class SocketChannelSelectionProcessor__Proxy implements SocketChannelSele
     this.mailbox = mailbox;
   }
 
+  @Override
   public void close() {
     if (!actor.isStopped()) {
       final Consumer<SocketChannelSelectionProcessor> consumer = (actor) -> actor.close();
@@ -28,7 +29,8 @@ public class SocketChannelSelectionProcessor__Proxy implements SocketChannelSele
       actor.deadLetters().failedDelivery(new DeadLetter(actor, closeRepresentation1));
     }
   }
-  public void process(java.nio.channels.SelectionKey arg0) {
+  @Override
+  public void process(java.nio.channels.SocketChannel arg0) {
     if (!actor.isStopped()) {
       final Consumer<SocketChannelSelectionProcessor> consumer = (actor) -> actor.process(arg0);
       mailbox.send(new LocalMessage<SocketChannelSelectionProcessor>(actor, SocketChannelSelectionProcessor.class, consumer, processRepresentation2));
