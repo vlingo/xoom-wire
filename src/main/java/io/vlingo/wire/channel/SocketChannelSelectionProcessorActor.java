@@ -13,7 +13,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -32,6 +31,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
   private final Cancellable cancellable;
   private int contextId;
   private final String name;
+  private final long probeTimeout;
   private final RequestChannelConsumerProvider provider;
   private final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool;
   private final ResponseSenderChannel responder;
@@ -43,11 +43,13 @@ public class SocketChannelSelectionProcessorActor extends Actor
           final RequestChannelConsumerProvider provider,
           final String name,
           final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool,
-          final long probeInterval) {
-
+          final long probeInterval,
+          final long probeTimeout) {
+System.out.println("I: " + probeInterval + " T: " + probeTimeout);
     this.provider = provider;
     this.name = name;
     this.requestBufferPool = requestBufferPool;
+    this.probeTimeout = probeTimeout;
     this.selector = open();
     this.responder = selfAs(ResponseSenderChannel.class);
     this.writableContexts = new LinkedList<>();
@@ -83,19 +85,9 @@ public class SocketChannelSelectionProcessorActor extends Actor
   //=========================================
 
   @Override
-  public void process(final SelectionKey key) {
+  public void process(final SocketChannel clientChannel) {
     try {
-      final ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
-
-      if (serverChannel.isOpen()) {
-        final SocketChannel clientChannel = serverChannel.accept();
-
-        if (clientChannel != null) {
-          clientChannel.configureBlocking(false);
-
-          clientChannel.register(selector, SelectionKey.OP_READ, new Context(clientChannel));
-        }
-      }
+      clientChannel.register(selector, SelectionKey.OP_READ, new Context(clientChannel));
     } catch (Exception e) {
       final String message = "Failed to accept client socket for " + name + " because: " + e.getMessage();
       logger().error(message, e);
@@ -161,7 +153,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
     if (isStopped()) return;
 
     try {
-      if (selector.selectNow() > 0) {
+      if (selector.select(probeTimeout) > 0) {
         final Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
 
         while (iterator.hasNext()) {
