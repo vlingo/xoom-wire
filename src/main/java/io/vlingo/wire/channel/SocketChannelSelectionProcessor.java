@@ -7,9 +7,9 @@
 
 package io.vlingo.wire.channel;
 
-import java.nio.channels.SelectionKey;
+import java.nio.channels.SocketChannel;
 
 public interface SocketChannelSelectionProcessor {
   void close();
-  void process(final SelectionKey key);
+  void process(final SocketChannel clientChannel);
 }
