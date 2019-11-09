@@ -11,6 +11,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 
 import io.vlingo.actors.Actor;
@@ -43,14 +44,15 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
           final int processorPoolSize,
           final int maxBufferPoolSize,
           final int maxMessageSize,
-          final long probeInterval) {
+          final long probeInterval,
+          final long probeTimeout) {
 
     this.name = name;
 
     try {
       this.requestBufferPool = new ConsumerByteBufferPool(ElasticResourcePool.Config.of(maxBufferPoolSize), maxMessageSize);
 
-      this.processors = startProcessors(provider, name, processorPoolSize, this.requestBufferPool, probeInterval);
+      this.processors = startProcessors(provider, name, processorPoolSize, this.requestBufferPool, probeInterval, probeTimeout);
 
       logger().info(getClass().getSimpleName() + ": OPENING PORT: " + port);
       this.channel = ServerSocketChannel.open();
@@ -140,12 +142,27 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
         }
       }
     } catch (Exception e) {
-      logger().error("Failed to accept client channel for '" + name + "' because: " + e.getMessage(), e);
+      logger().error(getClass().getSimpleName() + ": Failed to accept client channel for '" + name + "' because: " + e.getMessage(), e);
     }
   }
 
   private void accept(final SelectionKey key) {
-    pooledProcessor().process(key);
+    final ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
+
+    try {
+      if (serverChannel.isOpen()) {
+        final SocketChannel clientChannel = serverChannel.accept();
+
+        if (clientChannel != null) {
+          clientChannel.configureBlocking(false);
+          pooledProcessor().process(clientChannel);
+        }
+      }
+    } catch (Exception e) {
+      final String message = getClass().getSimpleName() + ": Failed to accept client socket for " + name + " because: " + e.getMessage();
+      logger().error(message, e);
+      throw new IllegalArgumentException(message);
+    }
   }
 
   private SocketChannelSelectionProcessor pooledProcessor() {
@@ -160,7 +177,8 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
           final String name,
           final int processorPoolSize,
           final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool,
-          final long probeInterval)
+          final long probeInterval,
+          final long probeTimeout)
   throws Exception {
 
     final SocketChannelSelectionProcessor[] processors = new SocketChannelSelectionProcessor[processorPoolSize];
@@ -170,10 +188,10 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
         processors[idx] = childActorFor(
                 SocketChannelSelectionProcessor.class,
                 Definition.has(SocketChannelSelectionProcessorActor.class,
-                        Definition.parameters(provider, name + "-processor-" + idx, requestBufferPool, probeInterval)));
+                        Definition.parameters(provider, name + "-processor-" + idx, requestBufferPool, probeInterval, probeTimeout)));
       }
     } catch (Exception e) {
-      logger().error("FATAL: Socket channel processors cannot be started because: " + e.getMessage(), e);
+      logger().error(getClass().getSimpleName() + "FATAL: Socket channel processors cannot be started because: " + e.getMessage(), e);
       throw e;
     }
 
