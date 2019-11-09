@@ -197,7 +197,8 @@ public class SocketRequestResponseChannelTest {
                     1,
                     POOL_SIZE,
                     10240,
-                    10L);
+                    10L,
+                    2L);
 
     clientConsumer = new TestResponseChannelConsumer();
 
