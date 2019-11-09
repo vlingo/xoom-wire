@@ -24,9 +24,10 @@ public interface ServerRequestResponseChannel extends Stoppable {
           final int processorPoolSize,
           final int maxBufferPoolSize,
           final int maxMessageSize,
-          final long probeInterval) {
+          final long probeInterval,
+          final long probeTimeout) {
 
-    final List<Object> params = Definition.parameters(provider, port, name, processorPoolSize, maxBufferPoolSize, maxMessageSize, probeInterval);
+    final List<Object> params = Definition.parameters(provider, port, name, processorPoolSize, maxBufferPoolSize, maxMessageSize, probeInterval, probeTimeout);
 
     final ServerRequestResponseChannel channel =
             stage.actorFor(
@@ -46,9 +47,10 @@ public interface ServerRequestResponseChannel extends Stoppable {
           final int processorPoolSize,
           final int maxBufferPoolSize,
           final int maxMessageSize,
-          final long probeInterval) {
+          final long probeInterval,
+          final long probeTimeout) {
 
-    final List<Object> params = Definition.parameters(provider, port, name, processorPoolSize, maxBufferPoolSize, maxMessageSize, probeInterval);
+    final List<Object> params = Definition.parameters(provider, port, name, processorPoolSize, maxBufferPoolSize, maxMessageSize, probeInterval, probeTimeout);
 
     final ServerRequestResponseChannel channel =
             stage.actorFor(
