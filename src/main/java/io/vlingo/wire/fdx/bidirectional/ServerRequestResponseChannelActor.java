@@ -33,6 +33,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
   private final String name;
   private final SocketChannelSelectionProcessor[] processors;
   private int processorPoolIndex;
+  private final long probeTimeout;
   private final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool;
   private final Selector selector;
 
@@ -48,6 +49,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
           final long probeTimeout) {
 
     this.name = name;
+    this.probeTimeout = probeTimeout;
 
     try {
       this.requestBufferPool = new ConsumerByteBufferPool(ElasticResourcePool.Config.of(maxBufferPoolSize), maxMessageSize);
@@ -127,7 +129,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
     if (isStopped()) return;
 
     try {
-      if (selector.selectNow() > 0) {
+      if (selector.select(probeTimeout) > 0) {
         final Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
 
         while (iterator.hasNext()) {
