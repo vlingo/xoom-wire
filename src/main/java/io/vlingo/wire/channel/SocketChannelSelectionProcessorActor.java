@@ -45,7 +45,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
           final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool,
           final long probeInterval,
           final long probeTimeout) {
-System.out.println("I: " + probeInterval + " T: " + probeTimeout);
+    this.logger().debug("Probe interval: " + probeInterval + " Probe timeout: " + probeTimeout);
     this.provider = provider;
     this.name = name;
     this.requestBufferPool = requestBufferPool;
