@@ -120,7 +120,6 @@
       <url>https://api.bintray.com/maven/vlingo/vlingo-platform-java/vlingo-wire/;publish=1</url>
     </repository>
   </distributionManagement>
-
   <profiles>
     <profile>
       <id>TravisCI</id>
