@@ -6,29 +6,30 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
+import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.World;
 import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.fdx.bidirectional.ClientRequestResponseChannel;
 import io.vlingo.wire.fdx.bidirectional.ServerRequestResponseChannel;
+import io.vlingo.wire.fdx.bidirectional.ServerRequestResponseChannel.RSocketServerRequestResponseChannelInstantiator;
 import io.vlingo.wire.fdx.bidirectional.TestRequestChannelConsumer;
 import io.vlingo.wire.fdx.bidirectional.TestRequestChannelConsumerProvider;
 import io.vlingo.wire.fdx.bidirectional.TestResponseChannelConsumer;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.nio.ByteBuffer;
-import java.time.Duration;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 
 public class RSocketServerChannelActorTest {
   private static final int POOL_SIZE = 100;
@@ -193,11 +194,12 @@ public class RSocketServerChannelActorTest {
 
     final int testPort = TEST_PORT.incrementAndGet();
 
-    final List<Object> params = Definition.parameters(provider, testPort, "test-server",  POOL_SIZE, 10240);
+    final RSocketServerRequestResponseChannelInstantiator instantiator =
+            new RSocketServerRequestResponseChannelInstantiator(provider, testPort, "test-server",  POOL_SIZE, 10240);
 
     server = world.actorFor(
                     ServerRequestResponseChannel.class,
-                    Definition.has(RSocketServerChannelActor.class, params));
+                    Definition.has(RSocketServerChannelActor.class, instantiator));
 
 
     clientConsumer = new TestResponseChannelConsumer();

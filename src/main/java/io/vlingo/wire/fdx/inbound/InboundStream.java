@@ -7,6 +7,7 @@
 
 package io.vlingo.wire.fdx.inbound;
 
+import io.vlingo.actors.ActorInstantiator;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Stage;
 import io.vlingo.actors.Startable;
@@ -25,14 +26,42 @@ public interface InboundStream extends Startable, Stoppable {
           final long probeInterval)
   throws Exception {
 
-    final ChannelReader reader = channelReaderProvider.channelFor(port, inboundName);
+    final ChannelReader channelReader = channelReaderProvider.channelFor(port, inboundName);
 
     final Definition definition =
             Definition.has(
                     InboundStreamActor.class,
-                    Definition.parameters(interest, addressType, reader, probeInterval),
+                    new InboundStreamInstantiator(interest, addressType, channelReader, probeInterval),
                     inboundName + "-inbound");
 
     return stage.actorFor(InboundStream.class, definition);
+  }
+
+  static class InboundStreamInstantiator implements ActorInstantiator<InboundStreamActor> {
+    private final AddressType addressType;
+    private final ChannelReader channelReader;
+    private final InboundStreamInterest interest;
+    private final long probeInterval;
+
+    public InboundStreamInstantiator(
+            final InboundStreamInterest interest,
+            final AddressType addressType,
+            final ChannelReader channelReader,
+            final long probeInterval) {
+      this.interest = interest;
+      this.addressType = addressType;
+      this.channelReader = channelReader;
+      this.probeInterval = probeInterval;
+    }
+
+    @Override
+    public InboundStreamActor instantiate() {
+      return new InboundStreamActor(interest, addressType, channelReader, probeInterval);
+    }
+
+    @Override
+    public Class<InboundStreamActor> type() {
+      return InboundStreamActor.class;
+    }
   }
 }

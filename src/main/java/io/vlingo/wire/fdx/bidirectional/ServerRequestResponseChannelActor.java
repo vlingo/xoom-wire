@@ -23,6 +23,7 @@ import io.vlingo.common.pool.ElasticResourcePool;
 import io.vlingo.common.pool.ResourcePool;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.channel.SocketChannelSelectionProcessor;
+import io.vlingo.wire.channel.SocketChannelSelectionProcessor.SocketChannelSelectionProcessorInstantiator;
 import io.vlingo.wire.channel.SocketChannelSelectionProcessorActor;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBufferPool;
@@ -190,7 +191,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
         processors[idx] = childActorFor(
                 SocketChannelSelectionProcessor.class,
                 Definition.has(SocketChannelSelectionProcessorActor.class,
-                        Definition.parameters(provider, name + "-processor-" + idx, requestBufferPool, probeInterval, probeTimeout)));
+                        new SocketChannelSelectionProcessorInstantiator(provider, name + "-processor-" + idx, requestBufferPool, probeInterval, probeTimeout)));
       }
     } catch (Exception e) {
       logger().error(getClass().getSimpleName() + "FATAL: Socket channel processors cannot be started because: " + e.getMessage(), e);
