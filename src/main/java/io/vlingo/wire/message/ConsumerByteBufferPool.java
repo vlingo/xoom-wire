@@ -2,10 +2,15 @@ package io.vlingo.wire.message;
 
 import io.vlingo.common.pool.ElasticResourcePool;
 import io.vlingo.common.pool.ResourceFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ConsumerByteBufferPool extends ElasticResourcePool<ConsumerByteBuffer, Void> {
+
+  private static final Logger log = LoggerFactory.getLogger(ConsumerByteBufferPool.class);
 
   @Override
   public ConsumerByteBuffer acquire() {
@@ -19,7 +24,9 @@ public class ConsumerByteBufferPool extends ElasticResourcePool<ConsumerByteBuff
 
   private ConsumerByteBuffer setPool(final ConsumerByteBuffer buffer) {
     if (buffer instanceof PoolAwareConsumerByteBuffer) {
-      ((PoolAwareConsumerByteBuffer) buffer).setPool(this);
+      final PoolAwareConsumerByteBuffer pooledBuffer = (PoolAwareConsumerByteBuffer) buffer;
+      pooledBuffer.setPool(this);
+      pooledBuffer.activate();
     }
     return buffer;
   }
@@ -67,13 +74,19 @@ public class ConsumerByteBufferPool extends ElasticResourcePool<ConsumerByteBuff
   private static final class PoolAwareConsumerByteBuffer extends BasicConsumerByteBuffer {
 
     private ConsumerByteBufferPool pool;
+    private final AtomicBoolean active;
 
     PoolAwareConsumerByteBuffer(final int id, final int maxBufferSize) {
       super(id, maxBufferSize);
+      this.active = new AtomicBoolean(true);
     }
 
-    public void setPool(ConsumerByteBufferPool pool) {
+    void setPool(ConsumerByteBufferPool pool) {
       this.pool = pool;
+    }
+
+    void activate() {
+      active.set(true);
     }
 
     @Override
@@ -83,7 +96,12 @@ public class ConsumerByteBufferPool extends ElasticResourcePool<ConsumerByteBuff
 
     @Override
     public void release() {
-      pool.release(this);
+      if (active.compareAndSet(true, false)) {
+        pool.release(this);
+      }
+      else {
+        log.warn("Attempt to release the same buffer more than once");
+      }
     }
   }
 }
