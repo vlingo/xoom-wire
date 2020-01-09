@@ -8,7 +8,7 @@
 package io.vlingo.wire.fdx.outbound;
 
 import io.vlingo.actors.Actor;
-import io.vlingo.wire.message.ByteBufferPool;
+import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 
@@ -19,7 +19,7 @@ public class ApplicationOutboundStreamActor extends Actor
   
   public ApplicationOutboundStreamActor(
           final ManagedOutboundChannelProvider provider,
-          final ByteBufferPool byteBufferPool) {
+          final ConsumerByteBufferPool byteBufferPool) {
     
     this.outbound = new Outbound(provider, byteBufferPool);
   }

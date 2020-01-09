@@ -7,31 +7,30 @@
 
 package io.vlingo.wire.fdx.outbound;
 
-import java.nio.ByteBuffer;
-import java.util.Collection;
-import java.util.Map;
-
-import io.vlingo.wire.message.ByteBufferPool;
-import io.vlingo.wire.message.ByteBufferPool.PooledByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
+import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 import io.vlingo.wire.node.Node;
 
+import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.Map;
+
 public class Outbound {
-  private final ByteBufferPool pool;
+  private final ConsumerByteBufferPool pool;
   private final ManagedOutboundChannelProvider provider;
 
   public Outbound(
       final ManagedOutboundChannelProvider provider,
-      final ByteBufferPool byteBufferPool) {
+      final ConsumerByteBufferPool byteBufferPool) {
 
     this.provider = provider;
     this.pool = byteBufferPool;
   }
 
   public void broadcast(final RawMessage message) {
-    final ConsumerByteBuffer buffer = pool.access();
+    final ConsumerByteBuffer buffer = pool.acquire();
     broadcast(bytesFrom(message, buffer));
   }
 
@@ -42,7 +41,7 @@ public class Outbound {
   }
 
   public void broadcast(final Collection<Node> selectNodes, final RawMessage message) {
-    final ConsumerByteBuffer buffer = pool.access();
+    final ConsumerByteBuffer buffer = pool.acquire();
     broadcast(selectNodes, bytesFrom(message, buffer));
   }
 
@@ -67,12 +66,8 @@ public class Outbound {
     provider.channelFor(id);
   }
 
-  public final PooledByteBuffer pooledByteBuffer() {
-    return pool.access();
-  }
-
   public void sendTo(final RawMessage message, final Id id) {
-    final ConsumerByteBuffer buffer = pool.access();
+    final ConsumerByteBuffer buffer = pool.acquire();
     sendTo(bytesFrom(message, buffer), id);
   }
 
