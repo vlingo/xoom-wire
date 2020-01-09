@@ -7,34 +7,26 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
+import io.vlingo.actors.Logger;
+import io.vlingo.common.Tuple4;
+import io.vlingo.common.pool.ElasticResourcePool;
+import io.vlingo.wire.channel.ResponseChannelConsumer;
+import io.vlingo.wire.message.ConsumerByteBuffer;
+import io.vlingo.wire.message.ConsumerByteBufferPool;
+import io.vlingo.wire.node.Address;
+
+import javax.net.ssl.*;
+import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.ReadableByteChannel;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
-import java.nio.channels.WritableByteChannel;
+import java.nio.channels.*;
 import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.SSLEngineResult;
-import javax.net.ssl.SSLEngineResult.HandshakeStatus;
-import javax.net.ssl.SSLException;
-import javax.net.ssl.SSLSession;
-
-import io.vlingo.actors.Logger;
-import io.vlingo.common.Tuple4;
-import io.vlingo.wire.channel.ResponseChannelConsumer;
-import io.vlingo.wire.message.ByteBufferPool;
-import io.vlingo.wire.message.ConsumerByteBuffer;
-import io.vlingo.wire.node.Address;
 
 /**
  * SecureClientRequestResponseChannel provides SSL for the ClientRequestResponseChannel.
@@ -50,7 +42,7 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
   private final SocketChannel channel;
   private final ResponseChannelConsumer consumer;
   private final Logger logger;
-  private final ByteBufferPool readBufferPool;
+  private final ConsumerByteBufferPool readBufferPool;
   private final SelectionKey selectionKey;
   private final Selector selector;
   private final SSLProvider sslProvider;
@@ -71,7 +63,8 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
     this.address = address;
     this.consumer = consumer;
     this.logger = logger;
-    this.readBufferPool = new ByteBufferPool(maxBufferPoolSize, maxMessageSize);
+    this.readBufferPool = new ConsumerByteBufferPool(
+        ElasticResourcePool.Config.of(maxBufferPoolSize), maxMessageSize);
 
     this.closed = new AtomicBoolean(false);
     this.writeQueue = new ConcurrentLinkedQueue<>();
@@ -182,7 +175,7 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
     private final SelectionKey key;
     private AtomicBoolean ready;
 
-    public SSLProvider(final SelectionKey key, final SSLEngine engine, final Executor ioWorker, final Executor taskWorkers, final ByteBufferPool readBufferPool) {
+    public SSLProvider(final SelectionKey key, final SSLEngine engine, final Executor ioWorker, final Executor taskWorkers, final ConsumerByteBufferPool readBufferPool) {
       super(engine, ioWorker, taskWorkers, readBufferPool);
       this.key = key;
       this.ready = new AtomicBoolean(false);
@@ -209,7 +202,7 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
 
     @Override
     public void onInput(final ByteBuffer decrypted) {
-      final ConsumerByteBuffer buffer = readBufferPool.accessFor("ssl-read");
+      final ConsumerByteBuffer buffer = readBufferPool.acquire();
       consumer.consume(buffer.put(decrypted).flip());
     }
 
@@ -252,17 +245,20 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
     final Executor ioWorker, taskWorkers;
     final ByteBuffer clientWrap, clientUnwrap;
     final ByteBuffer serverWrap, serverUnwrap;
-    final ByteBufferPool readBufferPool;
+    final ConsumerByteBufferPool readBufferPool;
 
     private final AtomicBoolean handShakeLock;
 
-    public SSLWorker(SSLEngine engine, Executor ioWorker, Executor taskWorkers, final ByteBufferPool readBufferPool) {
+    public SSLWorker(SSLEngine engine, Executor ioWorker, Executor taskWorkers, final ConsumerByteBufferPool readBufferPool) {
       this.handShakeLock = new AtomicBoolean(false);
       this.readBufferPool = readBufferPool;
-      this.clientWrap = ByteBuffer.allocate(readBufferPool.maxBufferSize);
-      this.serverWrap = ByteBuffer.allocate(readBufferPool.maxBufferSize);
-      this.clientUnwrap = ByteBuffer.allocate(readBufferPool.maxBufferSize);
-      this.serverUnwrap = ByteBuffer.allocate(readBufferPool.maxBufferSize);
+
+      // TODO investigate how the "leaked" buffers below affect the pool's ability to compact
+      this.clientWrap = readBufferPool.acquire().asByteBuffer();
+      this.serverWrap = readBufferPool.acquire().asByteBuffer();
+      this.clientUnwrap = readBufferPool.acquire().asByteBuffer();
+      this.serverUnwrap = readBufferPool.acquire().asByteBuffer();
+
       this.clientUnwrap.limit(0);
       this.engine = engine;
       this.ioWorker = ioWorker;
