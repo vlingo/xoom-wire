@@ -59,9 +59,9 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
 
       this.processors = startProcessors(provider, name, processorPoolSize, this.requestBufferPool, probeInterval, probeTimeout);
 
-      logger().info(getClass().getSimpleName() + ": OPENING PORT: " + port);
       this.port = port;
       logger().info(getClass().getSimpleName() + ": OPENING PORT: " + this.port);
+
       this.channel = ServerSocketChannel.open();
       this.selector = Selector.open();
       channel.socket().bind(new InetSocketAddress(port));

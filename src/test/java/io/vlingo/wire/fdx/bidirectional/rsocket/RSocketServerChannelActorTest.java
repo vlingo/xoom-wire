@@ -202,10 +202,8 @@ public class RSocketServerChannelActorTest {
     provider = new TestRequestChannelConsumerProvider();
     serverConsumer = (TestRequestChannelConsumer) provider.consumer;
 
-    final List<Object> params = Definition.parameters(provider, 0, "test-server",  POOL_SIZE, 10240);
-
     final RSocketServerRequestResponseChannelInstantiator instantiator =
-            new RSocketServerRequestResponseChannelInstantiator(provider, testPort, "test-server",  POOL_SIZE, 10240);
+            new RSocketServerRequestResponseChannelInstantiator(provider, 0, "test-server",  POOL_SIZE, 10240);
 
     server = world.actorFor(
                     ServerRequestResponseChannel.class,
