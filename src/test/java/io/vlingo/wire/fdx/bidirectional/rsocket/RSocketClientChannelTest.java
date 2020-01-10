@@ -185,7 +185,7 @@ public class RSocketClientChannelTest {
     }
   }
 
-  @Ignore
+  @Test
   public void testServerApplicationErrorsProcess() throws InterruptedException {
     final int port = TEST_PORT.incrementAndGet();
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
