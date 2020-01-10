@@ -131,9 +131,9 @@
             <version>2.21.0</version>
             <configuration>
               <excludes>
-                <exclude>**/SecureClientRequestResponseChannelTest.java</exclude>
-                <exclude>**/RSocketChannelInboundReaderTest.java</exclude>
-                <exclude>**/RSocketClientChannelTest.java</exclude>
+<!--                <exclude>**/SecureClientRequestResponseChannelTest.java</exclude>-->
+<!--                <exclude>**/RSocketChannelInboundReaderTest.java</exclude>-->
+<!--                <exclude>**/RSocketClientChannelTest.java</exclude>-->
                 <exclude>**/RSocketServerChannelActorTest.java</exclude>
               </excludes>
             </configuration>
