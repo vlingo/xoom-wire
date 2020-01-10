@@ -10,5 +10,10 @@ package io.vlingo.wire.channel;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 
 public interface ResponseChannelConsumer {
+  /**
+   * Consumes and releases the the buffer.
+   *
+   * @param buffer
+   */
   void consume(final ConsumerByteBuffer buffer);
 }

@@ -9,19 +9,20 @@ package io.vlingo.wire.fdx.bidirectional.rsocket;
 import io.rsocket.Payload;
 import io.rsocket.util.ByteBufPayload;
 import io.vlingo.actors.Logger;
+import io.vlingo.common.pool.ElasticResourcePool;
 import io.vlingo.wire.channel.RequestChannelConsumer;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.channel.RequestResponseContext;
 import io.vlingo.wire.channel.ResponseSenderChannel;
-import io.vlingo.wire.message.ByteBufferPool;
 import io.vlingo.wire.message.ConsumerByteBuffer;
+import io.vlingo.wire.message.ConsumerByteBufferPool;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.UnicastProcessor;
 
 class RSocketChannelContext implements RequestResponseContext<FluxSink<ConsumerByteBuffer>> {
   private final RequestChannelConsumer consumer;
   private final Logger logger;
-  private final ByteBufferPool readBufferPool;
+  private final ConsumerByteBufferPool readBufferPool;
   private final UnicastProcessor<Payload> processor;
   private Object closingData;
   private Object consumerData;
@@ -29,7 +30,8 @@ class RSocketChannelContext implements RequestResponseContext<FluxSink<ConsumerB
   RSocketChannelContext(final RequestChannelConsumerProvider consumerProvider, final int maxBufferPoolSize, final int maxMessageSize, final Logger logger) {
     this.consumer = consumerProvider.requestChannelConsumer();
     this.logger = logger;
-    this.readBufferPool = new ByteBufferPool(maxBufferPoolSize, maxMessageSize);
+    this.readBufferPool = new ConsumerByteBufferPool(
+        ElasticResourcePool.Config.of(maxBufferPoolSize), maxMessageSize);
 
     processor = UnicastProcessor.create();
   }
@@ -81,14 +83,13 @@ class RSocketChannelContext implements RequestResponseContext<FluxSink<ConsumerB
   }
 
   public void consume(Payload request) {
-    final ByteBufferPool.PooledByteBuffer pooledBuffer = readBufferPool.accessFor("client-request");
+    final ConsumerByteBuffer pooledBuffer = readBufferPool.acquire();
     try {
       pooledBuffer.put(request.getData());
       this.consumer.consume(this, pooledBuffer.flip());
-    } finally {
-      if (pooledBuffer.isInUse()) {
-        pooledBuffer.release();
-      }
+    } catch(Exception e) {
+      pooledBuffer.release();
+      throw e;
     }
   }
 

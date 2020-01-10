@@ -7,21 +7,23 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
+import io.vlingo.actors.Logger;
+import io.vlingo.common.pool.ElasticResourcePool;
+import io.vlingo.wire.channel.ResponseChannelConsumer;
+import io.vlingo.wire.message.ConsumerByteBuffer;
+import io.vlingo.wire.message.ConsumerByteBufferPool;
+import io.vlingo.wire.node.Address;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
-import io.vlingo.actors.Logger;
-import io.vlingo.wire.channel.ResponseChannelConsumer;
-import io.vlingo.wire.message.ByteBufferPool;
-import io.vlingo.wire.node.Address;
-
 public class BasicClientRequestResponseChannel implements ClientRequestResponseChannel {
   private final Address address;
   private final ResponseChannelConsumer consumer;
   private final Logger logger;
-  private final ByteBufferPool readBufferPool;
+  private final ConsumerByteBufferPool readBufferPool;
 
   private SocketChannel channel;
   private int previousPrepareFailures;
@@ -36,7 +38,8 @@ public class BasicClientRequestResponseChannel implements ClientRequestResponseC
     this.address = address;
     this.consumer = consumer;
     this.logger = logger;
-    this.readBufferPool = new ByteBufferPool(maxBufferPoolSize, maxMessageSize);
+    this.readBufferPool = new ConsumerByteBufferPool(
+        ElasticResourcePool.Config.of(maxBufferPoolSize), maxMessageSize);
     this.previousPrepareFailures = 0;
   }
 
@@ -123,12 +126,12 @@ public class BasicClientRequestResponseChannel implements ClientRequestResponseC
   }
 
   private void readConsume(final SocketChannel channel) throws IOException {
-    ByteBufferPool.PooledByteBuffer pooledBuffer = null;
+    ConsumerByteBuffer pooledBuffer = null;
     ByteBuffer readBuffer = null;
     int totalBytesRead = 0;
     int bytesRead = 0;
     try {
-      pooledBuffer = readBufferPool.accessFor("client-response", 25);
+      pooledBuffer = readBufferPool.acquire();
       readBuffer = pooledBuffer.asByteBuffer();
       do {
         bytesRead = channel.read(readBuffer);
@@ -141,12 +144,10 @@ public class BasicClientRequestResponseChannel implements ClientRequestResponseC
         pooledBuffer.release();
       }
     } catch (Exception e) {
-      if (pooledBuffer != null && pooledBuffer.isInUse()){
+      if (pooledBuffer != null){
         pooledBuffer.release();
-        throw e;
-      } else {
-        throw new IllegalStateException("No pooled buffers remaining: " + e.getMessage(), e);
       }
+      throw e;
     }
   }
 }
