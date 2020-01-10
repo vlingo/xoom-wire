@@ -7,15 +7,15 @@
 
 package io.vlingo.wire.fdx.outbound;
 
+import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.Map;
+
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 import io.vlingo.wire.node.Node;
-
-import java.nio.ByteBuffer;
-import java.util.Collection;
-import java.util.Map;
 
 public class Outbound {
   private final ConsumerByteBufferPool pool;
@@ -60,6 +60,10 @@ public class Outbound {
 
   public void close(final Id id) {
     provider.close(id);
+  }
+
+  public ConsumerByteBuffer lendByteBuffer() {
+    return pool.acquire();
   }
 
   public void open(final Id id) {
