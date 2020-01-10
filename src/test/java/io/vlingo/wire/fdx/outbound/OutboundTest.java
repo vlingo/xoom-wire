@@ -7,21 +7,20 @@
 
 package io.vlingo.wire.fdx.outbound;
 
-import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-
-import java.util.List;
-
-import org.junit.Before;
-import org.junit.Test;
-
+import io.vlingo.common.pool.ElasticResourcePool;
 import io.vlingo.wire.message.AbstractMessageTool;
-import io.vlingo.wire.message.ByteBufferPool;
-import io.vlingo.wire.message.ByteBufferPool.PooledByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
+import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 import io.vlingo.wire.node.Node;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.util.List;
+
+import static java.util.Arrays.asList;
+import static org.junit.Assert.assertEquals;
 
 public class OutboundTest extends AbstractMessageTool {
   private static final String Message1 = "Message1";
@@ -29,7 +28,7 @@ public class OutboundTest extends AbstractMessageTool {
   private static final String Message3 = "Message3";
   
   private MockManagedOutboundChannelProvider channelProvider;
-  private ByteBufferPool pool;
+  private ConsumerByteBufferPool pool;
   private Outbound outbound;
   
   @Test
@@ -53,9 +52,9 @@ public class OutboundTest extends AbstractMessageTool {
   
   @Test
   public void testBroadcastPooledByteBuffer() throws Exception {
-    final PooledByteBuffer buffer1 = pool.access();
-    final PooledByteBuffer buffer2 = pool.access();
-    final PooledByteBuffer buffer3 = pool.access();
+    final ConsumerByteBuffer buffer1 = pool.acquire();
+    final ConsumerByteBuffer buffer2 = pool.acquire();
+    final ConsumerByteBuffer buffer3 = pool.acquire();
     
     final RawMessage rawMessage1 = RawMessage.from(0, 0, Message1);
     rawMessage1.asByteBuffer(buffer1.asByteBuffer());
@@ -117,9 +116,9 @@ public class OutboundTest extends AbstractMessageTool {
   
   @Test
   public void testSendToPooledByteBuffer() throws Exception {
-    final ConsumerByteBuffer buffer1 = pool.access();
-    final ConsumerByteBuffer buffer2 = pool.access();
-    final ConsumerByteBuffer buffer3 = pool.access();
+    final ConsumerByteBuffer buffer1 = pool.acquire();
+    final ConsumerByteBuffer buffer2 = pool.acquire();
+    final ConsumerByteBuffer buffer3 = pool.acquire();
     
     final RawMessage rawMessage1 = RawMessage.from(0, 0, Message1);
     rawMessage1.asByteBuffer(buffer1.asByteBuffer());
@@ -143,8 +142,10 @@ public class OutboundTest extends AbstractMessageTool {
   
   @Before
   public void setUp() throws Exception {
-    pool = new ByteBufferPool(10, 1024);
+    pool = new ConsumerByteBufferPool(
+        ElasticResourcePool.Config.of(10), 1024);
     channelProvider = new MockManagedOutboundChannelProvider(Id.of(1), config);
-    outbound = new Outbound(channelProvider, new ByteBufferPool(10, 10_000));
+    outbound = new Outbound(channelProvider, new ConsumerByteBufferPool(
+        ElasticResourcePool.Config.of(10), 10_000));
   }
 }

@@ -15,10 +15,11 @@ import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.netty.client.TcpClientTransport;
 import io.rsocket.util.DefaultPayload;
 import io.vlingo.actors.Logger;
+import io.vlingo.common.pool.ElasticResourcePool;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.fdx.bidirectional.ClientRequestResponseChannel;
-import io.vlingo.wire.message.ByteBufferPool;
 import io.vlingo.wire.message.ConsumerByteBuffer;
+import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.node.Address;
 import reactor.core.Disposable;
 import reactor.core.Exceptions;
@@ -143,27 +144,26 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
   private static class ChannelResponseHandler {
     private final ResponseChannelConsumer consumer;
     private final Logger logger;
-    private final ByteBufferPool readBufferPool;
+    private final ConsumerByteBufferPool readBufferPool;
 
     private ChannelResponseHandler(final ResponseChannelConsumer consumer, final int maxBufferPoolSize, final int maxMessageSize, final Logger logger) {
       this.consumer = consumer;
-      this.readBufferPool = new ByteBufferPool(maxBufferPoolSize, maxMessageSize);
+      this.readBufferPool = new ConsumerByteBufferPool(
+          ElasticResourcePool.Config.of(maxBufferPoolSize), maxMessageSize);
       this.logger = logger;
     }
 
     private void handle(Payload payload) {
-      final ByteBufferPool.PooledByteBuffer pooledBuffer = readBufferPool.accessFor("client-response", 25);
+      final ConsumerByteBuffer pooledBuffer = readBufferPool.acquire();
       try {
         final ByteBuffer payloadData = payload.getData();
         final ConsumerByteBuffer put = pooledBuffer.put(payloadData);
         consumer.consume(put.flip());
       } catch (final Throwable e) {
         logger.error("Unexpected error reading incoming payload", e);
+        pooledBuffer.release();
       } finally {
         payload.release();
-        if (pooledBuffer.isInUse()) {
-          pooledBuffer.release();
-        }
       }
     }
   }
