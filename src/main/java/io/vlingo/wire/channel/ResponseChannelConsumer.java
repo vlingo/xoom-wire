@@ -13,7 +13,7 @@ public interface ResponseChannelConsumer {
   /**
    * Consumes and releases the the buffer.
    *
-   * @param buffer
+   * @param buffer the ConsumerByteBuffer to consume
    */
   void consume(final ConsumerByteBuffer buffer);
 }

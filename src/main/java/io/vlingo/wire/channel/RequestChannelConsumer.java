@@ -15,8 +15,8 @@ public interface RequestChannelConsumer {
   /**
    * Consumes and releases the buffer.
    *
-   * @param context
-   * @param buffer
+   * @param context the {@code RequestResponseContext<?>} of the request and response
+   * @param buffer the ConsumerByteBuffer containing the response
    */
   void consume(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer);
 }
