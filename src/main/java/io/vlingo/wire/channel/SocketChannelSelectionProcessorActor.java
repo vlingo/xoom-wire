@@ -8,25 +8,22 @@
 package io.vlingo.wire.channel;
 
 
-import io.vlingo.actors.Actor;
-import io.vlingo.actors.Stoppable;
-import io.vlingo.common.Cancellable;
-import io.vlingo.common.Scheduled;
-import io.vlingo.common.pool.ElasticResourcePool;
-import io.vlingo.common.pool.ResourcePool;
-import io.vlingo.wire.message.BasicConsumerByteBuffer;
-import io.vlingo.wire.message.ConsumerByteBuffer;
-import io.vlingo.wire.message.ConsumerByteBufferPool;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
+
+import io.vlingo.actors.Actor;
+import io.vlingo.actors.Stoppable;
+import io.vlingo.common.Cancellable;
+import io.vlingo.common.Scheduled;
+import io.vlingo.common.pool.ResourcePool;
+import io.vlingo.wire.message.ConsumerByteBuffer;
 
 public class SocketChannelSelectionProcessorActor extends Actor
     implements SocketChannelSelectionProcessor, ResponseSenderChannel, Scheduled<Object>, Stoppable {
@@ -34,26 +31,28 @@ public class SocketChannelSelectionProcessorActor extends Actor
   private final Cancellable cancellable;
   private int contextId;
   private final String name;
+  private final long probeTimeout;
   private final RequestChannelConsumerProvider provider;
+  private final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool;
   private final ResponseSenderChannel responder;
   private final Selector selector;
-
-  private final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool;
+  private final LinkedList<Context> writableContexts;
 
   @SuppressWarnings("unchecked")
   public SocketChannelSelectionProcessorActor(
           final RequestChannelConsumerProvider provider,
           final String name,
-          final int maxBufferPoolSize,
-          final int messageBufferSize,
-          final long probeInterval) {
-
+          final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool,
+          final long probeInterval,
+          final long probeTimeout) {
+    this.logger().debug("Probe interval: " + probeInterval + " Probe timeout: " + probeTimeout);
     this.provider = provider;
     this.name = name;
+    this.requestBufferPool = requestBufferPool;
+    this.probeTimeout = probeTimeout;
     this.selector = open();
-    this.requestBufferPool = new ConsumerByteBufferPool(
-        ElasticResourcePool.Config.of(maxBufferPoolSize), messageBufferSize);
     this.responder = selfAs(ResponseSenderChannel.class);
+    this.writableContexts = new LinkedList<>();
 
     this.cancellable = stage().scheduler().schedule(selfAs(Scheduled.class), null, 100, probeInterval);
   }
@@ -86,19 +85,9 @@ public class SocketChannelSelectionProcessorActor extends Actor
   //=========================================
 
   @Override
-  public void process(final SelectionKey key) {
+  public void process(final SocketChannel clientChannel) {
     try {
-      final ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
-
-      if (serverChannel.isOpen()) {
-        final SocketChannel clientChannel = serverChannel.accept();
-
-        if (clientChannel != null) {
-          clientChannel.configureBlocking(false);
-
-          clientChannel.register(selector, SelectionKey.OP_READ | SelectionKey.OP_WRITE, new Context(clientChannel));
-        }
-      }
+      clientChannel.register(selector, SelectionKey.OP_READ, new Context(clientChannel));
     } catch (Exception e) {
       final String message = "Failed to accept client socket for " + name + " because: " + e.getMessage();
       logger().error(message, e);
@@ -137,11 +126,11 @@ public class SocketChannelSelectionProcessorActor extends Actor
   // internal implementation
   //=========================================
 
-  private void close(final SocketChannel channel, final SelectionKey key) {
+  private void close(final Context context, final SelectionKey key) {
     try {
-      channel.close();
+      context.close();
     } catch (Exception e) {
-      // already closed; ignore
+      // already cancelled/closed; ignore
     }
     try {
       key.cancel();
@@ -164,7 +153,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
     if (isStopped()) return;
 
     try {
-      if (selector.selectNow() > 0) {
+      if (selector.select(probeTimeout) > 0) {
         final Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
 
         while (iterator.hasNext()) {
@@ -179,6 +168,10 @@ public class SocketChannelSelectionProcessorActor extends Actor
             }
           }
         }
+      }
+
+      while (!writableContexts.isEmpty()) {
+        write(writableContexts.poll());
       }
     } catch (Exception e) {
       logger().error("Failed client channel processing for " + name + " because: " + e.getMessage(), e);
@@ -212,13 +205,13 @@ public class SocketChannelSelectionProcessorActor extends Actor
     }
 
     if (bytesRead == -1) {
-      close(channel, key);
+      close(context, key);
     }
 
     if (totalBytesRead > 0) {
       context.consumer().consume(context, buffer.flip());
     } else {
-      buffer.release();
+      context.close();
     }
   }
 
@@ -230,10 +223,18 @@ public class SocketChannelSelectionProcessorActor extends Actor
       return;
     }
 
-    final Context context = (Context) key.attachment();
+    write((Context) key.attachment());
+  }
 
-    if (context.hasNextWritable()) {
-      writeWithCachedData(context, channel);
+  private void write(final Context context) throws Exception {
+    if (context.isChannelClosed()) {
+      context.close();
+      return;
+    }
+    if (!context.writeMode) {
+      if (context.hasNextWritable()) {
+        writeWithCachedData(context, context.clientChannel);
+      }
     }
   }
 
@@ -246,13 +247,16 @@ public class SocketChannelSelectionProcessorActor extends Actor
   private void writeWithCachedData(final Context context, final SocketChannel clientChannel, ConsumerByteBuffer buffer) throws Exception {
     try {
       final ByteBuffer responseBuffer = buffer.asByteBuffer();
+
       while (responseBuffer.hasRemaining()) {
-        clientChannel.write(responseBuffer);
+        if (clientChannel.write(responseBuffer) < 1) {
+          context.setWriteMode(true);
+          return;
+        }
       }
+      context.confirmCurrentWritable(buffer);
     } catch (Exception e) {
       logger().error("Failed to write buffer for " + name + " with channel " + clientChannel.getRemoteAddress() + " because: " + e.getMessage(), e);
-    } finally {
-      buffer.release();
     }
   }
 
@@ -269,6 +273,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
     private Object consumerData;
     private final String id;
     private final Queue<ConsumerByteBuffer> writables;
+    private boolean writeMode;
 
     @Override
     @SuppressWarnings("unchecked")
@@ -308,16 +313,21 @@ public class SocketChannelSelectionProcessorActor extends Actor
       this.buffer = requestBufferPool.acquire();
       this.id = "" + (++contextId);
       this.writables = new LinkedList<>();
+      this.writeMode = false;
+    }
+
+    boolean isChannelClosed() {
+      return !clientChannel.isOpen();
     }
 
     void close() {
-      if (!clientChannel.isOpen()) return;
-
       try {
         consumer().closeWith(this, closingData);
         clientChannel.close();
       } catch (Exception e) {
         logger().error("Failed to close client channel for " + name + " because: " + e.getMessage(), e);
+      } finally {
+        buffer.release();
       }
     }
 
@@ -325,20 +335,46 @@ public class SocketChannelSelectionProcessorActor extends Actor
       return consumer;
     }
 
+    void confirmCurrentWritable(final ConsumerByteBuffer buffer) {
+      try {
+        buffer.release();
+      } catch (Exception e) {
+        // ignore
+      }
+      try {
+        setWriteMode(false);
+      } catch (Exception e) {
+        // ignore
+      }
+      writables.poll();
+    }
+
     boolean hasNextWritable() {
       return writables.peek() != null;
     }
 
     ConsumerByteBuffer nextWritable() {
-      return writables.poll();
+      return writables.peek();
     }
 
     void queueWritable(final ConsumerByteBuffer buffer) {
       writables.add(buffer);
+
+      if (!writeMode) {
+        writableContexts.add(this);
+      }
     }
 
     ConsumerByteBuffer requestBuffer() {
       return buffer;
+    }
+
+    void setWriteMode(final boolean on) throws ClosedChannelException {
+      final int options = SelectionKey.OP_READ | (on ? SelectionKey.OP_WRITE : 0);
+
+      clientChannel.register(selector, options, this);
+
+      writeMode = on;
     }
   }
 }

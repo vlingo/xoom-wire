@@ -7,6 +7,7 @@
 
 package io.vlingo.wire.fdx.outbound;
 
+import io.vlingo.actors.ActorInstantiator;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Stage;
 import io.vlingo.actors.Stoppable;
@@ -19,19 +20,41 @@ public interface ApplicationOutboundStream extends Stoppable {
           final Stage stage,
           final ManagedOutboundChannelProvider provider,
           final ByteBufferPool byteBufferPool) {
-    
+
     final Definition definition =
             Definition.has(
                     ApplicationOutboundStreamActor.class,
-                    Definition.parameters(provider, byteBufferPool),
+                    new ApplicationOutboundStreamInstantiator(provider, byteBufferPool),
                     "application-outbound-stream");
-    
+
     final ApplicationOutboundStream applicationOutboundStream =
             stage.actorFor(ApplicationOutboundStream.class, definition);
-    
+
     return applicationOutboundStream;
   }
-  
+
   void broadcast(final RawMessage message);
   void sendTo(final RawMessage message, final Id targetId);
+
+  static class ApplicationOutboundStreamInstantiator implements ActorInstantiator<ApplicationOutboundStreamActor> {
+    private final ByteBufferPool byteBufferPool;
+    private final ManagedOutboundChannelProvider provider;
+
+    public ApplicationOutboundStreamInstantiator(
+            final ManagedOutboundChannelProvider provider,
+            final ByteBufferPool byteBufferPool) {
+      this.provider = provider;
+      this.byteBufferPool = byteBufferPool;
+    }
+
+    @Override
+    public ApplicationOutboundStreamActor instantiate() {
+      return new ApplicationOutboundStreamActor(provider, byteBufferPool);
+    }
+
+    @Override
+    public Class<ApplicationOutboundStreamActor> type() {
+      return ApplicationOutboundStreamActor.class;
+    }
+  }
 }

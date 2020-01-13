@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.vlingo</groupId>
   <artifactId>vlingo-wire</artifactId>
-  <version>0.9.1-RC2</version>
+  <version>0.9.3-RC4</version>
   <name>vlingo-wire</name>
   <description>Wire protocol messaging implementations, such as with full-duplex TCP and UDP multicast, using vlingo/actors.</description>
   <url>https://github.com/vlingo/vlingo-wire</url>
@@ -99,7 +99,7 @@
     <dependency>
       <groupId>io.vlingo</groupId>
       <artifactId>vlingo-actors</artifactId>
-      <version>0.9.1-RC2</version>
+      <version>0.9.3-RC4</version>
     </dependency>
     <dependency>
       <groupId>io.rsocket</groupId>
@@ -120,7 +120,6 @@
       <url>https://api.bintray.com/maven/vlingo/vlingo-platform-java/vlingo-wire/;publish=1</url>
     </repository>
   </distributionManagement>
-
   <profiles>
     <profile>
       <id>TravisCI</id>

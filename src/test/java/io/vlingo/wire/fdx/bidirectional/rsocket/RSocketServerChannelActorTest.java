@@ -6,12 +6,24 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
+import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.World;
 import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.fdx.bidirectional.ClientRequestResponseChannel;
 import io.vlingo.wire.fdx.bidirectional.ServerRequestResponseChannel;
+import io.vlingo.wire.fdx.bidirectional.ServerRequestResponseChannel.RSocketServerRequestResponseChannelInstantiator;
 import io.vlingo.wire.fdx.bidirectional.TestRequestChannelConsumer;
 import io.vlingo.wire.fdx.bidirectional.TestRequestChannelConsumerProvider;
 import io.vlingo.wire.fdx.bidirectional.TestResponseChannelConsumer;
@@ -32,7 +44,7 @@ import static org.junit.Assert.assertNotNull;
 
 public class RSocketServerChannelActorTest {
   private static final int POOL_SIZE = 100;
-  
+
   private ClientRequestResponseChannel client;
   private TestResponseChannelConsumer clientConsumer;
   private TestRequestChannelConsumerProvider provider;
@@ -189,17 +201,18 @@ public class RSocketServerChannelActorTest {
     final Logger logger = Logger.basicLogger();
     provider = new TestRequestChannelConsumerProvider();
     serverConsumer = (TestRequestChannelConsumer) provider.consumer;
-    
-    final List<Object> params = Definition.parameters(provider, 0, "test-server",  POOL_SIZE, 10240);
+
+    final RSocketServerRequestResponseChannelInstantiator instantiator =
+            new RSocketServerRequestResponseChannelInstantiator(provider, 0, "test-server",  POOL_SIZE, 10240);
 
     server = world.actorFor(
                     ServerRequestResponseChannel.class,
-                    Definition.has(RSocketServerChannelActor.class, params));
+                    Definition.has(RSocketServerChannelActor.class, instantiator));
 
     final Integer serverPort = server.port().<Integer>await();
 
     assertNotNull("Server failed to start", serverPort);
-    
+
     clientConsumer = new TestResponseChannelConsumer();
 
     client = new RSocketClientChannel(Address.from(Host.of("127.0.0.1"), serverPort, AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger, Duration.ofSeconds(1));
