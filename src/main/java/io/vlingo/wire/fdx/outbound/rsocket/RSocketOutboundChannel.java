@@ -43,7 +43,7 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
     if (this.clientSocket != null && !this.clientSocket.isDisposed()) {
       try {
         this.clientSocket.dispose();
-      } catch (final Throwable t) {
+      } catch (final Exception t) {
         logger.error("Unexpected error on closing outbound channel", t);
       }
     }
@@ -100,7 +100,7 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
         this.clientSocket.onClose()
                          .doFinally(signalType -> logger.info("RSocket outbound channel for {} is closed", this.address))
                          .subscribe(ignored -> {}, throwable -> logger.error("Unexpected error on closing outbound channel", throwable));
-      } catch (final Throwable t) {
+      } catch (final Exception t) {
         logger.warn("Failed to create RSocket outbound channel for {}, because {}", this.address, t.getMessage());
         close();
         return Optional.empty();

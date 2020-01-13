@@ -59,7 +59,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
     if (this.channelSocket != null && !this.channelSocket.isDisposed()) {
       try {
         this.channelSocket.dispose();
-      } catch (final Throwable t) {
+      } catch (final Exception t) {
         logger.error("Unexpected error on closing channel socket", t);
       }
     }
@@ -135,7 +135,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
                             .subscribe(ignored -> {}, throwable -> logger.error("Unexpected error on closing channel socket", throwable));
         }
       }
-    } catch (final Throwable t) {
+    } catch (final Exception t) {
       logger.warn("Failed to create RSocket client channel for {}, because {}", this.address, t.getMessage());
       close();
     }
@@ -159,7 +159,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
         final ByteBuffer payloadData = payload.getData();
         final ConsumerByteBuffer put = pooledBuffer.put(payloadData);
         consumer.consume(put.flip());
-      } catch (final Throwable e) {
+      } catch (final Exception e) {
         logger.error("Unexpected error reading incoming payload", e);
         pooledBuffer.release();
       } finally {
