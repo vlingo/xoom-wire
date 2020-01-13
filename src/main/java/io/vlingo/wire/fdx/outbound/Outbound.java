@@ -1,4 +1,4 @@
-// Copyright © 2012-2018 Vaughn Vernon. All rights reserved.
+// Copyright © 2012-2020 VLINGO LABS. All rights reserved.
 //
 // This Source Code Form is subject to the terms of the
 // Mozilla Public License, v. 2.0. If a copy of the MPL
@@ -11,27 +11,26 @@ import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Map;
 
-import io.vlingo.wire.message.ByteBufferPool;
-import io.vlingo.wire.message.ByteBufferPool.PooledByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
+import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 import io.vlingo.wire.node.Node;
 
 public class Outbound {
-  private final ByteBufferPool pool;
+  private final ConsumerByteBufferPool pool;
   private final ManagedOutboundChannelProvider provider;
 
   public Outbound(
       final ManagedOutboundChannelProvider provider,
-      final ByteBufferPool byteBufferPool) {
+      final ConsumerByteBufferPool byteBufferPool) {
 
     this.provider = provider;
     this.pool = byteBufferPool;
   }
 
   public void broadcast(final RawMessage message) {
-    final ConsumerByteBuffer buffer = pool.access();
+    final ConsumerByteBuffer buffer = pool.acquire();
     broadcast(bytesFrom(message, buffer));
   }
 
@@ -42,7 +41,7 @@ public class Outbound {
   }
 
   public void broadcast(final Collection<Node> selectNodes, final RawMessage message) {
-    final ConsumerByteBuffer buffer = pool.access();
+    final ConsumerByteBuffer buffer = pool.acquire();
     broadcast(selectNodes, bytesFrom(message, buffer));
   }
 
@@ -63,16 +62,16 @@ public class Outbound {
     provider.close(id);
   }
 
+  public ConsumerByteBuffer lendByteBuffer() {
+    return pool.acquire();
+  }
+
   public void open(final Id id) {
     provider.channelFor(id);
   }
 
-  public final PooledByteBuffer pooledByteBuffer() {
-    return pool.access();
-  }
-
   public void sendTo(final RawMessage message, final Id id) {
-    final ConsumerByteBuffer buffer = pool.access();
+    final ConsumerByteBuffer buffer = pool.acquire();
     sendTo(bytesFrom(message, buffer), id);
   }
 

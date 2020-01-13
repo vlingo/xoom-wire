@@ -1,4 +1,4 @@
-// Copyright © 2012-2018 Vaughn Vernon. All rights reserved.
+// Copyright © 2012-2020 VLINGO LABS. All rights reserved.
 //
 // This Source Code Form is subject to the terms of the
 // Mozilla Public License, v. 2.0. If a copy of the MPL
@@ -8,7 +8,7 @@
 package io.vlingo.wire.fdx.outbound;
 
 import io.vlingo.actors.Actor;
-import io.vlingo.wire.message.ByteBufferPool;
+import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 
@@ -19,7 +19,7 @@ public class ApplicationOutboundStreamActor extends Actor
   
   public ApplicationOutboundStreamActor(
           final ManagedOutboundChannelProvider provider,
-          final ByteBufferPool byteBufferPool) {
+          final ConsumerByteBufferPool byteBufferPool) {
     
     this.outbound = new Outbound(provider, byteBufferPool);
   }

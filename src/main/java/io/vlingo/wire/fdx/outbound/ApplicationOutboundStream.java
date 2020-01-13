@@ -1,4 +1,4 @@
-// Copyright © 2012-2018 Vaughn Vernon. All rights reserved.
+// Copyright © 2012-2020 VLINGO LABS. All rights reserved.
 //
 // This Source Code Form is subject to the terms of the
 // Mozilla Public License, v. 2.0. If a copy of the MPL
@@ -11,7 +11,7 @@ import io.vlingo.actors.ActorInstantiator;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Stage;
 import io.vlingo.actors.Stoppable;
-import io.vlingo.wire.message.ByteBufferPool;
+import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 
@@ -19,7 +19,7 @@ public interface ApplicationOutboundStream extends Stoppable {
   public static ApplicationOutboundStream instance(
           final Stage stage,
           final ManagedOutboundChannelProvider provider,
-          final ByteBufferPool byteBufferPool) {
+          final ConsumerByteBufferPool byteBufferPool) {
 
     final Definition definition =
             Definition.has(
@@ -37,12 +37,12 @@ public interface ApplicationOutboundStream extends Stoppable {
   void sendTo(final RawMessage message, final Id targetId);
 
   static class ApplicationOutboundStreamInstantiator implements ActorInstantiator<ApplicationOutboundStreamActor> {
-    private final ByteBufferPool byteBufferPool;
+    private final ConsumerByteBufferPool byteBufferPool;
     private final ManagedOutboundChannelProvider provider;
 
     public ApplicationOutboundStreamInstantiator(
             final ManagedOutboundChannelProvider provider,
-            final ByteBufferPool byteBufferPool) {
+            final ConsumerByteBufferPool byteBufferPool) {
       this.provider = provider;
       this.byteBufferPool = byteBufferPool;
     }
