@@ -7,6 +7,8 @@
 
 package io.vlingo.wire.fdx.outbound.rsocket;
 
+import io.rsocket.transport.ClientTransport;
+import io.rsocket.transport.netty.client.TcpClientTransport;
 import io.vlingo.wire.fdx.outbound.AbstractManagedOutboundChannelProvider;
 import io.vlingo.wire.fdx.outbound.ManagedOutboundChannel;
 import io.vlingo.wire.node.Address;
@@ -14,15 +16,25 @@ import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Configuration;
 import io.vlingo.wire.node.Node;
 
-public class ManagedOutboundRSocketChannelProvider extends AbstractManagedOutboundChannelProvider  {
+public class ManagedOutboundRSocketChannelProvider extends AbstractManagedOutboundChannelProvider {
+  private final ClientTransport rsocketClientTransport;
+  private final Address address;
+
   public ManagedOutboundRSocketChannelProvider(final Node node, final AddressType type, final Configuration configuration) {
     super(node, type, configuration);
+    this.address = (type == AddressType.OP ? node.operationalAddress() : node.applicationAddress());
+    this.rsocketClientTransport = TcpClientTransport.create(address.hostName(), address.port());
+  }
+
+  public ManagedOutboundRSocketChannelProvider(final Node node, final AddressType type, final ClientTransport clientTransport,
+                                               final Configuration configuration) {
+    super(node, type, configuration);
+    this.address = (type == AddressType.OP ? node.operationalAddress() : node.applicationAddress());
+    this.rsocketClientTransport = clientTransport;
   }
 
   @Override
   protected ManagedOutboundChannel unopenedChannelFor(final Node node, final Configuration configuration, final AddressType type) {
-    final Address address = (type == AddressType.OP ? node.operationalAddress() : node.applicationAddress());
-
-    return new RSocketOutboundChannel(address, configuration.logger());
+    return new RSocketOutboundChannel(address, this.rsocketClientTransport, configuration.logger());
   }
 }

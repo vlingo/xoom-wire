@@ -7,14 +7,14 @@
 package io.vlingo.wire.fdx.inbound.rsocket;
 
 import io.rsocket.AbstractRSocket;
+import io.rsocket.Closeable;
 import io.rsocket.ConnectionSetupPayload;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.SocketAcceptor;
 import io.rsocket.frame.decoder.PayloadDecoder;
-import io.rsocket.transport.netty.server.CloseableChannel;
-import io.rsocket.transport.netty.server.TcpServerTransport;
+import io.rsocket.transport.ServerTransport;
 import io.vlingo.actors.Logger;
 import io.vlingo.wire.channel.ChannelMessageDispatcher;
 import io.vlingo.wire.channel.ChannelReader;
@@ -30,14 +30,18 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
   private final int port;
   private boolean closed = false;
   private final int maxMessageSize;
-  private CloseableChannel serverSocket;
+  private Closeable serverSocket;
   private ChannelReaderConsumer consumer;
+  private final ServerTransport<? extends Closeable> serverTransport;
 
-  public RSocketChannelInboundReader(final int port, final String name, final int maxMessageSize, final Logger logger) {
+  public RSocketChannelInboundReader(final ServerTransport<? extends Closeable> serverTransport,
+                                     final int port, final String name, final int maxMessageSize,
+                                     final Logger logger) {
     this.logger = logger;
     this.name = name;
     this.port = port;
     this.maxMessageSize = maxMessageSize;
+    this.serverTransport = serverTransport;
   }
 
   @Override
@@ -73,12 +77,7 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
 
   @Override
   public int port() {
-    if (this.serverSocket != null) {
-      //if initialized, return the assigned port
-      return this.serverSocket.address().getPort();
-    } else {
-      return this.port;
-    }
+    return this.port;
   }
 
   @Override
@@ -93,9 +92,12 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
     }
 
     serverSocket = RSocketFactory.receive()
+                                 .errorConsumer(throwable -> {
+                                   logger.error("Unexpected error in inbound channel", throwable);
+                                 })
                                  .frameDecoder(PayloadDecoder.ZERO_COPY)
                                  .acceptor(new SocketAcceptorImpl(this, name, maxMessageSize, logger))
-                                 .transport(TcpServerTransport.create(this.port))
+                                 .transport(serverTransport)
                                  .start()
                                  .doOnError(throwable -> logger.error("Failed to create RSocket inbound channel {} at port {}", name, port, throwable))
                                  .block();
@@ -124,16 +126,14 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
         public Mono<Void> fireAndForget(Payload payload) {
           try {
             final ByteBuffer payloadData = payload.getData();
-            rawMessageBuilder.workBuffer()
-                             .put(payloadData);
+            rawMessageBuilder.workBuffer().put(payloadData);
 
             dispatcher.dispatchMessagesFor(rawMessageBuilder);
           } catch (final Throwable t) {
             logger.error("Unexpected error in inbound channel {}. Message ignored.", name, t);
             //Clear builder resources in case of error. Otherwise we will get a BufferOverflow.
             rawMessageBuilder.prepareForNextMessage();
-            rawMessageBuilder.workBuffer()
-                             .clear();
+            rawMessageBuilder.workBuffer().clear();
           } finally {
             //Important! Because using PayloadDecoder.ZERO_COPY frame decoder
             payload.release();

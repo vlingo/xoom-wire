@@ -8,14 +8,14 @@
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
 import io.rsocket.AbstractRSocket;
+import io.rsocket.Closeable;
 import io.rsocket.ConnectionSetupPayload;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.SocketAcceptor;
 import io.rsocket.frame.decoder.PayloadDecoder;
-import io.rsocket.transport.netty.server.CloseableChannel;
-import io.rsocket.transport.netty.server.TcpServerTransport;
+import io.rsocket.transport.ServerTransport;
 import io.vlingo.actors.Actor;
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.Stoppable;
@@ -29,21 +29,28 @@ import reactor.core.scheduler.Schedulers;
 
 public class RSocketServerChannelActor extends Actor implements ServerRequestResponseChannel {
   private final String name;
-  private final CloseableChannel serverSocket;
-
-  public RSocketServerChannelActor(final RequestChannelConsumerProvider provider, final int port, final String name, final int maxBufferPoolSize,
+  private final Closeable serverSocket;
+  private final Integer port;
+  
+  public RSocketServerChannelActor(final RequestChannelConsumerProvider provider,
+                                   final ServerTransport<? extends Closeable> serverTransport,
+                                   final int port, final String name, final int maxBufferPoolSize,
                                    final int messageBufferSize) {
     this.name = name;
+    this.port = port;
     this.serverSocket = RSocketFactory.receive()
+                                      .errorConsumer(throwable -> {
+                                        logger().error("Unexpected error in server channel", throwable);
+                                      })
                                       .frameDecoder(PayloadDecoder.ZERO_COPY)
                                       .acceptor(new SocketAcceptorImpl(provider, maxBufferPoolSize, messageBufferSize, logger()))
-                                      .transport(TcpServerTransport.create(port))
+                                      .transport(serverTransport)
                                       .start()
                                       .block();
 
 
     if (this.serverSocket != null) {
-      logger().info("RSocket server channel opened at port {}", serverSocket.address().getPort());
+      logger().info("RSocket server channel opened at port {}", this.port);
 
       this.serverSocket.onClose()
                        .doFinally(signalType -> logger().info("RSocket server channel closed"))
@@ -69,7 +76,7 @@ public class RSocketServerChannelActor extends Actor implements ServerRequestRes
 
   @Override
   public Completes<Integer> port() {
-    return completes().with(this.serverSocket.address().getPort());
+    return completes().with(this.port);
   }
 
   @Override

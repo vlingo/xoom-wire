@@ -6,17 +6,9 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-
-import java.nio.ByteBuffer;
-import java.time.Duration;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
+import io.rsocket.transport.ClientTransport;
+import io.rsocket.transport.local.LocalClientTransport;
+import io.rsocket.transport.local.LocalServerTransport;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.World;
@@ -36,7 +28,6 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
-import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -51,7 +42,7 @@ public class RSocketServerChannelActorTest {
   private ServerRequestResponseChannel server;
   private TestRequestChannelConsumer serverConsumer;
   private World world;
-
+  
   @Test
   public void testBasicRequestResponse() throws Exception {
     final String request = "Hello, Request-Response";
@@ -94,19 +85,19 @@ public class RSocketServerChannelActorTest {
     clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
 
     // simulate network latency for parts of single request
+    clientConsumer.untilConsume = TestUntil.happenings(1);
+    serverConsumer.untilConsume = TestUntil.happenings(1);
 
     request(requestPart1);
     Thread.sleep(100);
     request(requestPart2);
     Thread.sleep(200);
     request(requestPart3);
-    serverConsumer.untilConsume = TestUntil.happenings(1);
     while (serverConsumer.untilConsume.remaining() > 0) {
       ;
     }
     serverConsumer.untilConsume.completes();
 
-    clientConsumer.untilConsume = TestUntil.happenings(1);
     while (clientConsumer.untilConsume.remaining() > 0) {
       Thread.sleep(10);
       client.probeChannel();
@@ -202,8 +193,11 @@ public class RSocketServerChannelActorTest {
     provider = new TestRequestChannelConsumerProvider();
     serverConsumer = (TestRequestChannelConsumer) provider.consumer;
 
+    final ClientTransport clientTransport = LocalClientTransport.create("rsocket-fdx-server-test");
+    final LocalServerTransport serverTransport = LocalServerTransport.create("rsocket-fdx-server-test");
+
     final RSocketServerRequestResponseChannelInstantiator instantiator =
-            new RSocketServerRequestResponseChannelInstantiator(provider, 0, "test-server",  POOL_SIZE, 10240);
+            new RSocketServerRequestResponseChannelInstantiator(provider, serverTransport, 0, "test-server", POOL_SIZE, 10240);
 
     server = world.actorFor(
                     ServerRequestResponseChannel.class,
@@ -215,7 +209,8 @@ public class RSocketServerChannelActorTest {
 
     clientConsumer = new TestResponseChannelConsumer();
 
-    client = new RSocketClientChannel(Address.from(Host.of("127.0.0.1"), serverPort, AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger, Duration.ofSeconds(1));
+    client = new RSocketClientChannel(clientTransport, Address.from(Host.of("127.0.0.1"), serverPort, AddressType.NONE),
+                                      clientConsumer, POOL_SIZE, 10240, logger, Duration.ofSeconds(1));
   }
 
   @After

@@ -112,6 +112,12 @@
       <artifactId>rsocket-transport-netty</artifactId>
       <version>1.0.0-RC5</version>
     </dependency>
+    <dependency>
+      <groupId>io.rsocket</groupId>
+      <artifactId>rsocket-transport-local</artifactId>
+      <version>1.0.0-RC5</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
   <distributionManagement>
     <repository>

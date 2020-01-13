@@ -6,6 +6,8 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.inbound.rsocket;
 
+import io.rsocket.transport.local.LocalClientTransport;
+import io.rsocket.transport.local.LocalServerTransport;
 import io.vlingo.actors.Logger;
 import io.vlingo.wire.channel.MockChannelReaderConsumer;
 import io.vlingo.wire.fdx.outbound.ManagedOutboundChannel;
@@ -57,7 +59,7 @@ public class RSocketChannelInboundReaderTest {
     testInboundOutbound(AddressType.OP, (consumer, outboundChannel) -> {
       final int nrOfMessages = 100;
       consumer.afterCompleting(nrOfMessages);
-      
+
       for (int i = 0; i < nrOfMessages; i++) {
         final ByteBuffer buffer = ByteBufferAllocator.allocate(1024);
 
@@ -81,7 +83,7 @@ public class RSocketChannelInboundReaderTest {
     testInboundOutbound(AddressType.APP, (consumer, outboundChannel) -> {
       final int nrOfMessages = 100;
       consumer.afterCompleting(nrOfMessages);
-      
+
       for (int i = 0; i < nrOfMessages; i++) {
         final ByteBuffer buffer = ByteBufferAllocator.allocate(1024);
 
@@ -99,9 +101,12 @@ public class RSocketChannelInboundReaderTest {
       }
     });
   }
-  
+
   private static void testInboundOutbound(final AddressType addressType, BiConsumer<MockChannelReaderConsumer, ManagedOutboundChannel> consumer) throws InterruptedException {
-    final RSocketChannelInboundReader channelReader = new RSocketChannelInboundReader(0, "testInboundReader", 1024, logger);
+    final LocalClientTransport localClientTransport = LocalClientTransport.create("rsocket-channel-test");
+    final LocalServerTransport serverTransport = LocalServerTransport.create("rsocket-channel-test");
+
+    final RSocketChannelInboundReader channelReader = new RSocketChannelInboundReader(serverTransport, 0, "testInboundReader", 1024, logger);
     Thread.sleep(200); //give some time for the inbound to initialize
     final MockChannelReaderConsumer channelConsumer = new MockChannelReaderConsumer();
     try {
@@ -112,7 +117,7 @@ public class RSocketChannelInboundReaderTest {
 
     final Address address = new Address(Host.of("127.0.0.1"), channelReader.port(), addressType);
 
-    final RSocketOutboundChannel outbound = new RSocketOutboundChannel(address, Duration.ofMillis(200), logger);
+    final RSocketOutboundChannel outbound = new RSocketOutboundChannel(address, localClientTransport, Duration.ofMillis(200), logger);
     try {
       consumer.accept(channelConsumer, outbound);
     } finally {
