@@ -6,7 +6,12 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.inbound.rsocket;
 
-import io.rsocket.*;
+import io.rsocket.AbstractRSocket;
+import io.rsocket.ConnectionSetupPayload;
+import io.rsocket.Payload;
+import io.rsocket.RSocket;
+import io.rsocket.RSocketFactory;
+import io.rsocket.SocketAcceptor;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.netty.server.CloseableChannel;
 import io.rsocket.transport.netty.server.TcpServerTransport;
@@ -55,7 +60,7 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
     if (this.serverSocket != null && !this.serverSocket.isDisposed()) {
       try {
         this.serverSocket.dispose();
-      } catch (final Exception t) {
+      } catch (final Throwable t) {
         logger.error("Unexpected error on closing inbound channel {}", this.name, t);
       }
     }
@@ -112,7 +117,7 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
             rawMessageBuilder.workBuffer().put(payloadData);
             
             dispatcher.dispatchMessagesFor(rawMessageBuilder);
-          } catch (final Exception t) {
+          } catch (final Throwable t) {
             logger.error("Unexpected error in inbound channel {}. Message ignored.", name, t);
             //Clear builder resources in case of error. Otherwise we will get a BufferOverflow.
             rawMessageBuilder.prepareForNextMessage();
