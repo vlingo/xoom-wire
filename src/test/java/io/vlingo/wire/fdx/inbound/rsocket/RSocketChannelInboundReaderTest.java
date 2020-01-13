@@ -13,7 +13,11 @@ import io.vlingo.wire.fdx.outbound.ManagedOutboundChannel;
 import io.vlingo.wire.fdx.outbound.rsocket.RSocketOutboundChannel;
 import io.vlingo.wire.message.ByteBufferAllocator;
 import io.vlingo.wire.message.RawMessage;
-import io.vlingo.wire.node.*;
+import io.vlingo.wire.node.Address;
+import io.vlingo.wire.node.Host;
+import io.vlingo.wire.node.Id;
+import io.vlingo.wire.node.Name;
+import io.vlingo.wire.node.Node;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -43,7 +47,7 @@ public class RSocketChannelInboundReaderTest {
 
       try {
         channelReader.openFor(consumer);
-      } catch (Exception e) {
+      } catch (Throwable e) {
         Assert.fail(e.getMessage());
       }
 
@@ -73,7 +77,7 @@ public class RSocketChannelInboundReaderTest {
 
       try {
         channelReader.openFor(consumer);
-      } catch (Exception e) {
+      } catch (Throwable e) {
         Assert.fail(e.getMessage());
       }
 
@@ -105,7 +109,7 @@ public class RSocketChannelInboundReaderTest {
 
       try {
         channelReader.openFor(consumer);
-      } catch (Exception e) {
+      } catch (Throwable e) {
         Assert.fail(e.getMessage());
       }
 
