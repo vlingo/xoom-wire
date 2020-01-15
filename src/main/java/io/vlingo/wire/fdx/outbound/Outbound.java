@@ -7,15 +7,20 @@
 
 package io.vlingo.wire.fdx.outbound;
 
-import java.nio.ByteBuffer;
-import java.util.Collection;
-import java.util.Map;
-
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 import io.vlingo.wire.node.Node;
+import reactor.core.publisher.Mono;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class Outbound {
   private final ConsumerByteBufferPool pool;
@@ -30,8 +35,7 @@ public class Outbound {
   }
 
   public void broadcast(final RawMessage message) {
-    final ConsumerByteBuffer buffer = pool.acquire();
-    broadcast(bytesFrom(message, buffer));
+    broadcast(bytesFrom(message, pool.acquire()));
   }
 
   public void broadcast(final ConsumerByteBuffer buffer) {
@@ -41,8 +45,7 @@ public class Outbound {
   }
 
   public void broadcast(final Collection<Node> selectNodes, final RawMessage message) {
-    final ConsumerByteBuffer buffer = pool.acquire();
-    broadcast(selectNodes, bytesFrom(message, buffer));
+    broadcast(selectNodes, bytesFrom(message, pool.acquire()));
   }
 
   public void broadcast(final Collection<Node> selectNodes, final ConsumerByteBuffer buffer) {
@@ -71,28 +74,29 @@ public class Outbound {
   }
 
   public void sendTo(final RawMessage message, final Id id) {
-    final ConsumerByteBuffer buffer = pool.acquire();
-    sendTo(bytesFrom(message, buffer), id);
+    sendTo(bytesFrom(message, pool.acquire()), id);
   }
 
   public void sendTo(final ConsumerByteBuffer buffer, final Id id) {
-    try {
-      open(id);
-      provider.channelFor(id).write(buffer.asByteBuffer());
-    } finally {
-      buffer.release();
-    }
+    open(id);
+    provider.channelFor(id).writeAsync(buffer.asByteBuffer())
+        .doFinally((s) -> buffer.release())
+        .subscribe();
   }
 
   private void broadcast(final Map<Id, ManagedOutboundChannel> channels, final ConsumerByteBuffer buffer) {
-    try {
-      final ByteBuffer bufferToWrite = buffer.asByteBuffer();
-      for (final ManagedOutboundChannel channel: channels.values()) {
-        bufferToWrite.position(0);
-        channel.write(bufferToWrite);
-      }
-    } finally {
-      buffer.release();
-    }
+    ArrayList<Mono<Void>> writes = channels.values().stream()
+        .map((channel) ->
+            channel.writeAsync(
+                // wrap the backing byte array into a read only ByteBuffer so that
+                // each thread gets its own position to read from.
+                ByteBuffer.wrap(buffer.array(), buffer.position(), buffer.limit())
+                    .asReadOnlyBuffer()
+                    .order(buffer.order())))
+        .collect(Collectors.toCollection(ArrayList::new));
+
+    Mono.zipDelayError(writes, Function.identity())
+        .doFinally((s) -> buffer.release())
+        .subscribe();
   }
 }

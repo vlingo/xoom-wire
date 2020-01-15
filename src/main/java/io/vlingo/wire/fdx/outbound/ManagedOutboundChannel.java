@@ -7,9 +7,14 @@
 
 package io.vlingo.wire.fdx.outbound;
 
+import reactor.core.publisher.Mono;
+
 import java.nio.ByteBuffer;
 
 public interface ManagedOutboundChannel {
   void close();
   void write(final ByteBuffer buffer);
+  default Mono<Void> writeAsync(final ByteBuffer buffer) {
+    return Mono.fromRunnable(() -> write(buffer));
+  }
 }
