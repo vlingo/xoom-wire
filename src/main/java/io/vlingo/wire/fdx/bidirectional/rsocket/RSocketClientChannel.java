@@ -12,7 +12,7 @@ import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.exceptions.ApplicationErrorException;
 import io.rsocket.frame.decoder.PayloadDecoder;
-import io.rsocket.transport.netty.client.TcpClientTransport;
+import io.rsocket.transport.ClientTransport;
 import io.rsocket.util.DefaultPayload;
 import io.vlingo.actors.Logger;
 import io.vlingo.common.pool.ElasticResourcePool;
@@ -37,21 +37,23 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
   private final ChannelResponseHandler responseHandler;
   private final Address address;
   private final Duration connectionTimeout;
+  private final ClientTransport transport;
   private RSocket channelSocket;
 
-  public RSocketClientChannel(final Address address, final ResponseChannelConsumer consumer, final int maxBufferPoolSize, final int maxMessageSize,
-                              final Logger logger) {
-    this(address, consumer, maxBufferPoolSize, maxMessageSize, logger, Duration.ofMillis(100));
+  public RSocketClientChannel(final ClientTransport clientTransport, final Address address, final ResponseChannelConsumer consumer,
+                              final int maxBufferPoolSize, final int maxMessageSize, final Logger logger) {
+    this(clientTransport, address, consumer, maxBufferPoolSize, maxMessageSize, logger, Duration.ofMillis(100));
   }
 
-  public RSocketClientChannel(final Address address, final ResponseChannelConsumer consumer, final int maxBufferPoolSize, final int maxMessageSize,
+  public RSocketClientChannel(final ClientTransport clientTransport, final Address address, final ResponseChannelConsumer consumer,
+                              final int maxBufferPoolSize, final int maxMessageSize,
                               final Logger logger, final Duration connectionTimeout) {
-
     this.publisher = UnicastProcessor.create(new ConcurrentLinkedQueue<>());
     this.logger = logger;
     this.address = address;
     this.connectionTimeout = connectionTimeout;
     this.responseHandler = new ChannelResponseHandler(consumer, maxBufferPoolSize, maxMessageSize, logger);
+    this.transport = clientTransport;
   }
 
   @Override
@@ -91,8 +93,11 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
     try {
       if (this.channelSocket == null) {
         this.channelSocket = RSocketFactory.connect()
+                                           .errorConsumer(throwable -> {
+                                             logger.error("Unexpected error in channel", throwable);
+                                           })
                                            .frameDecoder(PayloadDecoder.ZERO_COPY)
-                                           .transport(TcpClientTransport.create(this.address.hostName(), this.address.port()))
+                                           .transport(transport)
                                            .start()
                                            .timeout(this.connectionTimeout)
                                            .doOnError(throwable -> {
@@ -116,12 +121,12 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
                                                                         throwable -> {    //process any errors that are unrecoverable
                                                                           this.publisher.cancel();
                                                                           if (!(throwable instanceof ClosedChannelException)) {
-                                                                            this.logger.error("Received an unrecoverable error. Channel will be closed",
-                                                                                              throwable);
+                                                                            this.logger.error("Received an unrecoverable error. Channel will be closed", throwable);
                                                                             //Propagate the error in order to close the channel
                                                                             throw Exceptions.propagate(throwable);
                                                                           }
-                                                                        });
+                                                                        },
+                                                                        () -> this.logger.info("Channel completed"));
 
           logger.info("RSocket client channel opened for address {}", this.address);
 
@@ -148,8 +153,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
 
     private ChannelResponseHandler(final ResponseChannelConsumer consumer, final int maxBufferPoolSize, final int maxMessageSize, final Logger logger) {
       this.consumer = consumer;
-      this.readBufferPool = new ConsumerByteBufferPool(
-          ElasticResourcePool.Config.of(maxBufferPoolSize), maxMessageSize);
+      this.readBufferPool = new ConsumerByteBufferPool(ElasticResourcePool.Config.of(maxBufferPoolSize), maxMessageSize);
       this.logger = logger;
     }
 

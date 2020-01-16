@@ -6,17 +6,31 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.inbound.rsocket;
 
+import io.rsocket.Closeable;
+import io.rsocket.transport.ServerTransport;
+import io.rsocket.transport.netty.server.TcpServerTransport;
 import io.vlingo.actors.Logger;
 import io.vlingo.wire.channel.ChannelReader;
 import io.vlingo.wire.fdx.inbound.InboundChannelReaderProvider;
 
+import java.util.function.Function;
+
 public class RSocketInboundChannelReaderProvider implements InboundChannelReaderProvider {
   private final int maxMessageSize;
   private final Logger logger;
+  private final Function<Integer, ServerTransport<? extends Closeable>> serverTransportProvider;
 
   public RSocketInboundChannelReaderProvider(final int maxMessageSize, final Logger logger) {
     this.maxMessageSize = maxMessageSize;
     this.logger = logger;
+    this.serverTransportProvider = TcpServerTransport::create;
+  }
+
+  public RSocketInboundChannelReaderProvider(final int maxMessageSize, final Logger logger,
+                                             final Function<Integer, ServerTransport<? extends Closeable>> serverTransportProvider) {
+    this.maxMessageSize = maxMessageSize;
+    this.logger = logger;
+    this.serverTransportProvider = serverTransportProvider;
   }
 
   /**
@@ -24,6 +38,6 @@ public class RSocketInboundChannelReaderProvider implements InboundChannelReader
    */
   @Override
   public ChannelReader channelFor(final int port, final String name) {
-    return new RSocketChannelInboundReader(port, name, this.maxMessageSize, this.logger);
+    return new RSocketChannelInboundReader(this.serverTransportProvider.apply(port), port, name, this.maxMessageSize, this.logger);
   }
 }

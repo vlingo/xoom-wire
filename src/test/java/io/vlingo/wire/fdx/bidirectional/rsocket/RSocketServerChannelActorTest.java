@@ -6,17 +6,9 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-
-import java.nio.ByteBuffer;
-import java.time.Duration;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
+import io.rsocket.transport.ClientTransport;
+import io.rsocket.transport.local.LocalClientTransport;
+import io.rsocket.transport.local.LocalServerTransport;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.World;
@@ -30,10 +22,19 @@ import io.vlingo.wire.fdx.bidirectional.TestResponseChannelConsumer;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.nio.ByteBuffer;
+import java.time.Duration;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 
 public class RSocketServerChannelActorTest {
   private static final int POOL_SIZE = 100;
-  private static AtomicInteger TEST_PORT = new AtomicInteger(49560);
 
   private ClientRequestResponseChannel client;
   private TestResponseChannelConsumer clientConsumer;
@@ -41,7 +42,7 @@ public class RSocketServerChannelActorTest {
   private ServerRequestResponseChannel server;
   private TestRequestChannelConsumer serverConsumer;
   private World world;
-
+  
   @Test
   public void testBasicRequestResponse() throws Exception {
     final String request = "Hello, Request-Response";
@@ -84,19 +85,19 @@ public class RSocketServerChannelActorTest {
     clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
 
     // simulate network latency for parts of single request
+    clientConsumer.untilConsume = TestUntil.happenings(1);
+    serverConsumer.untilConsume = TestUntil.happenings(1);
 
     request(requestPart1);
     Thread.sleep(100);
     request(requestPart2);
     Thread.sleep(200);
     request(requestPart3);
-    serverConsumer.untilConsume = TestUntil.happenings(1);
     while (serverConsumer.untilConsume.remaining() > 0) {
       ;
     }
     serverConsumer.untilConsume.completes();
 
-    clientConsumer.untilConsume = TestUntil.happenings(1);
     while (clientConsumer.untilConsume.remaining() > 0) {
       Thread.sleep(10);
       client.probeChannel();
@@ -192,19 +193,24 @@ public class RSocketServerChannelActorTest {
     provider = new TestRequestChannelConsumerProvider();
     serverConsumer = (TestRequestChannelConsumer) provider.consumer;
 
-    final int testPort = TEST_PORT.incrementAndGet();
+    final ClientTransport clientTransport = LocalClientTransport.create("rsocket-fdx-server-test");
+    final LocalServerTransport serverTransport = LocalServerTransport.create("rsocket-fdx-server-test");
 
     final RSocketServerRequestResponseChannelInstantiator instantiator =
-            new RSocketServerRequestResponseChannelInstantiator(provider, testPort, "test-server",  POOL_SIZE, 10240);
+            new RSocketServerRequestResponseChannelInstantiator(provider, serverTransport, 0, "test-server", POOL_SIZE, 10240);
 
     server = world.actorFor(
                     ServerRequestResponseChannel.class,
                     Definition.has(RSocketServerChannelActor.class, instantiator));
 
+    final Integer serverPort = server.port().<Integer>await();
+
+    assertNotNull("Server failed to start", serverPort);
 
     clientConsumer = new TestResponseChannelConsumer();
 
-    client = new RSocketClientChannel(Address.from(Host.of("127.0.0.1"), testPort, AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger, Duration.ofSeconds(1));
+    client = new RSocketClientChannel(clientTransport, Address.from(Host.of("127.0.0.1"), serverPort, AddressType.NONE),
+                                      clientConsumer, POOL_SIZE, 10240, logger, Duration.ofSeconds(1));
   }
 
   @After

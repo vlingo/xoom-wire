@@ -10,7 +10,7 @@ import io.rsocket.Payload;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
 import io.rsocket.frame.decoder.PayloadDecoder;
-import io.rsocket.transport.netty.client.TcpClientTransport;
+import io.rsocket.transport.ClientTransport;
 import io.rsocket.util.DefaultPayload;
 import io.vlingo.actors.Logger;
 import io.vlingo.wire.fdx.outbound.ManagedOutboundChannel;
@@ -27,15 +27,17 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
   private final Logger logger;
   private RSocket clientSocket;
   private final Duration connectionTimeout;
+  private final ClientTransport transport;
 
-  public RSocketOutboundChannel(final Address address, final Logger logger) {
-    this(address, Duration.ofMillis(100), logger);
+  public RSocketOutboundChannel(final Address address, final ClientTransport clientTransport, final Logger logger) {
+    this(address, clientTransport, Duration.ofMillis(100), logger);
   }
 
-  public RSocketOutboundChannel(final Address address, Duration connectionTimeout, final Logger logger) {
+  public RSocketOutboundChannel(final Address address, final ClientTransport clientTransport, Duration connectionTimeout, final Logger logger) {
     this.address = address;
     this.logger = logger;
     this.connectionTimeout = connectionTimeout;
+    this.transport = clientTransport;
   }
 
   @Override
@@ -63,20 +65,17 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
         data.flip();
 
         final Payload payload = DefaultPayload.create(data);
-        rSocket.fireAndForget(payload)
-               .onErrorResume(throwable -> {
-                 if (throwable instanceof ClosedChannelException) {
-                   //close outbound channel
-                   rSocket.dispose();
-                   logger.error("Connection with {} closed", address, throwable);
-                   return Mono.error(throwable);
-                 } else {
-                   logger.error("Failed write to {}, because: {}", address, throwable.getMessage(), throwable);
-                   return Mono.empty();
-                 }
-               })
-               .doFinally(signalType -> data.clear())
-               .subscribe();
+        rSocket.fireAndForget(payload).onErrorResume(throwable -> {
+          if (throwable instanceof ClosedChannelException) {
+            //close outbound channel
+            rSocket.dispose();
+            logger.error("Connection with {} closed", address, throwable);
+            return Mono.error(throwable);
+          } else {
+            logger.error("Failed write to {}, because: {}", address, throwable.getMessage(), throwable);
+            return Mono.empty();
+          }
+        }).doFinally(signalType -> data.clear()).subscribe();
       } else {
         logger.warn("RSocket outbound channel for {} is closed. Message dropped", this.address);
       }
@@ -89,17 +88,21 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
     if (this.clientSocket == null) {
       try {
         this.clientSocket = RSocketFactory.connect()
+                                          .errorConsumer(throwable -> {
+                                            logger.error("Unexpected error in outbound channel", throwable);
+                                          })
                                           .frameDecoder(PayloadDecoder.ZERO_COPY)
-                                          .transport(TcpClientTransport.create(address.hostName(), address.port()))
+                                          .transport(transport)
                                           .start()
                                           .timeout(connectionTimeout)
                                           .block();
-        
+
         logger.info("RSocket outbound channel opened for {}", this.address);
 
         this.clientSocket.onClose()
                          .doFinally(signalType -> logger.info("RSocket outbound channel for {} is closed", this.address))
                          .subscribe(ignored -> {}, throwable -> logger.error("Unexpected error on closing outbound channel", throwable));
+        
       } catch (final Throwable t) {
         logger.warn("Failed to create RSocket outbound channel for {}, because {}", this.address, t.getMessage());
         close();
