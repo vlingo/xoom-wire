@@ -158,7 +158,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
     }
 
     private void handle(Payload payload) {
-      final ConsumerByteBuffer pooledBuffer = readBufferPool.acquire();
+      final ConsumerByteBuffer pooledBuffer = readBufferPool.acquire("RSocketClientChannel#ChannelResponseHandler#handle");
       try {
         final ByteBuffer payloadData = payload.getData();
         final ConsumerByteBuffer put = pooledBuffer.put(payloadData);

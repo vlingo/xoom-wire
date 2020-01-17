@@ -83,7 +83,7 @@ class RSocketChannelContext implements RequestResponseContext<FluxSink<ConsumerB
   }
 
   public void consume(Payload request) {
-    final ConsumerByteBuffer pooledBuffer = readBufferPool.acquire();
+    final ConsumerByteBuffer pooledBuffer = readBufferPool.acquire("RSocketChannelContext#consume");
     try {
       pooledBuffer.put(request.getData());
       this.consumer.consume(this, pooledBuffer.flip());

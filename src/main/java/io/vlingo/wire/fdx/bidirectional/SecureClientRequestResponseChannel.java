@@ -202,7 +202,7 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
 
     @Override
     public void onInput(final ByteBuffer decrypted) {
-      final ConsumerByteBuffer buffer = readBufferPool.acquire();
+      final ConsumerByteBuffer buffer = readBufferPool.acquire("SecureClientRequestResponseChannel#SSLProvider#onInput");
       consumer.consume(buffer.put(decrypted).flip());
     }
 
@@ -254,10 +254,10 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
       this.readBufferPool = readBufferPool;
 
       // TODO investigate how the "leaked" buffers below affect the pool's ability to compact
-      this.clientWrap = readBufferPool.acquire().asByteBuffer();
-      this.serverWrap = readBufferPool.acquire().asByteBuffer();
-      this.clientUnwrap = readBufferPool.acquire().asByteBuffer();
-      this.serverUnwrap = readBufferPool.acquire().asByteBuffer();
+      this.clientWrap = readBufferPool.acquire("SecureClientRequestResponseChannel#SSLWorker#clientWrap").asByteBuffer();
+      this.serverWrap = readBufferPool.acquire("SecureClientRequestResponseChannel#SSLWorker#serverWrap").asByteBuffer();
+      this.clientUnwrap = readBufferPool.acquire("SecureClientRequestResponseChannel#SSLWorker#clientUnwrap").asByteBuffer();
+      this.serverUnwrap = readBufferPool.acquire("SecureClientRequestResponseChannel#SSLWorker#serverUnwrap").asByteBuffer();
 
       this.clientUnwrap.limit(0);
       this.engine = engine;

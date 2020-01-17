@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ConsumerByteBufferPool extends ElasticResourcePool<ConsumerByteBuffer, Void> {
+public class ConsumerByteBufferPool extends ElasticResourcePool<ConsumerByteBuffer, String> {
 
   private static final Logger log = LoggerFactory.getLogger(ConsumerByteBufferPool.class);
 
@@ -18,8 +18,8 @@ public class ConsumerByteBufferPool extends ElasticResourcePool<ConsumerByteBuff
   }
 
   @Override
-  public ConsumerByteBuffer acquire(Void aVoid) {
-    return setPool(super.acquire(aVoid));
+  public ConsumerByteBuffer acquire(String string) {
+    return setPool(super.acquire(string));
   }
 
   private ConsumerByteBuffer setPool(final ConsumerByteBuffer buffer) {
@@ -35,7 +35,7 @@ public class ConsumerByteBufferPool extends ElasticResourcePool<ConsumerByteBuff
     super(config, new ConsumerByteBufferFactory(maxBufferSize));
   }
 
-  private static final class ConsumerByteBufferFactory implements ResourceFactory<ConsumerByteBuffer, Void> {
+  private static final class ConsumerByteBufferFactory implements ResourceFactory<ConsumerByteBuffer, String> {
 
     private static final AtomicInteger idSequence = new AtomicInteger(0);
 
@@ -51,18 +51,24 @@ public class ConsumerByteBufferPool extends ElasticResourcePool<ConsumerByteBuff
     }
 
     @Override
-    public ConsumerByteBuffer create(Void aVoid) {
-      return new PoolAwareConsumerByteBuffer(
+    public ConsumerByteBuffer create(String string) {
+      PoolAwareConsumerByteBuffer poolAwareConsumerByteBuffer = new PoolAwareConsumerByteBuffer(
           idSequence.incrementAndGet(), maxBufferSize);
+      poolAwareConsumerByteBuffer.tag(string);
+      return poolAwareConsumerByteBuffer;
     }
 
     @Override
-    public Void defaultArguments() {
-      return null;
+    public String defaultArguments() {
+      return "notag";
     }
 
     @Override
-    public ConsumerByteBuffer reset(ConsumerByteBuffer buffer, Void aVoid) {
+    public ConsumerByteBuffer reset(ConsumerByteBuffer buffer, String string) {
+      if (buffer instanceof BasicConsumerByteBuffer) {
+        BasicConsumerByteBuffer basicConsumerByteBuffer = (BasicConsumerByteBuffer) buffer;
+        basicConsumerByteBuffer.tag(string);
+      }
       return buffer.clear();
     }
 
@@ -100,7 +106,9 @@ public class ConsumerByteBufferPool extends ElasticResourcePool<ConsumerByteBuff
         pool.release(this);
       }
       else {
-        log.warn("Attempt to release the same buffer more than once");
+        String message = String.format("Attempt to release the same buffer [%d:%s] more than once", id(), tag());
+        if (!log.isDebugEnabled()) log.warn(message);
+        else log.debug(message, new IllegalStateException(new IllegalStateException("Buffer already released")));
       }
     }
   }

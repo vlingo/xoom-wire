@@ -12,6 +12,7 @@ import java.nio.channels.SocketChannel;
 import io.vlingo.actors.ActorInstantiator;
 import io.vlingo.common.pool.ResourcePool;
 import io.vlingo.wire.message.ConsumerByteBuffer;
+import io.vlingo.wire.message.ConsumerByteBufferPool;
 
 public interface SocketChannelSelectionProcessor {
   void close();
@@ -20,14 +21,14 @@ public interface SocketChannelSelectionProcessor {
   static class SocketChannelSelectionProcessorInstantiator implements ActorInstantiator<SocketChannelSelectionProcessorActor> {
     final RequestChannelConsumerProvider provider;
     final String name;
-    final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool;
+    final ConsumerByteBufferPool requestBufferPool;
     final long probeInterval;
     final long probeTimeout;
 
     public SocketChannelSelectionProcessorInstantiator(
             final RequestChannelConsumerProvider provider,
             final String name,
-            final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool,
+            final ConsumerByteBufferPool requestBufferPool,
             final long probeInterval,
             final long probeTimeout) {
 
