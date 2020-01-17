@@ -87,9 +87,9 @@ class RSocketChannelContext implements RequestResponseContext<FluxSink<ConsumerB
     try {
       pooledBuffer.put(request.getData());
       this.consumer.consume(this, pooledBuffer.flip());
-    } catch(Exception e) {
+    } catch(Throwable t) {
       pooledBuffer.release();
-      throw e;
+      throw t;
     }
   }
 

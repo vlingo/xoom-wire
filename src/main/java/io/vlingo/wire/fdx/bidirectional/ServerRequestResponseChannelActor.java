@@ -18,6 +18,7 @@ import io.vlingo.actors.Actor;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Stoppable;
 import io.vlingo.common.Cancellable;
+import io.vlingo.common.Completes;
 import io.vlingo.common.Scheduled;
 import io.vlingo.common.pool.ElasticResourcePool;
 import io.vlingo.common.pool.ResourcePool;
@@ -33,6 +34,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
   private final ServerSocketChannel channel;
   private final String name;
   private final SocketChannelSelectionProcessor[] processors;
+  private final int port;
   private int processorPoolIndex;
   private final long probeTimeout;
   private final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool;
@@ -57,7 +59,9 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
 
       this.processors = startProcessors(provider, name, processorPoolSize, this.requestBufferPool, probeInterval, probeTimeout);
 
-      logger().info(getClass().getSimpleName() + ": OPENING PORT: " + port);
+      this.port = port;
+      logger().info(getClass().getSimpleName() + ": OPENING PORT: " + this.port);
+
       this.channel = ServerSocketChannel.open();
       this.selector = Selector.open();
       channel.socket().bind(new InetSocketAddress(port));
@@ -82,6 +86,11 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
     if (isStopped()) return;
 
     selfAs(Stoppable.class).stop();
+  }
+
+  @Override
+  public Completes<Integer> port() {
+    return completes().with(this.port);
   }
 
   //=========================================

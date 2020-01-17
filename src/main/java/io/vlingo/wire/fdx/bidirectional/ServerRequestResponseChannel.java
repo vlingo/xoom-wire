@@ -7,11 +7,14 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
+import io.rsocket.Closeable;
+import io.rsocket.transport.ServerTransport;
 import io.vlingo.actors.ActorInstantiator;
 import io.vlingo.actors.Address;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Stage;
 import io.vlingo.actors.Stoppable;
+import io.vlingo.common.Completes;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.fdx.bidirectional.rsocket.RSocketServerChannelActor;
 
@@ -109,6 +112,7 @@ public interface ServerRequestResponseChannel extends Stoppable {
 
   static class RSocketServerRequestResponseChannelInstantiator implements ActorInstantiator<RSocketServerChannelActor> {
     private final RequestChannelConsumerProvider provider;
+    private final ServerTransport<? extends Closeable> serverTransport;
     private final int port;
     private final String name;
     private final int maxBufferPoolSize;
@@ -116,12 +120,14 @@ public interface ServerRequestResponseChannel extends Stoppable {
 
     public RSocketServerRequestResponseChannelInstantiator(
             final RequestChannelConsumerProvider provider,
+            final ServerTransport<? extends Closeable> serverTransport,
             final int port,
             final String name,
             final int maxBufferPoolSize,
             final int messageBufferSize) {
 
       this.provider = provider;
+      this.serverTransport = serverTransport;
       this.port = port;
       this.name = name;
       this.maxBufferPoolSize = maxBufferPoolSize;
@@ -130,7 +136,7 @@ public interface ServerRequestResponseChannel extends Stoppable {
 
     @Override
     public RSocketServerChannelActor instantiate() {
-      return new RSocketServerChannelActor(provider, port, name, maxBufferPoolSize, messageBufferSize);
+      return new RSocketServerChannelActor(provider, serverTransport, port, name, maxBufferPoolSize, messageBufferSize);
     }
 
     @Override
@@ -138,4 +144,6 @@ public interface ServerRequestResponseChannel extends Stoppable {
       return RSocketServerChannelActor.class;
     }
   }
+
+  Completes<Integer> port();
 }
