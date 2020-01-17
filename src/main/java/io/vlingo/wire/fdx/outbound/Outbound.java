@@ -7,8 +7,8 @@
 
 package io.vlingo.wire.fdx.outbound;
 
+import io.vlingo.common.pool.ResourcePool;
 import io.vlingo.wire.message.ConsumerByteBuffer;
-import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 import io.vlingo.wire.node.Node;
@@ -18,12 +18,12 @@ import java.util.Collection;
 import java.util.Map;
 
 public class Outbound {
-  private final ConsumerByteBufferPool pool;
+  private final ResourcePool<ConsumerByteBuffer, String> pool;
   private final ManagedOutboundChannelProvider provider;
 
   public Outbound(
       final ManagedOutboundChannelProvider provider,
-      final ConsumerByteBufferPool byteBufferPool) {
+      final ResourcePool<ConsumerByteBuffer, String> byteBufferPool) {
 
     this.provider = provider;
     this.pool = byteBufferPool;

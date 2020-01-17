@@ -10,6 +10,7 @@ package io.vlingo.wire.fdx.bidirectional;
 import io.vlingo.actors.Logger;
 import io.vlingo.common.Tuple4;
 import io.vlingo.common.pool.ElasticResourcePool;
+import io.vlingo.common.pool.ResourcePool;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBufferPool;
@@ -175,7 +176,7 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
     private final SelectionKey key;
     private AtomicBoolean ready;
 
-    public SSLProvider(final SelectionKey key, final SSLEngine engine, final Executor ioWorker, final Executor taskWorkers, final ConsumerByteBufferPool readBufferPool) {
+    public SSLProvider(final SelectionKey key, final SSLEngine engine, final Executor ioWorker, final Executor taskWorkers, final ResourcePool<ConsumerByteBuffer, String> readBufferPool) {
       super(engine, ioWorker, taskWorkers, readBufferPool);
       this.key = key;
       this.ready = new AtomicBoolean(false);
@@ -245,11 +246,11 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
     final Executor ioWorker, taskWorkers;
     final ByteBuffer clientWrap, clientUnwrap;
     final ByteBuffer serverWrap, serverUnwrap;
-    final ConsumerByteBufferPool readBufferPool;
+    final ResourcePool<ConsumerByteBuffer, String> readBufferPool;
 
     private final AtomicBoolean handShakeLock;
 
-    public SSLWorker(SSLEngine engine, Executor ioWorker, Executor taskWorkers, final ConsumerByteBufferPool readBufferPool) {
+    public SSLWorker(SSLEngine engine, Executor ioWorker, Executor taskWorkers, final ResourcePool<ConsumerByteBuffer, String> readBufferPool) {
       this.handShakeLock = new AtomicBoolean(false);
       this.readBufferPool = readBufferPool;
 

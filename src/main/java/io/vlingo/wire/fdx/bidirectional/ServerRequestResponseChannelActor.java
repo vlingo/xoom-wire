@@ -14,10 +14,12 @@ import io.vlingo.common.Cancellable;
 import io.vlingo.common.Completes;
 import io.vlingo.common.Scheduled;
 import io.vlingo.common.pool.ElasticResourcePool;
+import io.vlingo.common.pool.ResourcePool;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.channel.SocketChannelSelectionProcessor;
 import io.vlingo.wire.channel.SocketChannelSelectionProcessor.SocketChannelSelectionProcessorInstantiator;
 import io.vlingo.wire.channel.SocketChannelSelectionProcessorActor;
+import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBufferPool;
 
 import java.net.InetSocketAddress;
@@ -186,7 +188,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
           final RequestChannelConsumerProvider provider,
           final String name,
           final int processorPoolSize,
-          final ConsumerByteBufferPool requestBufferPool,
+          final ResourcePool<ConsumerByteBuffer, String> requestBufferPool,
           final long probeInterval,
           final long probeTimeout)
   throws Exception {

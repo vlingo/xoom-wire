@@ -12,8 +12,8 @@ import io.vlingo.actors.Actor;
 import io.vlingo.actors.Stoppable;
 import io.vlingo.common.Cancellable;
 import io.vlingo.common.Scheduled;
+import io.vlingo.common.pool.ResourcePool;
 import io.vlingo.wire.message.ConsumerByteBuffer;
-import io.vlingo.wire.message.ConsumerByteBufferPool;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -33,7 +33,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
   private final String name;
   private final long probeTimeout;
   private final RequestChannelConsumerProvider provider;
-  private final ConsumerByteBufferPool requestBufferPool;
+  private final ResourcePool<ConsumerByteBuffer, String> requestBufferPool;
   private final ResponseSenderChannel responder;
   private final Selector selector;
   private final LinkedList<Context> writableContexts;
@@ -42,7 +42,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
   public SocketChannelSelectionProcessorActor(
           final RequestChannelConsumerProvider provider,
           final String name,
-          final ConsumerByteBufferPool requestBufferPool,
+          final ResourcePool<ConsumerByteBuffer, String> requestBufferPool,
           final long probeInterval,
           final long probeTimeout) {
     this.logger().debug("Probe interval: " + probeInterval + " Probe timeout: " + probeTimeout);
