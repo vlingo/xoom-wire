@@ -13,6 +13,8 @@ import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.ClientTransport;
 import io.rsocket.util.DefaultPayload;
 import io.vlingo.actors.Logger;
+import io.vlingo.common.Completes;
+import io.vlingo.common.Scheduler;
 import io.vlingo.wire.fdx.outbound.ManagedOutboundChannel;
 import io.vlingo.wire.node.Address;
 import reactor.core.publisher.Mono;
@@ -52,8 +54,16 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
     this.clientSocket = null;
   }
 
+  private final Scheduler scheduler = new Scheduler();
+
   @Override
-  public Mono<Void> writeAsync(final ByteBuffer buffer) {
+  public Completes<Void> writeAsync(final ByteBuffer buffer) {
+    Completes<Void> result = Completes.using(scheduler);
+    _writeAsync(buffer).subscribe(result::with, (t) -> result.failed());
+    return result;
+  }
+
+  private Mono<Void> _writeAsync(final ByteBuffer buffer) {
     return prepareSocket().map((socket) -> {
       if (socket.isDisposed()) {
         return Mono.fromRunnable(() ->
@@ -80,7 +90,7 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
 
   @Override
   public void write(final ByteBuffer buffer) {
-    writeAsync(buffer).block();
+    _writeAsync(buffer).block();
   }
 
   private Optional<RSocket> prepareSocket() {

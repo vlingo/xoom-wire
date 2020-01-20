@@ -12,15 +12,11 @@ import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 import io.vlingo.wire.node.Node;
-import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Outbound {
   private final ConsumerByteBufferPool pool;
@@ -80,23 +76,23 @@ public class Outbound {
   public void sendTo(final ConsumerByteBuffer buffer, final Id id) {
     open(id);
     provider.channelFor(id).writeAsync(buffer.asByteBuffer())
-        .doFinally((s) -> buffer.release())
-        .subscribe();
+        .andFinallyConsume((aVoid) -> buffer.release());
   }
 
   private void broadcast(final Map<Id, ManagedOutboundChannel> channels, final ConsumerByteBuffer buffer) {
-    ArrayList<Mono<Void>> writes = channels.values().stream()
-        .map((channel) ->
+    AtomicInteger latch = new AtomicInteger(channels.size());
+    channels.values()
+        .forEach((channel) ->
             channel.writeAsync(
                 // wrap the backing byte array into a read only ByteBuffer so that
                 // each thread gets its own position to read from.
                 ByteBuffer.wrap(buffer.array(), buffer.position(), buffer.limit())
                     .asReadOnlyBuffer()
-                    .order(buffer.order())))
-        .collect(Collectors.toCollection(ArrayList::new));
-
-    Mono.zipDelayError(writes, Function.identity())
-        .doFinally((s) -> buffer.release())
-        .subscribe();
+                    .order(buffer.order()))
+                .andFinallyConsume((ignored) -> {
+                  if (latch.decrementAndGet() == 0) {
+                    buffer.release();
+                  }
+                }));
   }
 }
