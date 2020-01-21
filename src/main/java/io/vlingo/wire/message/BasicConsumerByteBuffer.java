@@ -41,7 +41,7 @@ public class BasicConsumerByteBuffer implements ConsumerByteBuffer {
     return String.format("BasicConsumerByteBuffer[id=%d]", id);
   }
 
-  protected void tag(final String tag) {
+  public void tag(final String tag) {
     this.tag = tag;
   }
 

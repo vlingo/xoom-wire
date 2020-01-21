@@ -11,7 +11,8 @@ import io.vlingo.actors.ActorInstantiator;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Stage;
 import io.vlingo.actors.Stoppable;
-import io.vlingo.wire.message.ConsumerByteBufferPool;
+import io.vlingo.common.pool.ResourcePool;
+import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 
@@ -19,7 +20,7 @@ public interface ApplicationOutboundStream extends Stoppable {
   public static ApplicationOutboundStream instance(
           final Stage stage,
           final ManagedOutboundChannelProvider provider,
-          final ConsumerByteBufferPool byteBufferPool) {
+          final ResourcePool<ConsumerByteBuffer, String> byteBufferPool) {
 
     final Definition definition =
             Definition.has(
@@ -37,12 +38,12 @@ public interface ApplicationOutboundStream extends Stoppable {
   void sendTo(final RawMessage message, final Id targetId);
 
   static class ApplicationOutboundStreamInstantiator implements ActorInstantiator<ApplicationOutboundStreamActor> {
-    private final ConsumerByteBufferPool byteBufferPool;
+    private final ResourcePool<ConsumerByteBuffer, String> byteBufferPool;
     private final ManagedOutboundChannelProvider provider;
 
     public ApplicationOutboundStreamInstantiator(
             final ManagedOutboundChannelProvider provider,
-            final ConsumerByteBufferPool byteBufferPool) {
+            final ResourcePool<ConsumerByteBuffer, String> byteBufferPool) {
       this.provider = provider;
       this.byteBufferPool = byteBufferPool;
     }
