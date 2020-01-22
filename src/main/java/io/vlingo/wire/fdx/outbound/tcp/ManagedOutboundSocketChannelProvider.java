@@ -9,7 +9,6 @@ package io.vlingo.wire.fdx.outbound.tcp;
 
 import io.vlingo.wire.fdx.outbound.AbstractManagedOutboundChannelProvider;
 import io.vlingo.wire.fdx.outbound.ManagedOutboundChannel;
-import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Configuration;
 import io.vlingo.wire.node.Node;
@@ -21,8 +20,6 @@ public class ManagedOutboundSocketChannelProvider extends AbstractManagedOutboun
 
   @Override
   protected ManagedOutboundChannel unopenedChannelFor(final Node node, final Configuration configuration, final AddressType type) {
-    final Address address = (type == AddressType.OP ? node.operationalAddress() : node.applicationAddress());
-
-    return new ManagedOutboundSocketChannel(node, address, configuration.logger());
+    return new ManagedOutboundSocketChannel(node, addressOf(node, type), configuration.logger());
   }
 }
