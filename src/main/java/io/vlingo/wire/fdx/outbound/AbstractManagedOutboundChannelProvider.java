@@ -6,10 +6,7 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.outbound;
 
-import io.vlingo.wire.node.AddressType;
-import io.vlingo.wire.node.Configuration;
-import io.vlingo.wire.node.Id;
-import io.vlingo.wire.node.Node;
+import io.vlingo.wire.node.*;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -17,6 +14,11 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public abstract class AbstractManagedOutboundChannelProvider implements ManagedOutboundChannelProvider {
+
+  protected static Address addressOf(final Node node, final AddressType type) {
+    return (type == AddressType.OP ? node.operationalAddress() : node.applicationAddress());
+  }
+
   private final Configuration configuration;
   private final Node node;
   private final Map<Id, ManagedOutboundChannel> nodeChannels = new HashMap<>();
