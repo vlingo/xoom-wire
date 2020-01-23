@@ -13,6 +13,8 @@ import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.ClientTransport;
 import io.rsocket.util.DefaultPayload;
 import io.vlingo.actors.Logger;
+import io.vlingo.common.Completes;
+import io.vlingo.common.Scheduler;
 import io.vlingo.wire.fdx.outbound.ManagedOutboundChannel;
 import io.vlingo.wire.node.Address;
 import reactor.core.publisher.Mono;
@@ -52,36 +54,43 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
     this.clientSocket = null;
   }
 
+  private final Scheduler scheduler = new Scheduler();
+
+  @Override
+  public Completes<Void> writeAsync(final ByteBuffer buffer) {
+    Completes<Void> result = Completes.using(scheduler);
+    _writeAsync(buffer).subscribe(result::with, (t) -> result.failed());
+    return result;
+  }
+
+  private Mono<Void> _writeAsync(final ByteBuffer buffer) {
+    return prepareSocket().map((socket) -> {
+      if (socket.isDisposed()) {
+        return Mono.fromRunnable(() ->
+            logger.warn("RSocket outbound channel for {} is closed. Message dropped",
+                this.address)).then();
+      }
+      final Payload payload = DefaultPayload.create(buffer);
+      return socket.fireAndForget(payload)
+          .onErrorResume(throwable -> {
+            if (throwable instanceof ClosedChannelException) {
+              //close outbound channel
+              socket.dispose();
+              logger.error("Connection with {} closed", address, throwable);
+              return Mono.error(throwable);
+            } else {
+              logger.error("Failed write to {}, because: {}", address, throwable.getMessage(), throwable);
+              return Mono.empty();
+            }
+          });
+    }).orElseGet(() -> Mono.fromRunnable(() ->
+        logger.debug("RSocket outbound channel for {} not ready. Message dropped",
+            address)));
+  }
+
   @Override
   public void write(final ByteBuffer buffer) {
-    final Optional<RSocket> socket = prepareSocket();
-    if (socket.isPresent()) {
-      final RSocket rSocket = socket.get();
-      //check if channel still open
-      if (!rSocket.isDisposed()) {
-        //Copy original buffer data because payload might not be sent immediately.
-        ByteBuffer data = ByteBuffer.allocate(buffer.capacity());
-        data.put(buffer);
-        data.flip();
-
-        final Payload payload = DefaultPayload.create(data);
-        rSocket.fireAndForget(payload).onErrorResume(throwable -> {
-          if (throwable instanceof ClosedChannelException) {
-            //close outbound channel
-            rSocket.dispose();
-            logger.error("Connection with {} closed", address, throwable);
-            return Mono.error(throwable);
-          } else {
-            logger.error("Failed write to {}, because: {}", address, throwable.getMessage(), throwable);
-            return Mono.empty();
-          }
-        }).doFinally(signalType -> data.clear()).subscribe();
-      } else {
-        logger.warn("RSocket outbound channel for {} is closed. Message dropped", this.address);
-      }
-    } else {
-      logger.debug("RSocket outbound channel for {} not ready. Message dropped", this.address);
-    }
+    _writeAsync(buffer).block();
   }
 
   private Optional<RSocket> prepareSocket() {
@@ -102,7 +111,7 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
         this.clientSocket.onClose()
                          .doFinally(signalType -> logger.info("RSocket outbound channel for {} is closed", this.address))
                          .subscribe(ignored -> {}, throwable -> logger.error("Unexpected error on closing outbound channel", throwable));
-        
+
       } catch (final Throwable t) {
         logger.warn("Failed to create RSocket outbound channel for {}, because {}", this.address, t.getMessage());
         close();

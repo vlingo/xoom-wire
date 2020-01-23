@@ -16,6 +16,8 @@ import io.vlingo.wire.node.Node;
 import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
 
 public class Outbound {
   private final ResourcePool<ConsumerByteBuffer, String> pool;
@@ -73,23 +75,25 @@ public class Outbound {
   }
 
   public void sendTo(final ConsumerByteBuffer buffer, final Id id) {
-    try {
-      open(id);
-      provider.channelFor(id).write(buffer.asByteBuffer());
-    } finally {
-      buffer.release();
-    }
+    open(id);
+    provider.channelFor(id).writeAsync(buffer.asByteBuffer())
+        .andFinallyConsume((aVoid) -> buffer.release());
   }
 
   private void broadcast(final Map<Id, ManagedOutboundChannel> channels, final ConsumerByteBuffer buffer) {
-    try {
-      final ByteBuffer bufferToWrite = buffer.asByteBuffer();
-      for (final ManagedOutboundChannel channel: channels.values()) {
-        bufferToWrite.position(0);
-        channel.write(bufferToWrite);
-      }
-    } finally {
-      buffer.release();
-    }
+    AtomicInteger latch = new AtomicInteger(channels.size());
+    channels.values()
+        .forEach((channel) ->
+            channel.writeAsync(
+                // wrap the backing byte array into a read only ByteBuffer so that
+                // each thread gets its own position to read from.
+                ByteBuffer.wrap(buffer.array(), buffer.position(), buffer.limit())
+                    .asReadOnlyBuffer()
+                    .order(buffer.order()))
+                .andFinallyConsume((ignored) -> {
+                  if (latch.decrementAndGet() == 0) {
+                    buffer.release();
+                  }
+                }));
   }
 }

@@ -7,13 +7,7 @@
 
 package io.vlingo.wire.message;
 
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.DoubleBuffer;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-import java.nio.LongBuffer;
-import java.nio.ShortBuffer;
+import java.nio.*;
 
 public interface ConsumerByteBuffer {
   int id();
@@ -74,7 +68,9 @@ public interface ConsumerByteBuffer {
   float getFloat(int index);
   double getDouble();
   double getDouble(int index);
-  
+
+  ByteOrder order();
+
   ConsumerByteBuffer put(final ByteBuffer soruce);
   ConsumerByteBuffer put(final byte b);
   ConsumerByteBuffer put(final int index, final byte b);
