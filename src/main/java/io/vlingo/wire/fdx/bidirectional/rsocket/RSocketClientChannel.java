@@ -162,8 +162,8 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
       final ConsumerByteBuffer pooledBuffer = readBufferPool.acquire("RSocketClientChannel#ChannelResponseHandler#handle");
       try {
         final ByteBuffer payloadData = payload.getData();
-        final ConsumerByteBuffer put = pooledBuffer.put(payloadData);
-        consumer.consume(put.flip());
+        consumer.consume(
+            pooledBuffer.put(payloadData).flip());
       } catch (final Throwable e) {
         logger.error("Unexpected error reading incoming payload", e);
         pooledBuffer.release();
