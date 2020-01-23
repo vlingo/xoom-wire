@@ -10,6 +10,7 @@ import io.rsocket.Payload;
 import io.rsocket.util.ByteBufPayload;
 import io.vlingo.actors.Logger;
 import io.vlingo.common.pool.ElasticResourcePool;
+import io.vlingo.common.pool.ResourcePool;
 import io.vlingo.wire.channel.RequestChannelConsumer;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.channel.RequestResponseContext;
@@ -83,7 +84,7 @@ class RSocketChannelContext implements RequestResponseContext<FluxSink<ConsumerB
   }
 
   public void consume(Payload request) {
-    final ConsumerByteBuffer pooledBuffer = readBufferPool.acquire();
+    final ConsumerByteBuffer pooledBuffer = readBufferPool.acquire("RSocketChannelContext#consume");
     try {
       pooledBuffer.put(request.getData());
       this.consumer.consume(this, pooledBuffer.flip());

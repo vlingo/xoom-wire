@@ -7,8 +7,8 @@
 
 package io.vlingo.wire.fdx.outbound;
 
+import io.vlingo.common.pool.ResourcePool;
 import io.vlingo.wire.message.ConsumerByteBuffer;
-import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 import io.vlingo.wire.node.Node;
@@ -18,20 +18,21 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
+
 public class Outbound {
-  private final ConsumerByteBufferPool pool;
+  private final ResourcePool<ConsumerByteBuffer, String> pool;
   private final ManagedOutboundChannelProvider provider;
 
   public Outbound(
       final ManagedOutboundChannelProvider provider,
-      final ConsumerByteBufferPool byteBufferPool) {
+      final ResourcePool<ConsumerByteBuffer, String> byteBufferPool) {
 
     this.provider = provider;
     this.pool = byteBufferPool;
   }
 
   public void broadcast(final RawMessage message) {
-    broadcast(bytesFrom(message, pool.acquire()));
+    broadcast(bytesFrom(message, pool.acquire("Outbound#broadcast")));
   }
 
   public void broadcast(final ConsumerByteBuffer buffer) {
@@ -41,7 +42,7 @@ public class Outbound {
   }
 
   public void broadcast(final Collection<Node> selectNodes, final RawMessage message) {
-    broadcast(selectNodes, bytesFrom(message, pool.acquire()));
+    broadcast(selectNodes, bytesFrom(message, pool.acquire("Outbound#broadcast")));
   }
 
   public void broadcast(final Collection<Node> selectNodes, final ConsumerByteBuffer buffer) {
@@ -62,7 +63,7 @@ public class Outbound {
   }
 
   public ConsumerByteBuffer lendByteBuffer() {
-    return pool.acquire();
+    return pool.acquire("Outbound#lendByteBuffer");
   }
 
   public void open(final Id id) {
@@ -70,7 +71,7 @@ public class Outbound {
   }
 
   public void sendTo(final RawMessage message, final Id id) {
-    sendTo(bytesFrom(message, pool.acquire()), id);
+    sendTo(bytesFrom(message, pool.acquire("Outbound#sendTo")), id);
   }
 
   public void sendTo(final ConsumerByteBuffer buffer, final Id id) {
