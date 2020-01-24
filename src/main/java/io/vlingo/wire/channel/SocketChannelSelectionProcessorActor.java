@@ -266,7 +266,6 @@ public class SocketChannelSelectionProcessorActor extends Actor
   //=========================================
 
   private class Context implements RequestResponseContext<SocketChannel> {
-    private final ConsumerByteBuffer buffer;
     private final SocketChannel clientChannel;
     private Object closingData;
     private final RequestChannelConsumer consumer;
@@ -310,7 +309,6 @@ public class SocketChannelSelectionProcessorActor extends Actor
     Context(final SocketChannel clientChannel) {
       this.clientChannel = clientChannel;
       this.consumer = provider.requestChannelConsumer();
-      this.buffer = requestBufferPool.acquire("SocketChannelSelectionProcessorActor#Context");
       this.id = "" + (++contextId);
       this.writables = new LinkedList<>();
       this.writeMode = false;
@@ -326,8 +324,6 @@ public class SocketChannelSelectionProcessorActor extends Actor
         clientChannel.close();
       } catch (Exception e) {
         logger().error("Failed to close client channel for " + name + " because: " + e.getMessage(), e);
-      } finally {
-        buffer.release();
       }
     }
 
@@ -366,7 +362,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
     }
 
     ConsumerByteBuffer requestBuffer() {
-      return buffer;
+      return requestBufferPool.acquire("SocketChannelSelectionProcessorActor#Context");
     }
 
     void setWriteMode(final boolean on) throws ClosedChannelException {
