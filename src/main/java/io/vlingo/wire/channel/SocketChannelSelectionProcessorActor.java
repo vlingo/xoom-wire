@@ -8,6 +8,13 @@
 package io.vlingo.wire.channel;
 
 
+import io.vlingo.actors.Actor;
+import io.vlingo.actors.Stoppable;
+import io.vlingo.common.Cancellable;
+import io.vlingo.common.Scheduled;
+import io.vlingo.common.pool.ResourcePool;
+import io.vlingo.wire.message.ConsumerByteBuffer;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
@@ -18,13 +25,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
 
-import io.vlingo.actors.Actor;
-import io.vlingo.actors.Stoppable;
-import io.vlingo.common.Cancellable;
-import io.vlingo.common.Scheduled;
-import io.vlingo.common.pool.ResourcePool;
-import io.vlingo.wire.message.ConsumerByteBuffer;
-
 public class SocketChannelSelectionProcessorActor extends Actor
     implements SocketChannelSelectionProcessor, ResponseSenderChannel, Scheduled<Object>, Stoppable {
 
@@ -33,7 +33,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
   private final String name;
   private final long probeTimeout;
   private final RequestChannelConsumerProvider provider;
-  private final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool;
+  private final ResourcePool<ConsumerByteBuffer, String> requestBufferPool;
   private final ResponseSenderChannel responder;
   private final Selector selector;
   private final LinkedList<Context> writableContexts;
@@ -42,7 +42,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
   public SocketChannelSelectionProcessorActor(
           final RequestChannelConsumerProvider provider,
           final String name,
-          final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool,
+          final ResourcePool<ConsumerByteBuffer, String> requestBufferPool,
           final long probeInterval,
           final long probeTimeout) {
     this.logger().debug("Probe interval: " + probeInterval + " Probe timeout: " + probeTimeout);
@@ -266,7 +266,6 @@ public class SocketChannelSelectionProcessorActor extends Actor
   //=========================================
 
   private class Context implements RequestResponseContext<SocketChannel> {
-    private final ConsumerByteBuffer buffer;
     private final SocketChannel clientChannel;
     private Object closingData;
     private final RequestChannelConsumer consumer;
@@ -310,7 +309,6 @@ public class SocketChannelSelectionProcessorActor extends Actor
     Context(final SocketChannel clientChannel) {
       this.clientChannel = clientChannel;
       this.consumer = provider.requestChannelConsumer();
-      this.buffer = requestBufferPool.acquire();
       this.id = "" + (++contextId);
       this.writables = new LinkedList<>();
       this.writeMode = false;
@@ -326,8 +324,6 @@ public class SocketChannelSelectionProcessorActor extends Actor
         clientChannel.close();
       } catch (Exception e) {
         logger().error("Failed to close client channel for " + name + " because: " + e.getMessage(), e);
-      } finally {
-        buffer.release();
       }
     }
 
@@ -366,7 +362,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
     }
 
     ConsumerByteBuffer requestBuffer() {
-      return buffer;
+      return requestBufferPool.acquire("SocketChannelSelectionProcessorActor#Context");
     }
 
     void setWriteMode(final boolean on) throws ClosedChannelException {

@@ -26,7 +26,6 @@ public class TestResponseChannelConsumer implements ResponseChannelConsumer {
   @Override
   public void consume(final ConsumerByteBuffer buffer) {
     final String responsePart = Converters.bytesToText(buffer.array(), 0, buffer.limit());
-    buffer.release();
     responseBuilder.append(responsePart);
     if (responseBuilder.length() >= currentExpectedResponseLength) {
       // assume currentExpectedRequestLength is length of all
@@ -34,20 +33,21 @@ public class TestResponseChannelConsumer implements ResponseChannelConsumer {
       final String combinedResponse = responseBuilder.toString();
       final int combinedLength = combinedResponse.length();
       responseBuilder.setLength(0); // reuse
-      
+
       int currentIndex = 0;
       boolean last = false;
       while (!last) {
         final String request = combinedResponse.substring(currentIndex, currentIndex+currentExpectedResponseLength);
         currentIndex += currentExpectedResponseLength;
-        
+
         responses.add(request);
         ++consumeCount;
-        
+
         last = currentIndex == combinedLength;
-        
+
         untilConsume.happened();
       }
     }
+    buffer.release();
   }
 }

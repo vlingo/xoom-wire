@@ -17,24 +17,19 @@ import io.vlingo.wire.node.Configuration;
 import io.vlingo.wire.node.Node;
 
 public class ManagedOutboundRSocketChannelProvider extends AbstractManagedOutboundChannelProvider {
-  private final ClientTransport rsocketClientTransport;
-  private final Address address;
+
+  private static ClientTransport transportFor(final Address address) {
+    return TcpClientTransport.create(address.hostName(), address.port());
+  }
 
   public ManagedOutboundRSocketChannelProvider(final Node node, final AddressType type, final Configuration configuration) {
     super(node, type, configuration);
-    this.address = (type == AddressType.OP ? node.operationalAddress() : node.applicationAddress());
-    this.rsocketClientTransport = TcpClientTransport.create(address.hostName(), address.port());
-  }
-
-  public ManagedOutboundRSocketChannelProvider(final Node node, final AddressType type, final ClientTransport clientTransport,
-                                               final Configuration configuration) {
-    super(node, type, configuration);
-    this.address = (type == AddressType.OP ? node.operationalAddress() : node.applicationAddress());
-    this.rsocketClientTransport = clientTransport;
   }
 
   @Override
   protected ManagedOutboundChannel unopenedChannelFor(final Node node, final Configuration configuration, final AddressType type) {
-    return new RSocketOutboundChannel(address, this.rsocketClientTransport, configuration.logger());
+    final Address address = addressOf(node, type);
+    return new RSocketOutboundChannel(address, transportFor(address), configuration.logger());
   }
+
 }

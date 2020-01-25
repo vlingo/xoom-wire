@@ -7,9 +7,19 @@
 
 package io.vlingo.wire.fdx.outbound;
 
+import io.vlingo.common.Completes;
+
 import java.nio.ByteBuffer;
+import java.util.function.Supplier;
 
 public interface ManagedOutboundChannel {
   void close();
   void write(final ByteBuffer buffer);
+  default Completes<Void> writeAsync(final ByteBuffer buffer) {
+    Supplier<Void> sup = () -> {
+      write(buffer);
+      return null;
+    };
+    return Completes.withSuccess(sup.get());
+  }
 }

@@ -16,6 +16,7 @@ import io.rsocket.transport.ClientTransport;
 import io.rsocket.util.DefaultPayload;
 import io.vlingo.actors.Logger;
 import io.vlingo.common.pool.ElasticResourcePool;
+import io.vlingo.common.pool.ResourcePool;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.fdx.bidirectional.ClientRequestResponseChannel;
 import io.vlingo.wire.message.ConsumerByteBuffer;
@@ -158,11 +159,11 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
     }
 
     private void handle(Payload payload) {
-      final ConsumerByteBuffer pooledBuffer = readBufferPool.acquire();
+      final ConsumerByteBuffer pooledBuffer = readBufferPool.acquire("RSocketClientChannel#ChannelResponseHandler#handle");
       try {
         final ByteBuffer payloadData = payload.getData();
-        final ConsumerByteBuffer put = pooledBuffer.put(payloadData);
-        consumer.consume(put.flip());
+        consumer.consume(
+            pooledBuffer.put(payloadData).flip());
       } catch (final Throwable e) {
         logger.error("Unexpected error reading incoming payload", e);
         pooledBuffer.release();

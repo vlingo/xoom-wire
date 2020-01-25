@@ -131,7 +131,7 @@ public class BasicClientRequestResponseChannel implements ClientRequestResponseC
     int totalBytesRead = 0;
     int bytesRead = 0;
     try {
-      pooledBuffer = readBufferPool.acquire();
+      pooledBuffer = readBufferPool.acquire("BasicClientRequestResponseChannel#readConsume");
       readBuffer = pooledBuffer.asByteBuffer();
       do {
         bytesRead = channel.read(readBuffer);

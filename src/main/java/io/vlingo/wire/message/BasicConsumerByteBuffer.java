@@ -1,12 +1,6 @@
 package io.vlingo.wire.message;
 
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.DoubleBuffer;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-import java.nio.LongBuffer;
-import java.nio.ShortBuffer;
+import java.nio.*;
 import java.util.Objects;
 
 public class BasicConsumerByteBuffer implements ConsumerByteBuffer {
@@ -41,7 +35,7 @@ public class BasicConsumerByteBuffer implements ConsumerByteBuffer {
     return String.format("BasicConsumerByteBuffer[id=%d]", id);
   }
 
-  protected void tag(final String tag) {
+  public void tag(final String tag) {
     this.tag = tag;
   }
 
@@ -271,6 +265,11 @@ public class BasicConsumerByteBuffer implements ConsumerByteBuffer {
   @Override
   public double getDouble(int index) {
     return buffer.getDouble(index);
+  }
+
+  @Override
+  public ByteOrder order() {
+    return buffer.order();
   }
 
   @Override

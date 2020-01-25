@@ -7,13 +7,13 @@
 
 package io.vlingo.wire.fdx.outbound;
 
+import io.vlingo.wire.message.BasicConsumerByteBuffer;
+import io.vlingo.wire.message.RawMessage;
+import io.vlingo.wire.node.Id;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-
-import io.vlingo.wire.fdx.outbound.ManagedOutboundChannel;
-import io.vlingo.wire.message.RawMessage;
-import io.vlingo.wire.node.Id;
 
 public class MockManagedOutboundChannel implements ManagedOutboundChannel {
   public final Id id;
@@ -30,7 +30,13 @@ public class MockManagedOutboundChannel implements ManagedOutboundChannel {
 
   @Override
   public void write(final ByteBuffer buffer) {
-    final RawMessage message = RawMessage.readFromWithHeader(buffer);
+    // make a copy since we are dealing with a read only buffer.
+    ByteBuffer copy = BasicConsumerByteBuffer.allocate(0, buffer.capacity())
+        .put(buffer)
+        .flip()
+        .asByteBuffer()
+        .order(buffer.order());
+    final RawMessage message = RawMessage.readFromWithHeader(copy);
     writes.add(message.asTextMessage());
   }
 }

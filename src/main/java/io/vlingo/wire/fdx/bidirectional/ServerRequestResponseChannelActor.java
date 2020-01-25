@@ -7,13 +7,6 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
-import java.net.InetSocketAddress;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.util.Iterator;
-
 import io.vlingo.actors.Actor;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Stoppable;
@@ -29,6 +22,13 @@ import io.vlingo.wire.channel.SocketChannelSelectionProcessorActor;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBufferPool;
 
+import java.net.InetSocketAddress;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.util.Iterator;
+
 public class ServerRequestResponseChannelActor extends Actor implements ServerRequestResponseChannel, Scheduled<Object> {
   private final Cancellable cancellable;
   private final ServerSocketChannel channel;
@@ -37,7 +37,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
   private final int port;
   private int processorPoolIndex;
   private final long probeTimeout;
-  private final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool;
+  private final ConsumerByteBufferPool requestBufferPool;
   private final Selector selector;
 
   @SuppressWarnings("unchecked")
@@ -188,7 +188,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
           final RequestChannelConsumerProvider provider,
           final String name,
           final int processorPoolSize,
-          final ResourcePool<ConsumerByteBuffer, Void> requestBufferPool,
+          final ResourcePool<ConsumerByteBuffer, String> requestBufferPool,
           final long probeInterval,
           final long probeTimeout)
   throws Exception {
