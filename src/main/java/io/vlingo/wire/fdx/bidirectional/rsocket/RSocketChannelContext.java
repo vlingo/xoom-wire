@@ -10,7 +10,6 @@ import io.rsocket.Payload;
 import io.rsocket.util.ByteBufPayload;
 import io.vlingo.actors.Logger;
 import io.vlingo.common.pool.ElasticResourcePool;
-import io.vlingo.common.pool.ResourcePool;
 import io.vlingo.wire.channel.RequestChannelConsumer;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.channel.RequestResponseContext;

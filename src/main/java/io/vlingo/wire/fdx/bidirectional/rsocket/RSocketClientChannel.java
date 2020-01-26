@@ -7,6 +7,11 @@
 
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
+import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
+import java.time.Duration;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
@@ -16,7 +21,6 @@ import io.rsocket.transport.ClientTransport;
 import io.rsocket.util.DefaultPayload;
 import io.vlingo.actors.Logger;
 import io.vlingo.common.pool.ElasticResourcePool;
-import io.vlingo.common.pool.ResourcePool;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.fdx.bidirectional.ClientRequestResponseChannel;
 import io.vlingo.wire.message.ConsumerByteBuffer;
@@ -26,11 +30,6 @@ import reactor.core.Disposable;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.UnicastProcessor;
-
-import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
-import java.time.Duration;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class RSocketClientChannel implements ClientRequestResponseChannel {
   private final UnicastProcessor<Payload> publisher;
