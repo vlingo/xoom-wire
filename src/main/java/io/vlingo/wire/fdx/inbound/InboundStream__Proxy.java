@@ -7,13 +7,8 @@
 
 package io.vlingo.wire.fdx.inbound;
 
-import java.util.function.Consumer;
-
-import io.vlingo.actors.Actor;
-import io.vlingo.actors.DeadLetter;
-import io.vlingo.actors.LocalMessage;
-import io.vlingo.actors.Mailbox;
-import io.vlingo.actors.Stoppable;
+import io.vlingo.actors.*;
+import io.vlingo.common.SerializableConsumer;
 
 public class InboundStream__Proxy implements InboundStream {
   private static final String representationConclude0 = "conclude()";
@@ -29,7 +24,7 @@ public class InboundStream__Proxy implements InboundStream {
   @Override
   public void conclude() {
     if (!actor.isStopped()) {
-      final Consumer<Stoppable> consumer = (actor) -> actor.conclude();
+      final SerializableConsumer<Stoppable> consumer = (actor) -> actor.conclude();
       if (mailbox.isPreallocated()) { mailbox.send(actor, Stoppable.class, consumer, null, representationConclude0); }
       else { mailbox.send(new LocalMessage<Stoppable>(actor, Stoppable.class, consumer, representationConclude0)); }
     } else {
@@ -40,7 +35,7 @@ public class InboundStream__Proxy implements InboundStream {
   @Override
   public void start() {
     if (!actor.isStopped()) {
-      final Consumer<InboundStream> consumer = (actor) -> actor.start();
+      final SerializableConsumer<InboundStream> consumer = (actor) -> actor.start();
       mailbox.send(new LocalMessage<InboundStream>(actor, InboundStream.class, consumer, "start()"));
     } else {
       actor.deadLetters().failedDelivery(new DeadLetter(actor, "start()"));
@@ -55,7 +50,7 @@ public class InboundStream__Proxy implements InboundStream {
   @Override
   public void stop() {
     if (!actor.isStopped()) {
-      final Consumer<InboundStream> consumer = (actor) -> actor.stop();
+      final SerializableConsumer<InboundStream> consumer = (actor) -> actor.stop();
       mailbox.send(new LocalMessage<InboundStream>(actor, InboundStream.class, consumer, "stop()"));
     } else {
       actor.deadLetters().failedDelivery(new DeadLetter(actor, "stop()"));

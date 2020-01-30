@@ -1,11 +1,10 @@
 package io.vlingo.wire.channel;
 
-import java.util.function.Consumer;
-
 import io.vlingo.actors.Actor;
 import io.vlingo.actors.DeadLetter;
 import io.vlingo.actors.LocalMessage;
 import io.vlingo.actors.Mailbox;
+import io.vlingo.common.SerializableConsumer;
 
 public class SocketChannelSelectionProcessor__Proxy implements SocketChannelSelectionProcessor {
 
@@ -23,7 +22,7 @@ public class SocketChannelSelectionProcessor__Proxy implements SocketChannelSele
   @Override
   public void close() {
     if (!actor.isStopped()) {
-      final Consumer<SocketChannelSelectionProcessor> consumer = (actor) -> actor.close();
+      final SerializableConsumer<SocketChannelSelectionProcessor> consumer = (actor) -> actor.close();
       mailbox.send(new LocalMessage<SocketChannelSelectionProcessor>(actor, SocketChannelSelectionProcessor.class, consumer, closeRepresentation1));
     } else {
       actor.deadLetters().failedDelivery(new DeadLetter(actor, closeRepresentation1));
@@ -32,7 +31,7 @@ public class SocketChannelSelectionProcessor__Proxy implements SocketChannelSele
   @Override
   public void process(java.nio.channels.SocketChannel arg0) {
     if (!actor.isStopped()) {
-      final Consumer<SocketChannelSelectionProcessor> consumer = (actor) -> actor.process(arg0);
+      final SerializableConsumer<SocketChannelSelectionProcessor> consumer = (actor) -> actor.process(arg0);
       mailbox.send(new LocalMessage<SocketChannelSelectionProcessor>(actor, SocketChannelSelectionProcessor.class, consumer, processRepresentation2));
     } else {
       actor.deadLetters().failedDelivery(new DeadLetter(actor, processRepresentation2));

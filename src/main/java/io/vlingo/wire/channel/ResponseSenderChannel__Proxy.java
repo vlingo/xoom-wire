@@ -7,12 +7,11 @@
 
 package io.vlingo.wire.channel;
 
-import java.util.function.Consumer;
-
 import io.vlingo.actors.Actor;
 import io.vlingo.actors.DeadLetter;
 import io.vlingo.actors.LocalMessage;
 import io.vlingo.actors.Mailbox;
+import io.vlingo.common.SerializableConsumer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 
 public class ResponseSenderChannel__Proxy implements ResponseSenderChannel {
@@ -30,7 +29,7 @@ public class ResponseSenderChannel__Proxy implements ResponseSenderChannel {
   @Override
   public void abandon(final RequestResponseContext<?> context) {
     if (!actor.isStopped()) {
-      final Consumer<ResponseSenderChannel> consumer = (actor) -> actor.abandon(context);
+      final SerializableConsumer<ResponseSenderChannel> consumer = (actor) -> actor.abandon(context);
       mailbox.send(new LocalMessage<ResponseSenderChannel>(actor, ResponseSenderChannel.class, consumer, representationAbondon1));
     } else {
       actor.deadLetters().failedDelivery(new DeadLetter(actor, representationAbondon1));
@@ -40,7 +39,7 @@ public class ResponseSenderChannel__Proxy implements ResponseSenderChannel {
   @Override
   public void respondWith(RequestResponseContext<?> context, final ConsumerByteBuffer buffer) {
     if (!actor.isStopped()) {
-      final Consumer<ResponseSenderChannel> consumer = (actor) -> actor.respondWith(context, buffer);
+      final SerializableConsumer<ResponseSenderChannel> consumer = (actor) -> actor.respondWith(context, buffer);
       mailbox.send(new LocalMessage<ResponseSenderChannel>(actor, ResponseSenderChannel.class, consumer, representationRespondWith2));
     } else {
       actor.deadLetters().failedDelivery(new DeadLetter(actor, representationRespondWith2));
