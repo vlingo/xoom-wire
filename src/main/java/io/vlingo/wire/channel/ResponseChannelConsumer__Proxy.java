@@ -7,12 +7,11 @@
 
 package io.vlingo.wire.channel;
 
-import java.util.function.Consumer;
-
 import io.vlingo.actors.Actor;
 import io.vlingo.actors.DeadLetter;
 import io.vlingo.actors.LocalMessage;
 import io.vlingo.actors.Mailbox;
+import io.vlingo.common.SerializableConsumer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 
 public class ResponseChannelConsumer__Proxy implements ResponseChannelConsumer {
@@ -29,7 +28,7 @@ public class ResponseChannelConsumer__Proxy implements ResponseChannelConsumer {
   @Override
   public void consume(final ConsumerByteBuffer buffer) {
     if (!actor.isStopped()) {
-      final Consumer<ResponseChannelConsumer> consumer = (actor) -> actor.consume(buffer);
+      final SerializableConsumer<ResponseChannelConsumer> consumer = (actor) -> actor.consume(buffer);
       mailbox.send(new LocalMessage<ResponseChannelConsumer>(actor, ResponseChannelConsumer.class, consumer, representationConsume1));
     } else {
       actor.deadLetters().failedDelivery(new DeadLetter(actor, representationConsume1));

@@ -7,13 +7,8 @@
 
 package io.vlingo.wire.fdx.outbound;
 
-import java.util.function.Consumer;
-
-import io.vlingo.actors.Actor;
-import io.vlingo.actors.DeadLetter;
-import io.vlingo.actors.LocalMessage;
-import io.vlingo.actors.Mailbox;
-import io.vlingo.actors.Stoppable;
+import io.vlingo.actors.*;
+import io.vlingo.common.SerializableConsumer;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 
@@ -34,7 +29,7 @@ public class ApplicationOutboundStream__Proxy implements ApplicationOutboundStre
   @Override
   public void conclude() {
     if (!actor.isStopped()) {
-      final Consumer<Stoppable> consumer = (actor) -> actor.conclude();
+      final SerializableConsumer<Stoppable> consumer = (actor) -> actor.conclude();
       if (mailbox.isPreallocated()) { mailbox.send(actor, Stoppable.class, consumer, null, representationConclude0); }
       else { mailbox.send(new LocalMessage<Stoppable>(actor, Stoppable.class, consumer, representationConclude0)); }
     } else {
@@ -50,7 +45,7 @@ public class ApplicationOutboundStream__Proxy implements ApplicationOutboundStre
   @Override
   public void stop() {
     if (!actor.isStopped()) {
-      final Consumer<ApplicationOutboundStream> consumer = (actor) -> actor.stop();
+      final SerializableConsumer<ApplicationOutboundStream> consumer = (actor) -> actor.stop();
       mailbox.send(new LocalMessage<ApplicationOutboundStream>(actor, ApplicationOutboundStream.class, consumer, representationStop1));
     } else {
       actor.deadLetters().failedDelivery(new DeadLetter(actor, representationStop1));
@@ -60,7 +55,7 @@ public class ApplicationOutboundStream__Proxy implements ApplicationOutboundStre
   @Override
   public void broadcast(final RawMessage message) {
     if (!actor.isStopped()) {
-      final Consumer<ApplicationOutboundStream> consumer = (actor) -> actor.broadcast(message);
+      final SerializableConsumer<ApplicationOutboundStream> consumer = (actor) -> actor.broadcast(message);
       mailbox.send(new LocalMessage<ApplicationOutboundStream>(actor, ApplicationOutboundStream.class, consumer, representationBroadcast2));
     } else {
       actor.deadLetters().failedDelivery(new DeadLetter(actor, representationBroadcast2));
@@ -70,7 +65,7 @@ public class ApplicationOutboundStream__Proxy implements ApplicationOutboundStre
   @Override
   public void sendTo(final RawMessage message, final Id targetId) {
     if (!actor.isStopped()) {
-      final Consumer<ApplicationOutboundStream> consumer = (actor) -> actor.sendTo(message, targetId);
+      final SerializableConsumer<ApplicationOutboundStream> consumer = (actor) -> actor.sendTo(message, targetId);
       mailbox.send(new LocalMessage<ApplicationOutboundStream>(actor, ApplicationOutboundStream.class, consumer, representationSendTo3));
     } else {
       actor.deadLetters().failedDelivery(new DeadLetter(actor, representationSendTo3));
