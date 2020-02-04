@@ -7,12 +7,15 @@
 
 package io.vlingo.wire.node;
 
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 
-public final class Id implements Comparable<Id> {
-  public static final short UNDEFINED_ID = -1;
-  public static final Id NO_ID = Id.of(UNDEFINED_ID);
+public final class Id implements Comparable<Id>, Serializable {
+  private static final long serialVersionUID = 4159344356315659962L;
+
+  public transient static final short UNDEFINED_ID = -1;
+  public transient static final Id NO_ID = Id.of(UNDEFINED_ID);
 
   private final short value;
 
