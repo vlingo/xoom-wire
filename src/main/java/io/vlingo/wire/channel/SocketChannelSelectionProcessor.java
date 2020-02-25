@@ -7,17 +7,19 @@
 
 package io.vlingo.wire.channel;
 
+import java.nio.channels.SocketChannel;
+
 import io.vlingo.actors.ActorInstantiator;
 import io.vlingo.common.pool.ResourcePool;
 import io.vlingo.wire.message.ConsumerByteBuffer;
-
-import java.nio.channels.SocketChannel;
 
 public interface SocketChannelSelectionProcessor {
   void close();
   void process(final SocketChannel clientChannel);
 
   static class SocketChannelSelectionProcessorInstantiator implements ActorInstantiator<SocketChannelSelectionProcessorActor> {
+    private static final long serialVersionUID = -752141238765787658L;
+
     final RequestChannelConsumerProvider provider;
     final String name;
     final ResourcePool<ConsumerByteBuffer, String> requestBufferPool;

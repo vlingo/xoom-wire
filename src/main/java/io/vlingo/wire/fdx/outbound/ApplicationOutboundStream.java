@@ -38,6 +38,8 @@ public interface ApplicationOutboundStream extends Stoppable {
   void sendTo(final RawMessage message, final Id targetId);
 
   static class ApplicationOutboundStreamInstantiator implements ActorInstantiator<ApplicationOutboundStreamActor> {
+    private static final long serialVersionUID = 3996997791426073111L;
+
     private final ResourcePool<ConsumerByteBuffer, String> byteBufferPool;
     private final ManagedOutboundChannelProvider provider;
 

@@ -70,6 +70,8 @@ public interface ServerRequestResponseChannel extends Stoppable {
   void close();
 
   static class ServerRequestResponseChannelInstantiator implements ActorInstantiator<ServerRequestResponseChannelActor> {
+    private static final long serialVersionUID = -198611338719466278L;
+
     private final RequestChannelConsumerProvider provider;
     private final int port;
     private final String name;
@@ -111,6 +113,8 @@ public interface ServerRequestResponseChannel extends Stoppable {
   }
 
   static class RSocketServerRequestResponseChannelInstantiator implements ActorInstantiator<RSocketServerChannelActor> {
+    private static final long serialVersionUID = -1999865617618138682L;
+
     private final RequestChannelConsumerProvider provider;
     private final ServerTransport<? extends Closeable> serverTransport;
     private final int port;

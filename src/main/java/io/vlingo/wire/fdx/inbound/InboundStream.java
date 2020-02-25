@@ -38,6 +38,8 @@ public interface InboundStream extends Startable, Stoppable {
   }
 
   static class InboundStreamInstantiator implements ActorInstantiator<InboundStreamActor> {
+    private static final long serialVersionUID = -6324545387015266770L;
+
     private final AddressType addressType;
     private final ChannelReader channelReader;
     private final InboundStreamInterest interest;
