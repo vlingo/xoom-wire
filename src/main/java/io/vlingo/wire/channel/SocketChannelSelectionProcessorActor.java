@@ -8,22 +8,23 @@
 package io.vlingo.wire.channel;
 
 
-import io.vlingo.actors.Actor;
-import io.vlingo.actors.Stoppable;
-import io.vlingo.common.Cancellable;
-import io.vlingo.common.Scheduled;
-import io.vlingo.common.pool.ResourcePool;
-import io.vlingo.wire.message.ConsumerByteBuffer;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
+import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
+
+import io.vlingo.actors.Actor;
+import io.vlingo.actors.Stoppable;
+import io.vlingo.common.Cancellable;
+import io.vlingo.common.Scheduled;
+import io.vlingo.common.pool.ResourcePool;
+import io.vlingo.wire.message.ConsumerByteBuffer;
 
 public class SocketChannelSelectionProcessorActor extends Actor
     implements SocketChannelSelectionProcessor, ResponseSenderChannel, Scheduled<Object>, Stoppable {
@@ -173,6 +174,8 @@ public class SocketChannelSelectionProcessorActor extends Actor
       while (!writableContexts.isEmpty()) {
         write(writableContexts.poll());
       }
+    } catch (ClosedSelectorException e) {
+      logger().error("Failed client channel processing for " + name + " because selector is closed.");
     } catch (Exception e) {
       logger().error("Failed client channel processing for " + name + " because: " + e.getMessage(), e);
     }
@@ -321,6 +324,8 @@ public class SocketChannelSelectionProcessorActor extends Actor
     void close() {
       try {
         consumer().closeWith(this, closingData);
+        whenClosing(null);
+        clientChannel.keyFor(selector).cancel();
         clientChannel.close();
       } catch (Exception e) {
         logger().error("Failed to close client channel for " + name + " because: " + e.getMessage(), e);
