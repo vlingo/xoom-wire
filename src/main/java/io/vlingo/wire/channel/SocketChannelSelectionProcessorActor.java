@@ -328,7 +328,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
         clientChannel.keyFor(selector).cancel();
         clientChannel.close();
       } catch (Exception e) {
-        logger().error("Failed to close client channel for " + name + " because: " + e.getMessage(), e);
+        logger().info("Client channel didn't close normally, but is probably already closed.");
       }
     }
 
