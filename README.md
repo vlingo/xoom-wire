@@ -17,7 +17,7 @@ The vlingo/PLATFORM wire protocol messaging implementations, such as with full-d
     <dependency>
       <groupId>io.vlingo</groupId>
       <artifactId>vlingo-wire</artifactId>
-      <version>1.2.6</version>
+      <version>1.2.7</version>
       <scope>compile</scope>
     </dependency>
   </dependencies>
@@ -25,7 +25,7 @@ The vlingo/PLATFORM wire protocol messaging implementations, such as with full-d
 
 ```gradle
 dependencies {
-    compile 'io.vlingo:vlingo-wire:1.2.6'
+    compile 'io.vlingo:vlingo-wire:1.2.7'
 }
 
 repositories {
