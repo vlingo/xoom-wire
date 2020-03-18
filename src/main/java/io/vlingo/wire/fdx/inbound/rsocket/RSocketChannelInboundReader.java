@@ -23,12 +23,12 @@ import io.vlingo.wire.message.RawMessageBuilder;
 import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 
 public class RSocketChannelInboundReader implements ChannelReader, ChannelMessageDispatcher {
   private final Logger logger;
   private final String name;
   private final int port;
-  private boolean closed = false;
   private final int maxMessageSize;
   private Closeable serverSocket;
   private ChannelReaderConsumer consumer;
@@ -56,11 +56,6 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
 
   @Override
   public void close() {
-    if (closed)
-      return;
-
-    closed = true;
-
     if (this.serverSocket != null && !this.serverSocket.isDisposed()) {
       try {
         this.serverSocket.dispose();
@@ -82,8 +77,6 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
 
   @Override
   public void openFor(final ChannelReaderConsumer consumer) {
-    if (closed)
-      return; // for some tests it's possible to receive close() before start()
     this.consumer = consumer;
 
     //Close existing receiving socket
@@ -93,7 +86,9 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
 
     serverSocket = RSocketFactory.receive()
                                  .errorConsumer(throwable -> {
-                                   logger.error("Unexpected error in inbound channel", throwable);
+                                   if (!(throwable instanceof ClosedChannelException)) {
+                                     logger.error("Unexpected error in inbound channel", throwable);
+                                   }
                                  })
                                  .frameDecoder(PayloadDecoder.ZERO_COPY)
                                  .acceptor(new SocketAcceptorImpl(this, name, maxMessageSize, logger))
@@ -124,6 +119,7 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
       this.acceptor = new AbstractRSocket() {
         @Override
         public Mono<Void> fireAndForget(Payload payload) {
+          logger.trace("Message received on inbound channel {}", name);
           try {
             final ByteBuffer payloadData = payload.getData();
             rawMessageBuilder.workBuffer().put(payloadData);

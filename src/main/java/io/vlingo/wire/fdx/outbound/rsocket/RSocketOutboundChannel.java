@@ -58,34 +58,32 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
 
   @Override
   public Completes<Void> writeAsync(final ByteBuffer buffer) {
-    Completes<Void> result = Completes.using(scheduler);
+    final Completes<Void> result = Completes.using(scheduler);
     _writeAsync(buffer).subscribe(result::with, (t) -> result.failed());
     return result;
   }
 
   private Mono<Void> _writeAsync(final ByteBuffer buffer) {
-    return prepareSocket().map((socket) -> {
-      if (socket.isDisposed()) {
-        return Mono.fromRunnable(() ->
-            logger.warn("RSocket outbound channel for {} is closed. Message dropped",
-                this.address)).then();
-      }
-      final Payload payload = DefaultPayload.create(buffer);
-      return socket.fireAndForget(payload)
-          .onErrorResume(throwable -> {
-            if (throwable instanceof ClosedChannelException) {
-              //close outbound channel
-              socket.dispose();
-              logger.error("Connection with {} closed", address, throwable);
-              return Mono.error(throwable);
-            } else {
-              logger.error("Failed write to {}, because: {}", address, throwable.getMessage(), throwable);
-              return Mono.empty();
-            }
-          });
-    }).orElseGet(() -> Mono.fromRunnable(() ->
-        logger.debug("RSocket outbound channel for {} not ready. Message dropped",
-            address)));
+    return prepareSocket()
+            .map((socket) -> {
+              if (socket.isDisposed()) {
+                logger.warn("RSocket outbound channel for {} is closed. Message dropped", this.address);
+                return Mono.<Void>empty();
+              }
+              final Payload payload = DefaultPayload.create(buffer);
+              return socket.fireAndForget(payload)
+                      .doFinally(signalType -> {
+                          logger.trace("Message sent to {}", this.address);
+                      })
+                      .onErrorResume(throwable -> {
+                          logger.error("Failed write to {}, because: {}", address, throwable.getMessage(), throwable);
+                          return Mono.error(throwable);
+                      });
+            })
+            .orElseGet(() -> {
+               logger.debug("RSocket outbound channel for {} not ready. Message dropped", address);
+               return Mono.empty();
+            });
   }
 
   @Override
@@ -94,11 +92,13 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
   }
 
   private Optional<RSocket> prepareSocket() {
-    if (this.clientSocket == null) {
+    if (this.clientSocket == null || this.clientSocket.isDisposed()) {
       try {
         this.clientSocket = RSocketFactory.connect()
                                           .errorConsumer(throwable -> {
-                                            logger.error("Unexpected error in outbound channel", throwable);
+                                              if (!(throwable instanceof ClosedChannelException)) {
+                                                  logger.error("Unexpected error in outbound channel", throwable);
+                                              }
                                           })
                                           .frameDecoder(PayloadDecoder.ZERO_COPY)
                                           .transport(transport)
@@ -109,7 +109,10 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
         logger.info("RSocket outbound channel opened for {}", this.address);
 
         this.clientSocket.onClose()
-                         .doFinally(signalType -> logger.info("RSocket outbound channel for {} is closed", this.address))
+                         .doFinally(signalType -> {
+                           logger.info("RSocket outbound channel for {} is closed", this.address);
+                           close();
+                         })
                          .subscribe(ignored -> {}, throwable -> logger.error("Unexpected error on closing outbound channel", throwable));
 
       } catch (final Throwable t) {
