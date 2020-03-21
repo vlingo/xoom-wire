@@ -21,6 +21,8 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
+    <io.rsocket.version>1.0.0-RC5</io.rsocket.version>
+    <io.projectreactor.addons.version>3.3.2.RELEASE</io.projectreactor.addons.version>
   </properties>
   <build>
     <plugins>
@@ -90,18 +92,22 @@
     <dependency>
       <groupId>io.rsocket</groupId>
       <artifactId>rsocket-core</artifactId>
-      <version>1.0.0-RC5</version>
-      <scope/>
+      <version>${io.rsocket.version}</version>
     </dependency>
     <dependency>
       <groupId>io.rsocket</groupId>
       <artifactId>rsocket-transport-netty</artifactId>
-      <version>1.0.0-RC5</version>
+      <version>${io.rsocket.version}</version>
+    </dependency>
+    <dependency>      
+      <groupId>io.projectreactor.addons</groupId>
+      <artifactId>reactor-extra</artifactId>
+      <version>${io.projectreactor.addons.version}</version>
     </dependency>
     <dependency>
       <groupId>io.rsocket</groupId>
       <artifactId>rsocket-transport-local</artifactId>
-      <version>1.0.0-RC5</version>
+      <version>${io.rsocket.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
