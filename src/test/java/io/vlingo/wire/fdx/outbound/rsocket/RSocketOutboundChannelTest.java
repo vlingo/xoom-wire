@@ -32,8 +32,7 @@ import java.util.concurrent.TimeUnit;
 public class RSocketOutboundChannelTest {
   private static final Logger logger = Logger.basicLogger();
 
-  @Ignore("NettyContext isDisposed() is not accurate" +
-          "https://github.com/reactor/reactor-netty/issues/360")
+  @Ignore("NettyContext isDisposed() is not accurate. See https://github.com/reactor/reactor-netty/issues/581")
   @Test
   public void testChannelReconnects() throws InterruptedException {
     final ClientTransport localClientTransport = TcpClientTransport.create(49000);
@@ -42,10 +41,8 @@ public class RSocketOutboundChannelTest {
     CountDownLatch firstCdl = new CountDownLatch(1);
     final Closeable serverSocket = createServerSocket(serverTransport, "node1", firstCdl);
 
-    final RSocketOutboundChannel outbound = new RSocketOutboundChannel(new Address(Host.of("127.0.0.1"), 0, AddressType.MAIN),
-                                                                       localClientTransport,
-                                                                       Duration.ofMillis(200),
-                                                                       logger);
+    final RSocketOutboundChannel outbound = new RSocketOutboundChannel(new Address(Host.of("127.0.0.1"), 0, AddressType.MAIN), localClientTransport,
+                                                                       Duration.ofMillis(200), logger);
 
     final String message = UUID.randomUUID().toString();
 
@@ -71,23 +68,31 @@ public class RSocketOutboundChannelTest {
   }
 
   private Closeable createServerSocket(ServerTransport<CloseableChannel> serverTransport, String name, CountDownLatch countDownLatch) {
-    final Closeable serverSocket = RSocketFactory.receive().acceptor(new SocketAcceptor() {
-      @Override
-      public Mono<RSocket> accept(ConnectionSetupPayload connectionSetupPayload, RSocket rSocket) {
-        return Mono.just(new AbstractRSocket() {
-          @Override
-          public Mono<Void> fireAndForget(Payload payload) {
-            logger.debug("Server socket {} received message", name);
-            countDownLatch.countDown();
-            return Mono.empty();
-          }
-        });
-      }
-    }).transport(serverTransport).start().block();
+    final Closeable serverSocket = RSocketFactory.receive()
+                                                 .acceptor(new SocketAcceptor() {
+                                                   @Override
+                                                   public Mono<RSocket> accept(ConnectionSetupPayload connectionSetupPayload, RSocket rSocket) {
+                                                     return Mono.just(new AbstractRSocket() {
+                                                       @Override
+                                                       public Mono<Void> fireAndForget(Payload payload) {
+                                                         logger.debug("Server socket {} received message", name);
+                                                         countDownLatch.countDown();
+                                                         return Mono.empty();
+                                                       }
+                                                     });
+                                                   }
+                                                 })
+                                                 .transport(serverTransport)
+                                                 .start()
+                                                 .block();
 
-    serverSocket.onClose().doFinally(signalType -> {
-      logger.info("Server socket {} closed", name);
-    });
+    if (serverSocket != null) {
+      serverSocket.onClose()
+                  .doFinally(signalType -> {
+                    logger.info("Server socket {} closed", name);
+                  })
+                  .subscribe();
+    }
 
     return serverSocket;
   }

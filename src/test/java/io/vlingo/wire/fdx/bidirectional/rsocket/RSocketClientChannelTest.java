@@ -6,22 +6,6 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
-import java.nio.ByteBuffer;
-import java.time.Duration;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.reactivestreams.Publisher;
-
 import io.rsocket.AbstractRSocket;
 import io.rsocket.Closeable;
 import io.rsocket.Payload;
@@ -38,9 +22,24 @@ import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
+import org.junit.Assert;
+import org.junit.Test;
+import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+
+import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class RSocketClientChannelTest {
   private static final Logger LOGGER = Logger.basicLogger();
@@ -58,7 +57,8 @@ public class RSocketClientChannelTest {
       clientChannel = buildClientChannel(consumer, address);
 
       for (int i = 0; i < 10; i++) {
-        request(clientChannel, UUID.randomUUID().toString());
+        request(clientChannel, UUID.randomUUID()
+                                   .toString());
       }
       //all messages should be dropped
     } finally {
@@ -79,16 +79,22 @@ public class RSocketClientChannelTest {
       @Override
       public Flux<Payload> requestChannel(final Publisher<Payload> payloads) {
         countDownLatch.countDown();
-        return Flux.from(payloads).doOnNext(payload -> {
-          serverReceivedMessages.countDown();
-          serverReceivedMessage.add(payload.getDataUtf8());
-          payload.release();
-        }).zipWith(Flux.range(1, 100), (payload, integer) -> DefaultPayload.create("Reply " + integer));
+        return Flux.from(payloads)
+                   .doOnNext(payload -> {
+                     serverReceivedMessages.countDown();
+                     serverReceivedMessage.add(payload.getDataUtf8());
+                     payload.release();
+                   })
+                   .zipWith(Flux.range(1, 100), (payload, integer) -> DefaultPayload.create("Reply " + integer));
       }
     };
 
-    final Closeable server = RSocketFactory.receive().frameDecoder(PayloadDecoder.ZERO_COPY).acceptor((connectionSetupPayload, rSocket) -> Mono.just(
-            responseHandler)).transport(this.serverTransport).start().block();
+    final Closeable server = RSocketFactory.receive()
+                                           .frameDecoder(PayloadDecoder.ZERO_COPY)
+                                           .acceptor((connectionSetupPayload, rSocket) -> Mono.just(responseHandler))
+                                           .transport(this.serverTransport)
+                                           .start()
+                                           .block();
 
     Assert.assertNotNull("Server failed to start", server);
     final Address address = buildAddress(0);
@@ -111,7 +117,8 @@ public class RSocketClientChannelTest {
         clientChannel = buildClientChannel(consumer, address);
 
         for (int i = 0; i < 100; i++) {
-          final String request = "Request_" + i + "_" + UUID.randomUUID().toString();
+          final String request = "Request_" + i + "_" + UUID.randomUUID()
+                                                            .toString();
           request(clientChannel, request);
           clientRequests.add(request);
         }
@@ -136,24 +143,24 @@ public class RSocketClientChannelTest {
   }
 
   @Test
-  @Ignore
   public void testServerApplicationErrorsProcess() throws InterruptedException {
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
 
     final CountDownLatch countDownLatch = new CountDownLatch(1);
     final CountDownLatch serverReceivedMessages = new CountDownLatch(100);
+    final List<String> receivedMessages = new CopyOnWriteArrayList<>();
 
     final AbstractRSocket responseHandler = new AbstractRSocket() {
       @Override
       public Flux<Payload> requestChannel(final Publisher<Payload> payloads) {
         countDownLatch.countDown();
         Flux.from(payloads)
-            .subscribe(payload -> serverReceivedMessages.countDown());
+            .subscribe(payload -> {
+              serverReceivedMessages.countDown();
+              receivedMessages.add(payload.getDataUtf8());
+            });
 
-        return Flux.range(1, 30)
-                   .map(integer -> {
-                      throw new RuntimeException("Random exception nr:" + integer);
-                   });
+        return Flux.error(new RuntimeException("Server exception"));
       }
     };
 
@@ -175,12 +182,19 @@ public class RSocketClientChannelTest {
     try {
       clientChannel = buildClientChannel(consumer, address);
 
+      final List<String> sentMessages = new ArrayList<>(100);
       for (int i = 0; i < 100; i++) {
-        request(clientChannel, UUID.randomUUID().toString());
+        final String sentMessage = UUID.randomUUID()
+                                       .toString();
+        sentMessages.add(sentMessage);
+        request(clientChannel, sentMessage);
       }
 
       Assert.assertTrue("Server should have received requestChannel request", countDownLatch.await(15, TimeUnit.SECONDS));
       Assert.assertTrue("Server should have received all messages", serverReceivedMessages.await(15, TimeUnit.SECONDS));
+      sentMessages.forEach(expectedMsg -> {
+        Assert.assertTrue("Server should have received message " + expectedMsg, receivedMessages.contains(expectedMsg));
+      });
     } finally {
       close(clientChannel, server);
     }
@@ -205,7 +219,8 @@ public class RSocketClientChannelTest {
       clientChannel = buildClientChannel(consumer, address);
 
       for (int i = 0; i < 10; i++) {
-        request(clientChannel, UUID.randomUUID().toString());
+        request(clientChannel, UUID.randomUUID()
+                                   .toString());
       }
       //all messages should be dropped
     } finally {
