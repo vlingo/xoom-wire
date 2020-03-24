@@ -1,5 +1,15 @@
 package io.vlingo.wire.fdx.outbound.rsocket;
 
+import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
+
 import io.rsocket.AbstractRSocket;
 import io.rsocket.Closeable;
 import io.rsocket.ConnectionSetupPayload;
@@ -18,16 +28,7 @@ import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
 import reactor.core.publisher.Mono;
-
-import java.nio.ByteBuffer;
-import java.time.Duration;
-import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 public class RSocketOutboundChannelTest {
   private static final Logger logger = Logger.basicLogger();
@@ -60,6 +61,7 @@ public class RSocketOutboundChannelTest {
 
     final CountDownLatch secondCdl = new CountDownLatch(1);
 
+    @SuppressWarnings("unused")
     final Closeable secondServerSocket = createServerSocket(serverTransport, "node2", secondCdl);
 
     outbound.write(rawMessage.asByteBuffer(buffer));
