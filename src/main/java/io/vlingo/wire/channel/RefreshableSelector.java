@@ -148,7 +148,7 @@ public class RefreshableSelector {
 
     switch (thresholdType) {
     case Counted:
-      if (++trackingValue >= threshold) {
+      if (trackingValue++ >= threshold) {
         refresh();
         wasRefreshed = true;
         trackingValue = 0;
