@@ -7,6 +7,10 @@
 
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
+import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
+import java.time.Duration;
+
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
 import io.rsocket.RSocketFactory;
@@ -23,10 +27,6 @@ import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.node.Address;
 import reactor.core.publisher.EmitterProcessor;
 import reactor.retry.Retry;
-
-import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
-import java.time.Duration;
 
 public class RSocketClientChannel implements ClientRequestResponseChannel {
   private final EmitterProcessor<Payload> publisher;
@@ -102,6 +102,8 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
                                              logger.error("Failed to create RSocket client channel for address {}", this.address, throwable);
                                            })
                                            .block();
+
+        // TODO: Replace deprecated method usage
 
         if (this.channelSocket != null) {
           this.channelSocket.requestChannel(this.publisher)

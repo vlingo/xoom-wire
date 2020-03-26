@@ -17,12 +17,13 @@ import org.junit.Test;
 
 import io.vlingo.actors.World;
 import io.vlingo.actors.testkit.AccessSafely;
+import io.vlingo.wire.BaseWireTest;
 import io.vlingo.wire.message.ByteBufferAllocator;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
 
-public class SecureClientRequestResponseChannelTest {
+public class SecureClientRequestResponseChannelTest extends BaseWireTest {
   private static final int POOL_SIZE = 100;
 
   private ClientRequestResponseChannel client;
@@ -31,6 +32,8 @@ public class SecureClientRequestResponseChannelTest {
 
   @Test
   public void testThatSecureClientRequestResponse() throws Exception {
+    System.out.println("testThatSecureClientRequestResponse()");
+
     final Address address = Address.from(Host.of("www.google.com"), 443, AddressType.NONE);
     client = new SecureClientRequestResponseChannel(address, clientConsumer, POOL_SIZE, 65536, world.defaultLogger());
 

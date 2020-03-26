@@ -7,28 +7,28 @@
 
 package io.vlingo.wire.multicast;
 
-import io.vlingo.actors.Logger;
-import io.vlingo.wire.channel.ChannelMessageDispatcher;
-import io.vlingo.wire.channel.ChannelPublisher;
-import io.vlingo.wire.channel.ChannelReaderConsumer;
-import io.vlingo.wire.channel.SocketChannelSelectionReader;
-import io.vlingo.wire.message.ByteBufferAllocator;
-import io.vlingo.wire.message.PublisherAvailability;
-import io.vlingo.wire.message.RawMessage;
-import io.vlingo.wire.message.RawMessageBuilder;
-
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
+
+import io.vlingo.actors.Logger;
+import io.vlingo.wire.channel.ChannelMessageDispatcher;
+import io.vlingo.wire.channel.ChannelPublisher;
+import io.vlingo.wire.channel.ChannelReaderConsumer;
+import io.vlingo.wire.channel.RefreshableSelector;
+import io.vlingo.wire.channel.SocketChannelSelectionReader;
+import io.vlingo.wire.message.ByteBufferAllocator;
+import io.vlingo.wire.message.PublisherAvailability;
+import io.vlingo.wire.message.RawMessage;
+import io.vlingo.wire.message.RawMessageBuilder;
 
 public class MulticastPublisherReader implements ChannelPublisher, ChannelMessageDispatcher {
   private final RawMessage availability;
@@ -42,8 +42,8 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
   private final String name;
   private final InetSocketAddress publisherAddress;
   private final ServerSocketChannel readChannel;
-  private final Selector selector;
-  
+  private final RefreshableSelector selector;
+
   public MulticastPublisherReader(
           final String name,
           final Group group,
@@ -52,7 +52,7 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
           final ChannelReaderConsumer consumer,
           final Logger logger)
   throws Exception {
-    
+
     this.name = name;
     this.groupAddress = new InetSocketAddress(InetAddress.getByName(group.address()), group.port());
     this.consumer = consumer;
@@ -60,18 +60,18 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
     this.messageBuffer = ByteBufferAllocator.allocate(maxMessageSize);
     this.messageQueue = new LinkedList<>();
     this.publisherChannel = DatagramChannel.open();
-    this.selector = Selector.open();
+    this.selector = RefreshableSelector.open(name);
 
     // binds to an assigned local address that is
     // published as my availabilityMessage
     publisherChannel.bind(null);
-    
+
     publisherChannel.configureBlocking(false);
-    this.publisherChannel.register(selector, SelectionKey.OP_WRITE);
+    this.selector.registerWith(this.publisherChannel, SelectionKey.OP_WRITE);
     this.readChannel = ServerSocketChannel.open();
     readChannel.socket().bind(new InetSocketAddress(incomingSocketPort));
     readChannel.configureBlocking(false);
-    this.readChannel.register(selector, SelectionKey.OP_ACCEPT);
+    this.selector.registerWith(this.readChannel, SelectionKey.OP_ACCEPT);
     this.publisherAddress = (InetSocketAddress) readChannel.socket().getLocalSocketAddress();
     this.availability = availabilityMessage();
   }
@@ -83,48 +83,46 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
   @Override
   public void close() {
     if (closed) return;
-    
+
     closed = true;
-    
+
     try {
       selector.close();
     } catch (Exception e) {
       logger.error("Failed to close multicast publisher selector for: '" + name + "'", e);
     }
-    
+
     try {
       publisherChannel.close();
     } catch (Exception e) {
       logger.error("Failed to close multicast publisher channel for: '" + name + "'", e);
     }
-    
+
     try {
       readChannel.close();
     } catch (Exception e) {
       logger.error("Failed to close multicast reader channel for: '" + name + "'", e);
     }
   }
-  
+
   @Override
   public void processChannel() {
     if (closed) return;
-    
+
     try {
-      if (selector.selectNow() > 0) {
-        final Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
+      final Iterator<SelectionKey> iterator = selector.selectNow();
 
-        while (iterator.hasNext()) {
-          final SelectionKey key = iterator.next();
-          iterator.remove();
+      while (iterator.hasNext()) {
+        final SelectionKey key = iterator.next();
+        iterator.remove();
 
-          if (key.isValid()) {
-            if (key.isAcceptable()) {
-              accept(key);
-            } else if (key.isWritable()) {
-              sendMax();
-            } else if (key.isReadable()) {
-              receive(key);
-            }
+        if (key.isValid()) {
+          if (key.isAcceptable()) {
+            accept(key);
+          } else if (key.isWritable()) {
+            sendMax();
+          } else if (key.isReadable()) {
+            receive(key);
           }
         }
       }
@@ -141,7 +139,7 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
   @Override
   public void send(final RawMessage message) {
     final int length = message.length();
-    
+
     if (length <= 0) {
       throw new IllegalArgumentException("The message length must be greater than zero.");
     }
@@ -181,11 +179,11 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
 
     if (serverChannel.isOpen()) {
       final SocketChannel clientChannel = serverChannel.accept();
-  
+
       clientChannel.configureBlocking(false);
-  
-      final SelectionKey clientChannelKey = clientChannel.register(selector, SelectionKey.OP_READ);
-  
+
+      final SelectionKey clientChannelKey = selector.registerWith(clientChannel, SelectionKey.OP_READ);
+
       clientChannelKey.attach(new RawMessageBuilder(messageBuffer.capacity()));
     }
   }
@@ -197,11 +195,11 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
                     publisherAddress.getHostName(),
                     publisherAddress.getPort())
             .toString();
-    
+
     final ByteBuffer buffer = ByteBufferAllocator.allocate(message.length());
     buffer.put(message.getBytes());
     buffer.flip();
-    
+
     return RawMessage.readFromWithoutHeader(buffer);
   }
 
@@ -212,7 +210,7 @@ public class MulticastPublisherReader implements ChannelPublisher, ChannelMessag
   private void sendMax() throws IOException {
     while (true) {
       final RawMessage message = messageQueue.peek();
-      
+
       if (message == null) {
         return;
       } else {

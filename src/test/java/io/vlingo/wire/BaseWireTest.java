@@ -5,12 +5,13 @@
 // was not distributed with this file, You can obtain
 // one at https://mozilla.org/MPL/2.0/.
 
-package io.vlingo.wire.message;
+package io.vlingo.wire;
 
-import io.vlingo.wire.BaseWireTest;
-import io.vlingo.wire.node.Configuration;
-import io.vlingo.wire.node.MockConfiguration;
+import io.vlingo.actors.Logger;
+import io.vlingo.wire.channel.RefreshableSelector;
 
-public class AbstractMessageTool extends BaseWireTest {
-  protected Configuration config = new MockConfiguration();
+public abstract class BaseWireTest {
+  static {
+    RefreshableSelector.withNoThreshold(Logger.basicLogger());
+  }
 }

@@ -20,12 +20,13 @@ import org.junit.Test;
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.World;
 import io.vlingo.actors.testkit.TestUntil;
+import io.vlingo.wire.BaseWireTest;
 import io.vlingo.wire.message.ByteBufferAllocator;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
 
-public class SocketRequestResponseChannelTest {
+public class SocketRequestResponseChannelTest extends BaseWireTest {
   private static final int POOL_SIZE = 100;
   private static AtomicInteger TEST_PORT = new AtomicInteger(37370);
 

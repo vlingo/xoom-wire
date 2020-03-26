@@ -13,7 +13,6 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.ClosedSelectorException;
 import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -36,7 +35,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
   private final RequestChannelConsumerProvider provider;
   private final ResourcePool<ConsumerByteBuffer, String> requestBufferPool;
   private final ResponseSenderChannel responder;
-  private final Selector selector;
+  private final RefreshableSelector selector;
   private final LinkedList<Context> writableContexts;
 
   @SuppressWarnings("unchecked")
@@ -51,7 +50,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
     this.name = name;
     this.requestBufferPool = requestBufferPool;
     this.probeTimeout = probeTimeout;
-    this.selector = open();
+    this.selector = RefreshableSelector.open(name);
     this.responder = selfAs(ResponseSenderChannel.class);
     this.writableContexts = new LinkedList<>();
 
@@ -88,7 +87,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
   @Override
   public void process(final SocketChannel clientChannel) {
     try {
-      clientChannel.register(selector, SelectionKey.OP_READ, new Context(clientChannel));
+      selector.registerWith(clientChannel, SelectionKey.OP_READ, new Context(clientChannel));
     } catch (Exception e) {
       final String message = "Failed to accept client socket for " + name + " because: " + e.getMessage();
       logger().error(message, e);
@@ -140,33 +139,21 @@ public class SocketChannelSelectionProcessorActor extends Actor
     }
   }
 
-  private Selector open() {
-    try {
-      return Selector.open();
-    } catch (Exception e) {
-      final String message = "Failed to open selector for " + name + " because: " + e.getMessage();
-      logger().error(message, e);
-      throw new IllegalArgumentException(message);
-    }
-  }
-
   private void probeChannel() {
     if (isStopped()) return;
 
     try {
-      if (selector.select(probeTimeout) > 0) {
-        final Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
+      final Iterator<SelectionKey> iterator = selector.select(probeTimeout);
 
-        while (iterator.hasNext()) {
-          final SelectionKey key = iterator.next();
-          iterator.remove();
+      while (iterator.hasNext()) {
+        final SelectionKey key = iterator.next();
+        iterator.remove();
 
-          if (key.isValid()) {
-            if (key.isReadable()) {
-              read(key);
-            } else if (key.isWritable()) {
-              write(key);
-            }
+        if (key.isValid()) {
+          if (key.isReadable()) {
+            read(key);
+          } else if (key.isWritable()) {
+            write(key);
           }
         }
       }
@@ -325,7 +312,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
       try {
         consumer().closeWith(this, closingData);
         whenClosing(null);
-        clientChannel.keyFor(selector).cancel();
+        selector.keyFor(clientChannel).cancel();
         clientChannel.close();
       } catch (Exception e) {
         logger().info("Client channel didn't close normally, but is probably already closed.");
@@ -373,7 +360,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
     void setWriteMode(final boolean on) throws ClosedChannelException {
       final int options = SelectionKey.OP_READ | (on ? SelectionKey.OP_WRITE : 0);
 
-      clientChannel.register(selector, options, this);
+      selector.registerWith(clientChannel, options, this);
 
       writeMode = on;
     }

@@ -10,18 +10,20 @@ package io.vlingo.wire.multicast;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import io.vlingo.actors.Logger;
-import io.vlingo.actors.testkit.AccessSafely;
-import io.vlingo.wire.channel.MockChannelReaderConsumer;
 import org.junit.Test;
 
-public class MulticastTest {
+import io.vlingo.actors.Logger;
+import io.vlingo.actors.testkit.AccessSafely;
+import io.vlingo.wire.BaseWireTest;
+import io.vlingo.wire.channel.MockChannelReaderConsumer;
+
+public class MulticastTest extends BaseWireTest {
 
   @Test
   public void testMulticastPublishSubscribe() throws Exception {
     final MockChannelReaderConsumer publisherConsumer = new MockChannelReaderConsumer();
     final AccessSafely consumerAccess = publisherConsumer.afterCompleting(0);
-    
+
     final MulticastPublisherReader publisher =
             new MulticastPublisherReader(
                     "test-publisher",
@@ -30,7 +32,7 @@ public class MulticastTest {
                     1024,
                     publisherConsumer,
                     Logger.basicLogger());
-    
+
     final MulticastSubscriber subscriber =
             new MulticastSubscriber(
                     "test-subscriber",
@@ -38,23 +40,23 @@ public class MulticastTest {
                     1024,
                     10,
                     Logger.basicLogger());
-    
+
     final MockChannelReaderConsumer subscriberConsumer = new MockChannelReaderConsumer();
     final AccessSafely subscriberAccess = subscriberConsumer.afterCompleting(1);
     subscriber.openFor(subscriberConsumer);
-    
+
     for (int idx = 0; idx < 10; ++idx) {
       publisher.sendAvailability();
     }
-    
+
     publisher.processChannel();
-    
+
     for (int i = 0; i < 10; ++i) {
       subscriber.probeChannel();
     }
-    
+
     assertEquals( 0, (int)consumerAccess.readFrom( "consumeCount" ));
     assertTrue( ((int)subscriberAccess.readFrom( "consumeCount" )) >= 1 );
   }
-  
+
 }

@@ -7,27 +7,36 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
-import io.vlingo.actors.Logger;
-import io.vlingo.common.Tuple4;
-import io.vlingo.common.pool.ElasticResourcePool;
-import io.vlingo.common.pool.ResourcePool;
-import io.vlingo.wire.channel.ResponseChannelConsumer;
-import io.vlingo.wire.message.ConsumerByteBuffer;
-import io.vlingo.wire.message.ConsumerByteBufferPool;
-import io.vlingo.wire.node.Address;
-
-import javax.net.ssl.*;
-import javax.net.ssl.SSLEngineResult.HandshakeStatus;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.*;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.SocketChannel;
+import java.nio.channels.WritableByteChannel;
 import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLEngineResult;
+import javax.net.ssl.SSLEngineResult.HandshakeStatus;
+import javax.net.ssl.SSLException;
+import javax.net.ssl.SSLSession;
+
+import io.vlingo.actors.Logger;
+import io.vlingo.common.Tuple3;
+import io.vlingo.common.pool.ElasticResourcePool;
+import io.vlingo.common.pool.ResourcePool;
+import io.vlingo.wire.channel.RefreshableSelector;
+import io.vlingo.wire.channel.ResponseChannelConsumer;
+import io.vlingo.wire.message.ConsumerByteBuffer;
+import io.vlingo.wire.message.ConsumerByteBufferPool;
+import io.vlingo.wire.node.Address;
 
 /**
  * SecureClientRequestResponseChannel provides SSL for the ClientRequestResponseChannel.
@@ -44,8 +53,7 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
   private final ResponseChannelConsumer consumer;
   private final Logger logger;
   private final ConsumerByteBufferPool readBufferPool;
-  private final SelectionKey selectionKey;
-  private final Selector selector;
+  private final RefreshableSelector selector;
   private final SSLProvider sslProvider;
   protected final Queue<ByteBuffer> writeQueue;
 
@@ -70,11 +78,10 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
     this.closed = new AtomicBoolean(false);
     this.writeQueue = new ConcurrentLinkedQueue<>();
 
-    final Tuple4<SocketChannel, SSLProvider, Selector, SelectionKey> quad = connect(address);
+    final Tuple3<SocketChannel, SSLProvider, RefreshableSelector> quad = connect(address);
     this.channel = quad._1;
     this.sslProvider = quad._2;
     this.selector = quad._3;
-    this.selectionKey = quad._4;
   }
 
   @Override
@@ -83,7 +90,6 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
 
     if (!isClosed()) {
       try {
-        selectionKey.cancel();
         selector.close();
         channel.close();
       } catch (Exception e) {
@@ -110,34 +116,31 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
       return;
     }
 
-//    logger.debug("SecureClientRequestResponseChannel: Probing");
+//  logger.debug("SecureClientRequestResponseChannel: Probing");
 
     try {
-      if (selector.selectNow() > 0) {
-        selectionKey.selector().select();
-        Iterator<SelectionKey> keys = selectionKey.selector().selectedKeys().iterator();
+      Iterator<SelectionKey> keys = selector.selectNow();
 
-//        logger.debug("SecureClientRequestResponseChannel: Probing selector");
+//    logger.debug("SecureClientRequestResponseChannel: Probing selector");
 
-        while (keys.hasNext()) {
-          final SelectionKey key = keys.next();
-          keys.remove();
+      while (keys.hasNext()) {
+        final SelectionKey key = keys.next();
+        keys.remove();
 
-          if (key.isValid()) {
-            if (key.isReadable()) {
-//              logger.debug("SecureClientRequestResponseChannel: Probing selector read key");
-              sslProvider.read();
-            } else if (key.isWritable()) {
-//              logger.debug("SecureClientRequestResponseChannel: Probing selector write key");
-              if (sslProvider.ready.get()) {
-                while (true) {
-                  final ByteBuffer toSend = this.writeQueue.poll();
-                  if (toSend != null) {
-//                    logger.debug("SecureClientRequestResponseChannel: Writing");
-                    sslProvider.write(toSend);
-                  } else {
-                    break;
-                  }
+        if (key.isValid()) {
+          if (key.isReadable()) {
+//          logger.debug("SecureClientRequestResponseChannel: Probing selector read key");
+            sslProvider.read();
+          } else if (key.isWritable()) {
+//          logger.debug("SecureClientRequestResponseChannel: Probing selector write key");
+            if (sslProvider.ready.get()) {
+              while (true) {
+                final ByteBuffer toSend = this.writeQueue.poll();
+                if (toSend != null) {
+//                logger.debug("SecureClientRequestResponseChannel: Writing");
+                  sslProvider.write(toSend);
+                } else {
+                  break;
                 }
               }
             }
@@ -149,14 +152,14 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
     }
   }
 
-  private Tuple4<SocketChannel, SSLProvider, Selector, SelectionKey> connect(final Address address) throws Exception {
+  private Tuple3<SocketChannel, SSLProvider, RefreshableSelector> connect(final Address address) throws Exception {
     // channel
-    final Selector selector = Selector.open();
+    final RefreshableSelector selector = RefreshableSelector.open(address.toString());
     final SocketChannel channel = SocketChannel.open();
     final InetSocketAddress hostAddress = new InetSocketAddress(address.hostName(), address.port());
     channel.connect(hostAddress);
     channel.configureBlocking(false);
-    final SelectionKey selectionKey = channel.register(selector, SelectionKey.OP_CONNECT | SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+    final SelectionKey selectionKey = selector.registerWith(channel, SelectionKey.OP_CONNECT | SelectionKey.OP_READ | SelectionKey.OP_WRITE);
     final Executor worker = Executors.newSingleThreadExecutor();
     final Executor taskWorkers = Executors.newFixedThreadPool(2);
 
@@ -168,7 +171,7 @@ public class SecureClientRequestResponseChannel implements ClientRequestResponse
 
 //    logger.debug("SecureClientRequestResponseChannel: Connected");
 
-    return Tuple4.from(channel, sslProvider, selector, selectionKey);
+    return Tuple3.from(channel, sslProvider, selector);
   }
 
   private class SSLProvider extends SSLWorker {

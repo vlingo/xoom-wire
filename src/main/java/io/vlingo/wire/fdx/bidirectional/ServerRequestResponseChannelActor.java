@@ -7,6 +7,12 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
+import java.net.InetSocketAddress;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.util.Iterator;
+
 import io.vlingo.actors.Actor;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Stoppable;
@@ -15,19 +21,13 @@ import io.vlingo.common.Completes;
 import io.vlingo.common.Scheduled;
 import io.vlingo.common.pool.ElasticResourcePool;
 import io.vlingo.common.pool.ResourcePool;
+import io.vlingo.wire.channel.RefreshableSelector;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.channel.SocketChannelSelectionProcessor;
 import io.vlingo.wire.channel.SocketChannelSelectionProcessor.SocketChannelSelectionProcessorInstantiator;
 import io.vlingo.wire.channel.SocketChannelSelectionProcessorActor;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBufferPool;
-
-import java.net.InetSocketAddress;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.util.Iterator;
 
 public class ServerRequestResponseChannelActor extends Actor implements ServerRequestResponseChannel, Scheduled<Object> {
   private final Cancellable cancellable;
@@ -38,7 +38,7 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
   private int processorPoolIndex;
   private final long probeTimeout;
   private final ConsumerByteBufferPool requestBufferPool;
-  private final Selector selector;
+  private final RefreshableSelector selector;
 
   @SuppressWarnings("unchecked")
   public ServerRequestResponseChannelActor(
@@ -63,10 +63,10 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
       logger().info(getClass().getSimpleName() + ": OPENING PORT: " + this.port);
 
       this.channel = ServerSocketChannel.open();
-      this.selector = Selector.open();
+      this.selector = RefreshableSelector.open(name);
       channel.socket().bind(new InetSocketAddress(port));
       channel.configureBlocking(false);
-      channel.register(selector, SelectionKey.OP_ACCEPT);
+      this.selector.registerWith(channel, SelectionKey.OP_ACCEPT);
     } catch (Exception e) {
       final String message = "Failure opening socket because: " + e.getMessage();
       logger().error(message, e);
@@ -139,17 +139,15 @@ public class ServerRequestResponseChannelActor extends Actor implements ServerRe
     if (isStopped()) return;
 
     try {
-      if (selector.select(probeTimeout) > 0) {
-        final Iterator<SelectionKey> iterator = selector.selectedKeys().iterator();
+      final Iterator<SelectionKey> iterator = selector.select(probeTimeout);
 
-        while (iterator.hasNext()) {
-          final SelectionKey key = iterator.next();
-          iterator.remove();
+      while (iterator.hasNext()) {
+        final SelectionKey key = iterator.next();
+        iterator.remove();
 
-          if (key.isValid()) {
-            if (key.isAcceptable()) {
-              accept(key);
-            }
+        if (key.isValid()) {
+          if (key.isAcceptable()) {
+            accept(key);
           }
         }
       }
