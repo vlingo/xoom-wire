@@ -7,113 +7,112 @@
 
 package io.vlingo.wire.channel;
 
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Test;
 
-import io.vlingo.actors.Logger;
 import io.vlingo.actors.World;
-import io.vlingo.actors.testkit.TestUntil;
-import io.vlingo.wire.fdx.bidirectional.BasicClientRequestResponseChannel;
-import io.vlingo.wire.fdx.bidirectional.ClientRequestResponseChannel;
-import io.vlingo.wire.fdx.bidirectional.ServerRequestResponseChannel;
-import io.vlingo.wire.fdx.bidirectional.TestRequestChannelConsumer;
-import io.vlingo.wire.fdx.bidirectional.TestRequestChannelConsumerProvider;
-import io.vlingo.wire.fdx.bidirectional.TestResponseChannelConsumer;
+import io.vlingo.actors.testkit.AccessSafely;
+import io.vlingo.wire.fdx.inbound.tcp.SocketChannelInboundReader;
 import io.vlingo.wire.message.ByteBufferAllocator;
-import io.vlingo.wire.node.Address;
-import io.vlingo.wire.node.AddressType;
+import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Host;
+import io.vlingo.wire.node.Id;
+import io.vlingo.wire.node.Name;
+import io.vlingo.wire.node.Node;
 
 public class RefreshableSelectorTest {
-  private static final int POOL_SIZE = 100;
-  private static AtomicInteger TEST_PORT = new AtomicInteger(37370);
+  private static int RefreshCountThreshold = 10;
+  private static AtomicInteger TEST_PORT = new AtomicInteger(20200);
+  private static final String TestMessage = "TEST ";
+  private static int TotalMessages = 10000;
 
-  private ByteBuffer buffer;
-  private ClientRequestResponseChannel client;
-  private TestResponseChannelConsumer clientConsumer;
-  private TestRequestChannelConsumerProvider provider;
-  private ServerRequestResponseChannel server;
-  private TestRequestChannelConsumer serverConsumer;
+  private SocketChannelWriter channelWriter;
+  private SocketChannelInboundReader channelReader;
   private World world;
 
-  // @Test -- skip for now
+  @Test
   public void testRefreshSelector() throws Exception {
-    final String requestTemplate = "Hello, Refresh ";
+    System.out.println("testRefreshSelector");
+    final MockChannelReaderConsumer consumer = new MockChannelReaderConsumer();
 
-    for (int count = 0; count < 40; ++count) {
-      final String request = requestTemplate + count;
+    channelReader.openFor(consumer);
 
-      serverConsumer.currentExpectedRequestLength = request.length();
-      clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
-      request(request);
+    final ByteBuffer buffer = ByteBufferAllocator.allocate(1024);
 
-      serverConsumer.untilConsume = TestUntil.happenings(1);
-      clientConsumer.untilConsume = TestUntil.happenings(1);
+    int total = 0;
 
-      while (serverConsumer.untilConsume.remaining() > 0) {
-        ;
-      }
-      serverConsumer.untilConsume.completes();
+    for (int count = 1; count <= TotalMessages; ++count) {
+      final String message1 = TestMessage + count;
+      final RawMessage rawMessage1 = RawMessage.from(0, 0, message1);
+      channelWriter.write(rawMessage1, buffer);
 
-      while (clientConsumer.untilConsume.remaining() > 0) {
-        client.probeChannel();
-      }
-      clientConsumer.untilConsume.completes();
+      final AccessSafely consumerAccess1 = consumer.afterCompleting(0);
+      probeUntilConsumed(channelReader, consumerAccess1);
 
-      assertFalse(serverConsumer.requests.isEmpty());
+      final int consumerCount1 = consumerAccess1.readFrom("consumeCount");
+      final String consumerMessage1 = consumerAccess1.readFrom("message", total);
 
-      assertFalse(clientConsumer.responses.isEmpty());
+      assertEquals(++total, consumerCount1);
+      assertEquals(message1, consumerMessage1);
+
+      final String message2 = TestMessage + count;
+      final RawMessage rawMessage2 = RawMessage.from(0, 0, message2);
+      channelWriter.write(rawMessage2, buffer);
+
+      final AccessSafely consumerAccess2 = consumer.afterCompleting(0);
+      probeUntilConsumed(channelReader, consumerAccess2);
+
+      final int consumerCount2 = consumerAccess1.readFrom("consumeCount");
+      final String consumerMessage2 = consumerAccess1.readFrom("message", total);
+
+      assertEquals(++total, consumerCount2);
+      assertEquals(message2, consumerMessage2);
     }
+
+    final long lessThanActualRefreshes = TotalMessages / RefreshCountThreshold;
+    assertTrue(channelReader.__test__only_Selector().refreshedCount() >= lessThanActualRefreshes);
   }
 
   @Before
   public void setUp() throws Exception {
-    RefreshableSelector.withCountedThreshold(10, Logger.basicLogger());
-
     world = World.startWithDefaults("test-refreshable-selector");
 
-    buffer = ByteBufferAllocator.allocate(1024);
-    final Logger logger = Logger.basicLogger();
-    provider = new TestRequestChannelConsumerProvider();
-    serverConsumer = (TestRequestChannelConsumer) provider.consumer;
+    RefreshableSelector.resetForTest();
+    RefreshableSelector.withCountedThreshold(RefreshCountThreshold, world.defaultLogger());
 
-    final int testPort = TEST_PORT.incrementAndGet();
+    final int operationalPort = TEST_PORT.incrementAndGet();
+    final int applicationPort = TEST_PORT.incrementAndGet();
 
-    server = ServerRequestResponseChannel.start(
-                    world.stage(),
-                    provider,
-                    testPort,
-                    "test-server",
-                    1,
-                    POOL_SIZE,
-                    10240,
-                    10L,
-                    2L);
-
-    clientConsumer = new TestResponseChannelConsumer();
-
-    client = new BasicClientRequestResponseChannel(Address.from(Host.of("localhost"), testPort,  AddressType.NONE), clientConsumer, POOL_SIZE, 10240, logger);
+    final Node node = Node.with(Id.of(2), Name.of("node2"), Host.of("localhost"), operationalPort, applicationPort);
+    channelWriter = new SocketChannelWriter(node.operationalAddress(), world.defaultLogger());
+    channelReader = new SocketChannelInboundReader(node.operationalAddress().port(), "test-reader", 1024, world.defaultLogger());
   }
 
   @After
   public void tearDown() {
-    server.close();
-    client.close();
-
-    try { Thread.sleep(1000); } catch (Exception e) {  }
-
+    channelWriter.close();
+    channelReader.close();
     world.terminate();
   }
 
-  private void request(final String request) {
-    buffer.clear();
-    buffer.put(request.getBytes());
-    buffer.flip();
-    client.requestWith(buffer);
+  private void probeUntilConsumed(final SocketChannelInboundReader reader, final AccessSafely consumerAccess) {
+    final int previousConsumedCount = consumerAccess.readFrom("consumeCount");
+
+    for (int idx = 0; idx < 100; ++idx) {
+      reader.probeChannel();
+
+      final int currentConsumedCount = consumerAccess.readFrom("consumeCount");
+
+      if (currentConsumedCount > previousConsumedCount) {
+        break;
+      }
+    }
   }
 }
