@@ -49,14 +49,14 @@ public class RefreshableSelector {
   /** My name. */
   private final String name;
 
+  /** My count for how many times selector was refreshed. */
+  private long refreshedCount;
+
   /** My Selector. */
   private Selector selector;
 
   /** My value to track progress toward refreshing. */
   private long trackingValue;
-
-  /** My indicator that my selector was just refreshed. */
-  private boolean wasRefreshed;
 
   /**
    * Initialize the {@code RefreshableSelector} service with a count threshold.
@@ -144,13 +144,10 @@ public class RefreshableSelector {
    * @throws IOException when the selection fails
    */
   public Iterator<SelectionKey> select(final long timeout) throws IOException {
-    wasRefreshed = false;
-
     switch (thresholdType) {
     case Counted:
       if (trackingValue++ >= threshold) {
         refresh();
-        wasRefreshed = true;
         trackingValue = 0;
       }
       break;
@@ -160,7 +157,6 @@ public class RefreshableSelector {
       final long currentTime = System.currentTimeMillis();
       if (currentTime - trackingValue >= threshold) {
         refresh();
-        wasRefreshed = true;
         trackingValue = currentTime;
       }
       break;
@@ -184,17 +180,25 @@ public class RefreshableSelector {
   }
 
   /**
-   * Answer whether or not my {@code selector} was just refreshed.
-   * @return boolean
+   * Answer my {@code refreshedCount}.
+   * @return long
    */
-  public boolean wasRefreshed() {
-    return wasRefreshed;
+  public long refreshedCount() {
+    return refreshedCount;
   }
 
 
   //=========================================
   // internal implementation
   //=========================================
+
+  public static void resetForTest() {
+    synchronized (RefreshableSelector.class) {
+      RefreshableSelector.thresholdType = null;
+      RefreshableSelector.threshold = 0;
+      RefreshableSelector.logger = null;
+    }
+  }
 
   private static void initializeWith(ThresholdType thresholdType, final long threshold, final Logger logger) {
     synchronized (RefreshableSelector.class) {
@@ -208,6 +212,7 @@ public class RefreshableSelector {
 
   private RefreshableSelector(final String name) {
     this.name = name;
+    this.refreshedCount = 0;
     this.selector = open();
     this.trackingValue = determineTrackingValue();
   }
@@ -244,23 +249,27 @@ public class RefreshableSelector {
       final Object attachment = key.attachment();
 
       try {
-        if (key.isValid() && channel.keyFor(selector) == null) {
-          final int options = key.interestOps();
-
-          key.cancel();
-
-          channel.register(refreshedSelector, options, attachment);
-
-          ++total;
+        if (!key.isValid() || channel.keyFor(refreshedSelector) != null) {
+          continue;
         }
-      } catch (Exception e) {
-        warnAbout(getClass().getSimpleName() + ": Did not register channel " + channel.toString() + " to refreshed selector '" + name + "' because of: " + e.getMessage(), e);
+
+        final int options = key.interestOps();
+
+        key.cancel();
+
+        channel.register(refreshedSelector, options, attachment);
+
+        ++total;
+      } catch (Throwable t) {
+        warnAbout(getClass().getSimpleName() + ": Did not register channel " + channel.toString() + " to refreshed selector '" + name + "' because of: " + t.getMessage(), t);
       }
-
-      swap(refreshedSelector);
-
-      tellAbout("Refreshed " + total + " channels to the refreshed selector '" + name + "'");
     }
+
+    swap(refreshedSelector);
+
+    ++refreshedCount;
+
+    tellAbout("Refreshed " + total + " channels to the refreshed selector '" + name + "'");
   }
 
   private void swap(final Selector refreshedSelector) {
@@ -281,9 +290,9 @@ public class RefreshableSelector {
     }
   }
 
-  private void warnAbout(final String message, final Exception e) {
+  private void warnAbout(final String message, final Throwable t) {
     if (logger.isEnabled()) {
-      logger.warn(message, e);
+      logger.warn(message, t);
     }
   }
 }
