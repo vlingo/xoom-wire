@@ -144,28 +144,26 @@ public class RefreshableSelector {
    * @throws IOException when the selection fails
    */
   public Iterator<SelectionKey> select(final long timeout) throws IOException {
-    switch (thresholdType) {
-    case Counted:
-      if (trackingValue++ >= threshold) {
-        refresh();
-        trackingValue = 0;
-      }
-      break;
-    case None:
-      break;
-    case Timed:
-      final long currentTime = System.currentTimeMillis();
-      if (currentTime - trackingValue >= threshold) {
-        refresh();
-        trackingValue = currentTime;
-      }
-      break;
-    }
-
     if (selector.select(timeout) > 0) {
+      switch (thresholdType) {
+        case Counted:
+          if (trackingValue++ >= threshold) {
+            refresh();
+            trackingValue = 0;
+          }
+          break;
+        case None:
+          break;
+        case Timed:
+          final long currentTime = System.currentTimeMillis();
+          if (currentTime - trackingValue >= threshold) {
+            refresh();
+            trackingValue = currentTime;
+          }
+          break;
+      }
       return selector.selectedKeys().iterator();
     }
-
     return EmptyIterator;
   }
 
