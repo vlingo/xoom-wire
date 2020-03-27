@@ -135,6 +135,10 @@ public class SocketChannelInboundReader implements ChannelReader, ChannelMessage
   // internal implementation
   //=========================================
 
+  public RefreshableSelector __test__only_Selector() {
+    return selector;
+  }
+
   private void accept(final SelectionKey key) throws IOException {
     final ServerSocketChannel serverChannel = (ServerSocketChannel) key.channel();
 
