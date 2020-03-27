@@ -7,16 +7,17 @@
 
 package io.vlingo.wire.channel;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.message.RawMessage;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class MockChannelReaderConsumer implements ChannelReaderConsumer {
   private AccessSafely access = AccessSafely.afterCompleting(0);
-  public int consumeCount;
-  public List<String> messages = new ArrayList<>();
+  public AtomicInteger consumeCount = new AtomicInteger(0);
+  public List<String> messages = new CopyOnWriteArrayList<>();
 
   @Override
   public void consume(final RawMessage message) {
@@ -28,9 +29,9 @@ public class MockChannelReaderConsumer implements ChannelReaderConsumer {
     access =
             AccessSafely
               .afterCompleting( times )
-              .writingWith("add", (value) -> { ++consumeCount; messages.add( (String)value ); } )
-              .readingWith("consumeCount", () -> consumeCount )
-              .readingWith("message", (index) -> messages.get( (int)index ));
+              .writingWith("add", (String value) -> { consumeCount.incrementAndGet(); messages.add(value); })
+              .readingWith("consumeCount", () -> consumeCount.get())
+              .readingWith("message", (Integer index) -> messages.get(index));
     return access;
   }
 
