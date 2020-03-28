@@ -17,6 +17,7 @@ import io.rsocket.SocketAcceptor;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.ServerTransport;
 import io.vlingo.actors.Actor;
+import io.vlingo.actors.ActorInstantiator;
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.Stoppable;
 import io.vlingo.common.Completes;
@@ -31,11 +32,9 @@ public class RSocketServerChannelActor extends Actor implements ServerRequestRes
   private final String name;
   private final Closeable serverSocket;
   private final Integer port;
-  
-  public RSocketServerChannelActor(final RequestChannelConsumerProvider provider,
-                                   final ServerTransport<? extends Closeable> serverTransport,
-                                   final int port, final String name, final int maxBufferPoolSize,
-                                   final int messageBufferSize) {
+
+  public RSocketServerChannelActor(final RequestChannelConsumerProvider provider, final ServerTransport<? extends Closeable> serverTransport, final int port,
+                                   final String name, final int maxBufferPoolSize, final int messageBufferSize) {
     this.name = name;
     this.port = port;
     this.serverSocket = RSocketFactory.receive()
@@ -47,7 +46,6 @@ public class RSocketServerChannelActor extends Actor implements ServerRequestRes
                                       .transport(serverTransport)
                                       .start()
                                       .block();
-
 
     if (this.serverSocket != null) {
       logger().info("RSocket server channel opened at port {}", this.port);
@@ -111,4 +109,35 @@ public class RSocketServerChannelActor extends Actor implements ServerRequestRes
     }
   }
 
+  public static class Instantiator implements ActorInstantiator<RSocketServerChannelActor> {
+    private static final long serialVersionUID = -1999865617618138682L;
+
+    private final RequestChannelConsumerProvider provider;
+    private final ServerTransport<? extends Closeable> serverTransport;
+    private final int port;
+    private final String name;
+    private final int maxBufferPoolSize;
+    private final int messageBufferSize;
+
+    public Instantiator(final RequestChannelConsumerProvider provider, final ServerTransport<? extends Closeable> serverTransport, final int port,
+                        final String name, final int maxBufferPoolSize, final int messageBufferSize) {
+
+      this.provider = provider;
+      this.serverTransport = serverTransport;
+      this.port = port;
+      this.name = name;
+      this.maxBufferPoolSize = maxBufferPoolSize;
+      this.messageBufferSize = messageBufferSize;
+    }
+
+    @Override
+    public RSocketServerChannelActor instantiate() {
+      return new RSocketServerChannelActor(provider, serverTransport, port, name, maxBufferPoolSize, messageBufferSize);
+    }
+
+    @Override
+    public Class<RSocketServerChannelActor> type() {
+      return RSocketServerChannelActor.class;
+    }
+  }
 }
