@@ -7,6 +7,8 @@
 
 package io.vlingo.wire.channel;
 
+import io.vlingo.actors.Logger;
+
 import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectableChannel;
@@ -14,8 +16,6 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.util.Collections;
 import java.util.Iterator;
-
-import io.vlingo.actors.Logger;
 
 /**
  * Provides NIO {@code Selector} behavior with the potential for managed refreshes of the
@@ -291,6 +291,47 @@ public class RefreshableSelector {
   private void warnAbout(final String message, final Throwable t) {
     if (logger.isEnabled()) {
       logger.warn(message, t);
+    }
+  }
+
+  private void rebuildSelector() {
+    final Selector oldSelector = selector;
+    final Selector newSelector;
+
+    if (oldSelector == null) {
+      return;
+    }
+
+    try {
+      newSelector = open();
+    } catch (Exception e) {
+      logger.warn("Failed to create a new Selector.", e);
+      return;
+    }
+
+    // Register all channels to the new Selector.
+    for (SelectionKey key : oldSelector.keys()) {
+      Object a = key.attachment();
+      try {
+        if (!key.isValid() || key.channel().keyFor(newSelector) != null) {
+          continue;
+        }
+
+        int interestOps = key.interestOps();
+        key.cancel();
+        key.channel().register(newSelector, interestOps, a);
+      } catch (Exception e) {
+        logger.warn("Failed to re-register a Channel to the new Selector.", e);
+      }
+    }
+
+    selector = newSelector;
+
+    try {
+      // time to close the old selector as everything else is registered to the new one
+      oldSelector.close();
+    } catch (Throwable t) {
+      warnAbout("Failed to close the old Selector.", t);
     }
   }
 }
