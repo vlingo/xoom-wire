@@ -14,6 +14,7 @@ import io.vlingo.actors.Stage;
 import io.vlingo.actors.Stoppable;
 import io.vlingo.common.Completes;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
+import io.vlingo.wire.fdx.bidirectional.netty.server.NettyServerChannelActor;
 
 public interface ServerRequestResponseChannel extends Stoppable {
   static ServerRequestResponseChannel start(
@@ -62,6 +63,27 @@ public interface ServerRequestResponseChannel extends Stoppable {
               stage.world().defaultLogger());
 
     return channel;
+  }
+
+  static ServerRequestResponseChannel startWithNetty(
+          final Stage stage,
+          final Address address,
+          final String mailboxName,
+          final RequestChannelConsumerProvider provider,
+          final int port,
+          final String name,
+          final int processorPoolSize,
+          final int maxBufferPoolSize,
+          final int maxMessageSize) {
+
+    final ActorInstantiator<NettyServerChannelActor> instantiator =
+            new NettyServerChannelActor.Instantiator(provider, port, name, processorPoolSize, maxBufferPoolSize, maxMessageSize);
+
+    return stage.actorFor(
+              ServerRequestResponseChannel.class,
+              Definition.has(instantiator.type(), instantiator, mailboxName, address.name()),
+              address,
+              stage.world().defaultLogger());
   }
 
   void close();
