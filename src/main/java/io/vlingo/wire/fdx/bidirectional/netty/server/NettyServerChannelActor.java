@@ -21,6 +21,9 @@ import io.vlingo.wire.fdx.bidirectional.ServerRequestResponseChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Implementation of {@link ServerRequestResponseChannel} based on Netty (https://netty.io/wiki/user-guide-for-4.x.html)
+ */
 public class NettyServerChannelActor extends Actor implements ServerRequestResponseChannel {
   private final static Logger logger = LoggerFactory.getLogger(NettyServerChannelActor.class);
 
