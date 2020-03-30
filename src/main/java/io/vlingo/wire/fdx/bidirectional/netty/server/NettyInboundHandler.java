@@ -86,7 +86,6 @@ final class NettyInboundHandler extends ChannelInboundHandlerAdapter implements 
 
     nettyChannelContext.writeAndFlush(replyBuffer)
                        .addListener(future -> {
-                         replyBuffer.release();
                          if (!future.isSuccess()) {
                            logger.error("Failed to send reply", future.cause());
                          } else {
