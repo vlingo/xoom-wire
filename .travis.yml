@@ -15,16 +15,17 @@ cache:
     - $HOME/.m2/repository
 
 deploy:
-  provider: bintray
-  file: .travis/bintray.json
-  skip_cleanup: true
-  user: d-led
-  on:
-    branch: master
-  key:
-    secure: eIaolgZY6V+F/mgMNj9aPt1MXjeATi80wD/hj2mVXB7Q6oE+oCNXPejzw8zrXaYOx7Z/R141VlyVv49rAn5On5NsQFggJfDGLJVRjArTTAI3Mh7j9PP98nRPrLReH/mpAQ7V1eWvpyk9DGdGViTzi439tLWtmwfEqAA3rhYwaU5QBgpyvBzDNF8tqRbmdnEwVwbM0l3mcCg2kK877UgYZJ/nB7abWSm6B4Ye+ylZBeALdxvhFKFEWsiLySMbl7oue+cN+R+6TOA7w++7AyZyRH2FlzLYs5sfhW93hC2iM7L0T5fjvWDm5MzOxCeAKwAZ6ZQNlr2+uTEzJa1TNRjHzXBGzlJGhGiJByXR/J1Wie7SzBydIczALo+liQFWEY59Mpj1xFph+wkmre48b+2fFSlK1Z2Rvou7H9pyyD76WdqK/c4A59mj8ACjBhM3MWCRlbn6aXSPV4ydPgwCl5A3FNKY20+owvVXz9yJrWHIN8xmnBYXFrF3nMO9+mSOeaGoCcUh7vrYtFsTku1rPnObnJf81QDJ3rS3dYOmvwNhiiuAUClCbc0H7FM9laOWSA6T2jg9p0fBwbssvCvAboswU7NQyAVb6wqG6Rwxjx+rqumv1GAC0Q2fFciXSStuQFYuXULoQ7suU8KkCr/db34eV5jEGo+ezucdusw/x34onJM=
-  passphrase:
-    secure: QMdad7eAjppRpaKBo7/KDlIqf2RHejvXPG2bkgLS7ByR3+RiCDRKm+Tnl9FVTU4mfQaFwPsJTihYlxN/YCUm9vy1wXE5NuoEftogAk5sWsf1GPT+nr8pHBotcejtg7QHQkgQrPR04w69Sqi7k1DWXXUGqtcMSitqo2JRlF7VJLObbiEUHaxcUx+aUnOdaikGGgdZIVOaBIWVATbEBk2HU0Id9yrzUG99enwXTOVbxqRuWX0T9SO022utkWzm3+OkykPZnMrupAVmoihR8VT6sZoZJn+5UYCWkAhoKBbD1J9XooTZqZ+eLARzL9ljkiVVdC5phrk7EZo09U4Uh68/1gguP1pO73qe4hpbDEmEtpKOSmNEVk3eGXwg32QVDmfqWFqpuQTRXyAdnR7M+bIjMPbxNVNSorZo72X/2X2HeyehDKQtfNCVwfU2igv4btQwqHPcAA6JGKfvmBdO15ydpC5Wpe1DLrrTWgvGWBOwD0VRPM7bULHJBDmPwZ+aZPzIBXc01H7OLrU5flvr5uwxW9QgFwfPJl8WZuF1Jhp2fEfVkeUE5ecqz19p9sXOpvy53BwICq6qFStFGt+87Q9nTgLEcxb/eYhIbrYzJFFbOojVTTmgfjSYgWKjRCtbhS2YirCYuUS15DuK+3soAgMRAcDeJE38/Y5MsnhN7Ra8V4Y=
+  - provider: script
+    script: "mvn deploy -DskipTests"
+    skip_cleanup: true
+    on:
+      tags: true
+  - provider: script
+    script: "mvn deploy -DskipTests"
+    skip_cleanup: true
+    on:
+      branch: master
+
 notifications:
   slack:
     secure: vu93Tw2RKj7nrAy6X1AUh1p8nyYIGNMk8M7OflorV+dwFKlwg0ayh/IqvsxUuLNB6BZflc3nWOya+zh73r4YF1mVmJ5NUSBUCOumc6quxj5HFfGvLRXNR3zlqjWT3VhN2z49SVU6KS7L5HpxBDZ1G77Sa0sTq/SFkbaNWTqhcGGekAgc32K0AnDj5CKtCib/wxXn1s/R2btYkwY4Nlhu0LGXA/3MZqD532A+hsWCDHVWDH7XQMri+GtR4ZzxQb+aroDTV3cOW2QCmHsadcTr/YEXJWJmxmy00jR1jykiYCV+2d18I6yVxDtPrcs3Q78EnttPXVejiAa7BbX75Em6ZPnRARsJj2tmwMyOPM2EWgSXnmEZiymhiAiBh7RLbqQ/m9xjNNDgj+SM8/BH6XS4wEyXMkJ0hSt9L8wiGRiFwoMayxxBzv8x77/bTnzEVpQhnOpO6mboqjsrpFOqMNJcmHGAUxisZEvpgqh+I/tBgr3nogu0QB8dCnQRIxnZNSjNq1+Df9+lqoU7tz55CL7esY4/LjTRWXrrNE1hlS3+sNjWKfsxn7sxL5Qhk52P8QRrCO9scxh3cdVMFldxK/gxYzS1mZ1+EfOG5FtJmKv0n7mdKwVZGlEW5icd2B2oVH3+kWhoHviA9MjOvHgi0BvpRVP5g+p8R5o3tYecjBNqNfw=
