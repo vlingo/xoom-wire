@@ -50,7 +50,7 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
                               @Override
                               public void initChannel(SocketChannel ch) throws Exception {
                                 ch.pipeline()
-                                  .addLast(new NettyClientHandler(provider, maxBufferPoolSize, maxMessageSize));
+                                  .addLast(new NettyInboundHandler(provider, maxBufferPoolSize, maxMessageSize));
                               }
                             })
                             .bind(port)

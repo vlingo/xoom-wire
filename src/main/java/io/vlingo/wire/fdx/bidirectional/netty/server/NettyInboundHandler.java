@@ -22,12 +22,12 @@ import io.vlingo.wire.message.ConsumerByteBufferPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-final class NettyClientHandler extends ChannelInboundHandlerAdapter implements ResponseSenderChannel {
-  private final static Logger logger = LoggerFactory.getLogger(NettyClientHandler.class);
+final class NettyInboundHandler extends ChannelInboundHandlerAdapter implements ResponseSenderChannel {
+  private final static Logger logger = LoggerFactory.getLogger(NettyInboundHandler.class);
   private final RequestChannelConsumer consumer;
   private final ConsumerByteBufferPool readBufferPool;
 
-  NettyClientHandler(final RequestChannelConsumerProvider consumerProvider, final int maxBufferPoolSize, final int maxMessageSize) {
+  NettyInboundHandler(final RequestChannelConsumerProvider consumerProvider, final int maxBufferPoolSize, final int maxMessageSize) {
     this.consumer = consumerProvider.requestChannelConsumer();
     this.readBufferPool = new ConsumerByteBufferPool(ElasticResourcePool.Config.of(maxBufferPoolSize), maxMessageSize);
   }
@@ -80,14 +80,17 @@ final class NettyClientHandler extends ChannelInboundHandlerAdapter implements R
   public void respondWith(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer) {
     final ChannelHandlerContext nettyChannelContext = ((NettyServerChannelContext) context).getNettyChannelContext();
 
-    final ByteBuf reply = nettyChannelContext.alloc()
-                                             .buffer(buffer.limit());
-    reply.writeBytes(buffer.asByteBuffer());
+    final ByteBuf replyBuffer = nettyChannelContext.alloc()
+                                                   .buffer(buffer.limit());
+    replyBuffer.writeBytes(buffer.asByteBuffer());
 
-    nettyChannelContext.writeAndFlush(reply)
+    nettyChannelContext.writeAndFlush(replyBuffer)
                        .addListener(future -> {
-                         if (logger.isTraceEnabled()) {
-                           logger.debug("Reply sent");
+                         replyBuffer.release();
+                         if (!future.isSuccess()) {
+                           logger.error("Failed to send reply", future.cause());
+                         } else {
+                           logger.trace("Reply sent");
                          }
                        });
   }
