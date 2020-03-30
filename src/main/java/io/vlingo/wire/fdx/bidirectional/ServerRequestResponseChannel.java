@@ -28,13 +28,13 @@ public interface ServerRequestResponseChannel extends Stoppable {
           final long probeInterval,
           final long probeTimeout) {
 
-    final ServerRequestResponseChannelInstantiator instantiator =
-            new ServerRequestResponseChannelInstantiator(provider, port, name, processorPoolSize, maxBufferPoolSize, maxMessageSize, probeInterval, probeTimeout);
+    final ActorInstantiator<NettyServerChannelActor> instantiator =
+            new NettyServerChannelActor.Instantiator(provider, port, name, processorPoolSize, maxBufferPoolSize, maxMessageSize);
 
     final ServerRequestResponseChannel channel =
             stage.actorFor(
               ServerRequestResponseChannel.class,
-              Definition.has(ServerRequestResponseChannelActor.class, instantiator));
+              Definition.has(instantiator.type(), instantiator));
 
     return channel;
   }
@@ -52,38 +52,17 @@ public interface ServerRequestResponseChannel extends Stoppable {
           final long probeInterval,
           final long probeTimeout) {
 
-    final ServerRequestResponseChannelInstantiator instantiator =
-            new ServerRequestResponseChannelInstantiator(provider, port, name, processorPoolSize, maxBufferPoolSize, maxMessageSize, probeInterval, probeTimeout);
+    final ActorInstantiator<NettyServerChannelActor> instantiator =
+            new NettyServerChannelActor.Instantiator(provider, port, name, processorPoolSize, maxBufferPoolSize, maxMessageSize);
 
     final ServerRequestResponseChannel channel =
             stage.actorFor(
               ServerRequestResponseChannel.class,
-              Definition.has(ServerRequestResponseChannelActor.class, instantiator, mailboxName, address.name()),
+              Definition.has(instantiator.type(), instantiator, mailboxName, address.name()),
               address,
               stage.world().defaultLogger());
 
     return channel;
-  }
-
-  static ServerRequestResponseChannel startWithNetty(
-          final Stage stage,
-          final Address address,
-          final String mailboxName,
-          final RequestChannelConsumerProvider provider,
-          final int port,
-          final String name,
-          final int processorPoolSize,
-          final int maxBufferPoolSize,
-          final int maxMessageSize) {
-
-    final ActorInstantiator<NettyServerChannelActor> instantiator =
-            new NettyServerChannelActor.Instantiator(provider, port, name, processorPoolSize, maxBufferPoolSize, maxMessageSize);
-
-    return stage.actorFor(
-              ServerRequestResponseChannel.class,
-              Definition.has(instantiator.type(), instantiator, mailboxName, address.name()),
-              address,
-              stage.world().defaultLogger());
   }
 
   void close();
