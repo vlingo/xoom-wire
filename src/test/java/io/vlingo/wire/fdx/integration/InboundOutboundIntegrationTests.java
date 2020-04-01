@@ -55,7 +55,7 @@ public class InboundOutboundIntegrationTests extends BaseWireTest {
 
     //The Inbound stream initialization is asynchronous,
     // so wee need to wait a bit for the RSocketChannelInboundReader to initialize.
-    Thread.sleep(200);
+    Thread.sleep(1000);
 
     final ApplicationOutboundStream outboundStream = ApplicationOutboundStream.instance(
         stage,
