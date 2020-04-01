@@ -1,6 +1,5 @@
 package io.vlingo.wire.fdx.integration;
 
-import io.rsocket.transport.local.LocalClientTransport;
 import io.rsocket.transport.local.LocalServerTransport;
 import io.vlingo.actors.Stage;
 import io.vlingo.actors.World;
@@ -23,8 +22,6 @@ import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
-
-import static org.junit.Assert.assertTrue;
 
 public class InboundOutboundIntegrationTests extends BaseWireTest {
 
@@ -57,7 +54,6 @@ public class InboundOutboundIntegrationTests extends BaseWireTest {
     // so wee need to wait a bit for the RSocketChannelInboundReader to initialize.
     Thread.sleep(1000);
 
-
     final ApplicationOutboundStream outboundStream = ApplicationOutboundStream.instance(
         stage,
         new ManagedOutboundRSocketChannelProvider(node, AddressType.APP, configuration, Duration.ofMillis(1000), address -> serverTransport.clientTransport()),
@@ -71,7 +67,7 @@ public class InboundOutboundIntegrationTests extends BaseWireTest {
       });
       Assert.assertTrue(latch.await(5, TimeUnit.SECONDS));
     } finally {
-      //Close the streams independently of the sucess of the test
+      //Close the streams independently of the success of the test
       outboundStream.conclude();
       inboundStream.conclude();
     }
