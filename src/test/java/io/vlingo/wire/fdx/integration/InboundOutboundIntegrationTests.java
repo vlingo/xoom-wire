@@ -1,5 +1,7 @@
 package io.vlingo.wire.fdx.integration;
 
+import io.rsocket.transport.local.LocalClientTransport;
+import io.rsocket.transport.local.LocalServerTransport;
 import io.vlingo.actors.Stage;
 import io.vlingo.actors.World;
 import io.vlingo.common.pool.ElasticResourcePool;
@@ -33,8 +35,11 @@ public class InboundOutboundIntegrationTests extends BaseWireTest {
     final Configuration configuration = new MockConfiguration();
     final Node node = configuration.nodeMatching(Id.of(1));
 
+    final LocalServerTransport serverTransport = LocalServerTransport.create("rsocket-integration-test-transport");
+    final LocalClientTransport clientTransport = LocalClientTransport.create("rsocket-integration-test-transport");
+
     RSocketInboundChannelReaderProvider channelReaderProvider = new RSocketInboundChannelReaderProvider(
-        1024, world.defaultLogger());
+        1024, world.defaultLogger(), port -> serverTransport);
 
     final int nrMessages = 1000;
     final CountDownLatch latch = new CountDownLatch(nrMessages);
@@ -50,11 +55,11 @@ public class InboundOutboundIntegrationTests extends BaseWireTest {
 
     //The Inbound stream initialization is asynchronous,
     // so wee need to wait a bit for the RSocketChannelInboundReader to initialize.
-    Thread.sleep(1000);
+    Thread.sleep(200);
 
     final ApplicationOutboundStream outboundStream = ApplicationOutboundStream.instance(
         stage,
-        new ManagedOutboundRSocketChannelProvider(node, AddressType.APP, configuration),
+        new ManagedOutboundRSocketChannelProvider(node, AddressType.APP, configuration, address -> clientTransport),
         new ConsumerByteBufferPool(ElasticResourcePool.Config.of(10), 1024));
 
     try {
