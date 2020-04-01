@@ -1,8 +1,9 @@
-package io.vlingo.wire;
+package io.vlingo.wire.fdx.integration;
 
 import io.vlingo.actors.Stage;
 import io.vlingo.actors.World;
 import io.vlingo.common.pool.ElasticResourcePool;
+import io.vlingo.wire.BaseWireTest;
 import io.vlingo.wire.fdx.inbound.InboundStream;
 import io.vlingo.wire.fdx.inbound.InboundStreamInterest;
 import io.vlingo.wire.fdx.inbound.rsocket.RSocketInboundChannelReaderProvider;
@@ -11,6 +12,7 @@ import io.vlingo.wire.fdx.outbound.rsocket.ManagedOutboundRSocketChannelProvider
 import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.*;
+import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,10 +23,10 @@ import java.util.stream.IntStream;
 
 import static org.junit.Assert.assertTrue;
 
-public class RSocketEndToEndTest extends BaseWireTest {
+public class InboundOutboundIntegrationTests extends BaseWireTest {
 
   @Test
-  public void test() throws Exception {
+  public void testRSocket() throws Exception {
     final World world = World.startWithDefaults("rsocket-integration-test-world");
 
     final Stage stage = world.stage();
@@ -34,7 +36,8 @@ public class RSocketEndToEndTest extends BaseWireTest {
     RSocketInboundChannelReaderProvider channelReaderProvider = new RSocketInboundChannelReaderProvider(
         1024, world.defaultLogger());
 
-    final CountDownLatch latch = new CountDownLatch(1000);
+    final int nrMessages = 1000;
+    final CountDownLatch latch = new CountDownLatch(nrMessages);
 
     final InboundStream inboundStream = InboundStream.instance(
         stage,
@@ -45,19 +48,27 @@ public class RSocketEndToEndTest extends BaseWireTest {
         "APP",
         7L);
 
+    //The Inbound stream initialization is asynchronous,
+    // so wee need to wait a bit for the RSocketChannelInboundReader to initialize.
+    Thread.sleep(1000);
+
     final ApplicationOutboundStream outboundStream = ApplicationOutboundStream.instance(
         stage,
         new ManagedOutboundRSocketChannelProvider(node, AddressType.APP, configuration),
         new ConsumerByteBufferPool(ElasticResourcePool.Config.of(10), 1024));
 
-    IntStream.range(0, (int)latch.getCount()).forEach(i -> {
-      outboundStream.sendTo(
-          RawMessage.from(2, -1, "hello world"),
-          node.id());
-    });
-    latch.await();
-    outboundStream.conclude();
-    inboundStream.conclude();
+    try {
+      IntStream.range(0, nrMessages).forEach(i -> {
+        outboundStream.sendTo(
+                RawMessage.from(2, -1, "hello world:" + i ),
+                node.id());
+      });
+      Assert.assertTrue(latch.await(5, TimeUnit.SECONDS));
+    } finally {
+      //Close the streams independently of the sucess of the test
+      outboundStream.conclude();
+      inboundStream.conclude();
+    }
   }
 
   static class Interest implements InboundStreamInterest {
@@ -72,9 +83,9 @@ public class RSocketEndToEndTest extends BaseWireTest {
 
     @Override
     public void handleInboundStreamMessage(AddressType addressType, RawMessage message) {
-      logger.debug("Received: addressType={}, message={}", addressType, message);
+      logger.debug("Received: addressType={}, message={}", addressType, message.asTextMessage());
       latch.countDown();
-      System.out.println("receiving message: #" + latch.getCount());
+      logger.debug("Left {} msg to receive", latch.getCount());
     }
   }
 
