@@ -7,6 +7,8 @@
 package io.vlingo.wire.fdx.outbound;
 
 import io.vlingo.wire.node.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -15,7 +17,10 @@ import java.util.TreeMap;
 
 public abstract class AbstractManagedOutboundChannelProvider implements ManagedOutboundChannelProvider {
 
+  private static final Logger logger = LoggerFactory.getLogger(AbstractManagedOutboundChannelProvider.class);
+
   protected static Address addressOf(final Node node, final AddressType type) {
+    logger.debug("addressOf {}", node);
     return (type == AddressType.OP ? node.operationalAddress() : node.applicationAddress());
   }
 

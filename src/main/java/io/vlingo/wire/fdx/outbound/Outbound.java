@@ -12,6 +12,8 @@ import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Id;
 import io.vlingo.wire.node.Node;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.Collection;
@@ -20,6 +22,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class Outbound {
+
+  private final Logger logger = LoggerFactory.getLogger(Outbound.class);
+
   private final ResourcePool<ConsumerByteBuffer, String> pool;
   private final ManagedOutboundChannelProvider provider;
 
