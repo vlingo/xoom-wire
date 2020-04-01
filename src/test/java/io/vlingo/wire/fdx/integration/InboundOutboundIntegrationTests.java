@@ -19,6 +19,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
@@ -35,8 +36,7 @@ public class InboundOutboundIntegrationTests extends BaseWireTest {
     final Configuration configuration = new MockConfiguration();
     final Node node = configuration.nodeMatching(Id.of(1));
 
-    final LocalServerTransport serverTransport = LocalServerTransport.create("rsocket-integration-test-transport");
-    final LocalClientTransport clientTransport = LocalClientTransport.create("rsocket-integration-test-transport");
+    final LocalServerTransport serverTransport = LocalServerTransport.createEphemeral();
 
     RSocketInboundChannelReaderProvider channelReaderProvider = new RSocketInboundChannelReaderProvider(
         1024, world.defaultLogger(), port -> serverTransport);
@@ -57,9 +57,10 @@ public class InboundOutboundIntegrationTests extends BaseWireTest {
     // so wee need to wait a bit for the RSocketChannelInboundReader to initialize.
     Thread.sleep(1000);
 
+
     final ApplicationOutboundStream outboundStream = ApplicationOutboundStream.instance(
         stage,
-        new ManagedOutboundRSocketChannelProvider(node, AddressType.APP, configuration, address -> clientTransport),
+        new ManagedOutboundRSocketChannelProvider(node, AddressType.APP, configuration, Duration.ofMillis(1000), address -> serverTransport.clientTransport()),
         new ConsumerByteBufferPool(ElasticResourcePool.Config.of(10), 1024));
 
     try {

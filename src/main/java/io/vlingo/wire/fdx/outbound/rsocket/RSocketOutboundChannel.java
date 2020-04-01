@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.concurrent.TimeoutException;
 
 public class RSocketOutboundChannel implements ManagedOutboundChannel {
 
@@ -39,7 +40,8 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
     this(address, clientTransport, Duration.ofMillis(100), logger);
   }
 
-  public RSocketOutboundChannel(final Address address, final ClientTransport clientTransport, final Duration connectionTimeout, final io.vlingo.actors.Logger logger) {
+  public RSocketOutboundChannel(final Address address, final ClientTransport clientTransport,
+                                final Duration connectionTimeout, final io.vlingo.actors.Logger logger) {
     this.address = address;
     this.connectionTimeout = connectionTimeout;
     this.transport = clientTransport;
@@ -103,7 +105,7 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
                                           .frameDecoder(PayloadDecoder.ZERO_COPY)
                                           .transport(transport)
                                           .start()
-                                          .timeout(connectionTimeout)
+                                          .timeout(connectionTimeout, Mono.error(new TimeoutException("Timeout establishing connection for " + this.address)))
                                           .block();
 
         logger.info("RSocket outbound channel opened for {}", this.address);
