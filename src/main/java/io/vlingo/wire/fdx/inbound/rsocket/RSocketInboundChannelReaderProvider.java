@@ -20,12 +20,25 @@ public class RSocketInboundChannelReaderProvider implements InboundChannelReader
   private final Logger logger;
   private final Function<Integer, ServerTransport<? extends Closeable>> serverTransportProvider;
 
+  /**
+   * Build a instance of provider that will create {@link RSocketChannelInboundReader} using the default RSocket server transport, {@link TcpServerTransport}.
+   *
+   * @param maxMessageSize max message size for the inbound channel
+   * @param logger logger to be used
+   */
   public RSocketInboundChannelReaderProvider(final int maxMessageSize, final Logger logger) {
     this.maxMessageSize = maxMessageSize;
     this.logger = logger;
     this.serverTransportProvider = TcpServerTransport::create;
   }
 
+  /**
+   * Build a instance of provider that will create {@link RSocketChannelInboundReader} using a different RSocket server transport.
+   *
+   * @param maxMessageSize max message size for the inbound channel
+   * @param logger logger to be used
+   * @param serverTransportProvider function that given a port, returns a instance of {@link ServerTransport}
+   */
   public RSocketInboundChannelReaderProvider(final int maxMessageSize, final Logger logger,
                                              final Function<Integer, ServerTransport<? extends Closeable>> serverTransportProvider) {
     this.maxMessageSize = maxMessageSize;

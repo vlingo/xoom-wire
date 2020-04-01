@@ -33,8 +33,6 @@ public abstract class AbstractManagedOutboundChannelProvider implements ManagedO
     this.configuration = configuration;
     this.node = node;
     this.type = type;
-
-    configureKnownChannels();
   }
 
   @Override
@@ -93,7 +91,8 @@ public abstract class AbstractManagedOutboundChannelProvider implements ManagedO
     }
   }
 
-  private void configureKnownChannels() {
+  @Override
+  public void configureKnownChannels() {
     for (final Node node : configuration.allOtherNodes(node.id())) {
       nodeChannels.put(node.id(), unopenedChannelFor(node, configuration, type));
     }
