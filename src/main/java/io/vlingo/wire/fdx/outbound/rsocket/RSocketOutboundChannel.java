@@ -12,34 +12,37 @@ import io.rsocket.RSocketFactory;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.ClientTransport;
 import io.rsocket.util.DefaultPayload;
-import io.vlingo.actors.Logger;
 import io.vlingo.common.Completes;
 import io.vlingo.common.Scheduler;
 import io.vlingo.wire.fdx.outbound.ManagedOutboundChannel;
 import io.vlingo.wire.node.Address;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.concurrent.TimeoutException;
 
 public class RSocketOutboundChannel implements ManagedOutboundChannel {
 
+  private static final Logger logger = LoggerFactory.getLogger(RSocketOutboundChannel.class);
+
   private final Scheduler scheduler = new Scheduler();
   private final Address address;
-  private final Logger logger;
   private final Duration connectionTimeout;
   private final ClientTransport transport;
   private RSocket clientSocket;
 
-  public RSocketOutboundChannel(final Address address, final ClientTransport clientTransport, final Logger logger) {
+  public RSocketOutboundChannel(final Address address, final ClientTransport clientTransport, final io.vlingo.actors.Logger logger) {
     this(address, clientTransport, Duration.ofMillis(100), logger);
   }
 
-  public RSocketOutboundChannel(final Address address, final ClientTransport clientTransport, final Duration connectionTimeout, final Logger logger) {
+  public RSocketOutboundChannel(final Address address, final ClientTransport clientTransport,
+                                final Duration connectionTimeout, final io.vlingo.actors.Logger logger) {
     this.address = address;
-    this.logger = logger;
     this.connectionTimeout = connectionTimeout;
     this.transport = clientTransport;
   }
@@ -102,7 +105,7 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
                                           .frameDecoder(PayloadDecoder.ZERO_COPY)
                                           .transport(transport)
                                           .start()
-                                          .timeout(connectionTimeout)
+                                          .timeout(connectionTimeout, Mono.error(new TimeoutException("Timeout establishing connection for " + this.address)))
                                           .block();
 
         logger.info("RSocket outbound channel opened for {}", this.address);

@@ -111,12 +111,26 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
   }
 
   private static class SocketAcceptorImpl implements SocketAcceptor {
-    private final RSocket acceptor;
+    private final ChannelMessageDispatcher dispatcher;
+    private final String name;
+    private final int maxMessageSize;
+    private final Logger logger;
 
     private SocketAcceptorImpl(final ChannelMessageDispatcher dispatcher, final String name, final int maxMessageSize, final Logger logger) {
-      final RawMessageBuilder rawMessageBuilder = new RawMessageBuilder(maxMessageSize);
+      this.dispatcher = dispatcher;
+      this.name = name;
+      this.maxMessageSize = maxMessageSize;
+      this.logger = logger;
+    }
 
-      this.acceptor = new AbstractRSocket() {
+    @Override
+    public Mono<RSocket> accept(ConnectionSetupPayload setupPayload, RSocket reactiveSocket) {
+      final RawMessageBuilder rawMessageBuilder = new RawMessageBuilder(maxMessageSize);
+      return Mono.just(buildAcceptor(rawMessageBuilder));
+    }
+
+    private AbstractRSocket buildAcceptor(RawMessageBuilder rawMessageBuilder) {
+      return new AbstractRSocket() {
         @Override
         public Mono<Void> fireAndForget(Payload payload) {
           logger.trace("Message received on inbound channel {}", name);
@@ -127,21 +141,14 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
             dispatcher.dispatchMessagesFor(rawMessageBuilder);
           } catch (final Throwable t) {
             logger.error("Unexpected error in inbound channel {}. Message ignored.", name, t);
-            //Clear builder resources in case of error. Otherwise we will get a BufferOverflow.
-            rawMessageBuilder.prepareForNextMessage();
-            rawMessageBuilder.workBuffer().clear();
           } finally {
             //Important! Because using PayloadDecoder.ZERO_COPY frame decoder
             payload.release();
+            rawMessageBuilder.workBuffer().clear();
           }
           return Mono.empty();
         }
       };
-    }
-
-    @Override
-    public Mono<RSocket> accept(ConnectionSetupPayload setupPayload, RSocket reactiveSocket) {
-      return Mono.just(acceptor);
     }
   }
 
