@@ -39,36 +39,46 @@ public class InboundOutboundIntegrationTests extends BaseWireTest {
         1024, world.defaultLogger(), port -> serverTransport);
 
     final int nrMessages = 1000;
-    final CountDownLatch latch = new CountDownLatch(nrMessages);
+    final CountDownLatch latch = new CountDownLatch(nrMessages * 2);
 
     final InboundStream inboundStream = InboundStream.instance(
         stage,
         channelReaderProvider,
         new Interest(latch),
         node.applicationAddress().port(),
-        AddressType.APP,
-        "APP",
+        AddressType.OP,
+        "OP",
         7L);
 
     //The Inbound stream initialization is asynchronous,
     // so wee need to wait a bit for the RSocketChannelInboundReader to initialize.
     Thread.sleep(1000);
 
-    final ApplicationOutboundStream outboundStream = ApplicationOutboundStream.instance(
+    final ApplicationOutboundStream outboundStreamNode2 = ApplicationOutboundStream.instance(
         stage,
-        new ManagedOutboundRSocketChannelProvider(node, AddressType.APP, configuration, Duration.ofMillis(1000), address -> serverTransport.clientTransport()),
+        new ManagedOutboundRSocketChannelProvider(node, AddressType.OP, configuration, Duration.ofMillis(1000), address -> serverTransport.clientTransport()),
         new ConsumerByteBufferPool(ElasticResourcePool.Config.of(10), 1024));
+
+    final ApplicationOutboundStream outboundStreamNode3 = ApplicationOutboundStream.instance(
+            stage,
+            new ManagedOutboundRSocketChannelProvider(node, AddressType.OP, configuration, Duration.ofMillis(1000), address -> serverTransport.clientTransport()),
+            new ConsumerByteBufferPool(ElasticResourcePool.Config.of(10), 1024));
 
     try {
       IntStream.range(0, nrMessages).forEach(i -> {
-        outboundStream.sendTo(
-                RawMessage.from(2, -1, "hello world:" + i ),
+        outboundStreamNode2.sendTo(
+                RawMessage.from(2, -1, "hello world from node2:" + i ),
+                node.id());
+
+        outboundStreamNode3.sendTo(
+                RawMessage.from(3, -1, "hello world from node3:" + i ),
                 node.id());
       });
       Assert.assertTrue(latch.await(5, TimeUnit.SECONDS));
     } finally {
       //Close the streams independently of the success of the test
-      outboundStream.conclude();
+      outboundStreamNode2.conclude();
+      outboundStreamNode3.conclude();
       inboundStream.conclude();
     }
   }
@@ -85,9 +95,9 @@ public class InboundOutboundIntegrationTests extends BaseWireTest {
 
     @Override
     public void handleInboundStreamMessage(AddressType addressType, RawMessage message) {
-      logger.debug("Received: addressType={}, message={}", addressType, message.asTextMessage());
+      logger.trace("Received: addressType={}, message={}", addressType, message.asTextMessage());
       latch.countDown();
-      logger.debug("Left {} msg to receive", latch.getCount());
+      logger.trace("Left {} msg to receive", latch.getCount());
     }
   }
 
