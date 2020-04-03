@@ -7,12 +7,6 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
-import java.net.InetSocketAddress;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.util.Iterator;
-
 import io.vlingo.actors.Actor;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Stoppable;
@@ -26,9 +20,21 @@ import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.channel.SocketChannelSelectionProcessor;
 import io.vlingo.wire.channel.SocketChannelSelectionProcessor.SocketChannelSelectionProcessorInstantiator;
 import io.vlingo.wire.channel.SocketChannelSelectionProcessorActor;
+import io.vlingo.wire.fdx.bidirectional.netty.server.NettyServerChannelActor;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBufferPool;
 
+import java.net.InetSocketAddress;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.util.Iterator;
+
+/**
+ * Deprecated. Use {@link NettyServerChannelActor}.
+ * Will be removed in next release.
+ */
+@Deprecated
 public class ServerRequestResponseChannelActor extends Actor implements ServerRequestResponseChannel, Scheduled<Object> {
   private final Cancellable cancellable;
   private final ServerSocketChannel channel;
