@@ -12,6 +12,7 @@ import io.vlingo.actors.World;
 import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.BaseWireTest;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
+import io.vlingo.wire.fdx.bidirectional.netty.client.NettyClientRequestResponseChannel;
 import io.vlingo.wire.message.ByteBufferAllocator;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
@@ -21,6 +22,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.time.Duration;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -223,11 +225,12 @@ public abstract class BaseServerChannelTest extends BaseWireTest {
 
   protected ClientRequestResponseChannel getClient(final Logger logger, final int testPort, final TestResponseChannelConsumer clientConsumer,
                                                    final int maxBufferPoolSize, final int maxMessageSize) throws Exception {
-    return new BasicClientRequestResponseChannel(Address.from(Host.of("localhost"), testPort, AddressType.NONE),
+
+    return new NettyClientRequestResponseChannel(Address.from(Host.of("localhost"), testPort, AddressType.NONE),
                                                  clientConsumer,
                                                  maxBufferPoolSize,
                                                  maxMessageSize,
-                                                 logger);
+                                                 Duration.ofMillis(1000));
   }
 
 }

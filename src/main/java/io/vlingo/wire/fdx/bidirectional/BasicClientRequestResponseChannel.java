@@ -19,6 +19,10 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 
+/**
+ * Deprecated. Use {@link io.vlingo.wire.fdx.bidirectional.netty.client.NettyClientRequestResponseChannel}.
+ */
+@Deprecated
 public class BasicClientRequestResponseChannel implements ClientRequestResponseChannel {
   private final Address address;
   private final ResponseChannelConsumer consumer;
