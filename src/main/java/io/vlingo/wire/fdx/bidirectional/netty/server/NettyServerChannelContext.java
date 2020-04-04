@@ -14,6 +14,7 @@ import io.vlingo.wire.message.ConsumerByteBuffer;
 final class NettyServerChannelContext implements RequestResponseContext<ConsumerByteBuffer> {
 
   private final ChannelHandlerContext nettyChannelContext;
+  @SuppressWarnings("unused")
   private Object closingData;
   private Object consumerData;
   private ResponseSenderChannel sender;
@@ -54,7 +55,7 @@ final class NettyServerChannelContext implements RequestResponseContext<Consumer
   public void whenClosing(final Object data) {
     this.closingData = data;
   }
-  
+
   ChannelHandlerContext getNettyChannelContext() {
     return nettyChannelContext;
   }

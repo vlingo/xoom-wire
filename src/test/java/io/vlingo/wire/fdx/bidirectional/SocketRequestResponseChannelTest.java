@@ -7,11 +7,11 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import io.vlingo.actors.Definition;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.fdx.bidirectional.ServerRequestResponseChannel.ServerRequestResponseChannelInstantiator;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class SocketRequestResponseChannelTest extends BaseServerChannelTest {
   private static AtomicInteger TEST_PORT = new AtomicInteger(37370);

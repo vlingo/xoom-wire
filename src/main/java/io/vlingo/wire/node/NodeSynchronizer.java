@@ -7,8 +7,6 @@
 
 package io.vlingo.wire.node;
 
-import io.vlingo.wire.node.Node;
-
 public interface NodeSynchronizer {
   void synchronize(final Node node);
 }

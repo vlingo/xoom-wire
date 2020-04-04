@@ -11,8 +11,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import io.vlingo.wire.fdx.outbound.ManagedOutboundChannel;
-import io.vlingo.wire.fdx.outbound.ManagedOutboundChannelProvider;
 import io.vlingo.wire.node.Configuration;
 import io.vlingo.wire.node.Id;
 import io.vlingo.wire.node.Node;
@@ -21,11 +19,11 @@ public class MockManagedOutboundChannelProvider implements ManagedOutboundChanne
   private final Map<Id, ManagedOutboundChannel> allChannels = new HashMap<>();
   private final Configuration configuration;
   private Id localNodeId;
-  
+
   public MockManagedOutboundChannelProvider(final Id localNodeId, final Configuration configuration) {
     this.localNodeId = localNodeId;
     this.configuration = configuration;
-    
+
     for (final Node node : configuration.allNodes()) {
       allChannels.put(node.id(), new MockManagedOutboundChannel(node.id()));
     }
@@ -34,13 +32,13 @@ public class MockManagedOutboundChannelProvider implements ManagedOutboundChanne
   @Override
   public Map<Id, ManagedOutboundChannel> allOtherNodeChannels() {
     final Map<Id, ManagedOutboundChannel> others = new HashMap<>();
-    
+
     for (final Node node : configuration.allNodes()) {
       if (!node.id().equals(localNodeId)) {
         others.put(node.id(), allChannels.get(node.id()));
       }
     }
-    
+
     return others;
   }
 
@@ -60,12 +58,12 @@ public class MockManagedOutboundChannelProvider implements ManagedOutboundChanne
 
   @Override
   public void close() {
-    
+
   }
 
   @Override
   public void close(final Id id) {
-    
+
   }
 
   @Override
