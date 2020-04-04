@@ -16,20 +16,52 @@ import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Configuration;
 import io.vlingo.wire.node.Node;
 
+import java.time.Duration;
+import java.util.function.Function;
+
 public class ManagedOutboundRSocketChannelProvider extends AbstractManagedOutboundChannelProvider {
 
-  private static ClientTransport transportFor(final Address address) {
-    return TcpClientTransport.create(address.hostName(), address.port());
+  private final Duration connectionTimeout;
+  private final Function<Address, ClientTransport> clientTransportProvider;
+
+  private ClientTransport transportFor(final Address address) {
+    return this.clientTransportProvider.apply(address);
   }
 
+  /**
+   * Build a instance of provider that will create {@link RSocketOutboundChannel} using the default RSocket client transport, {@link TcpClientTransport}.
+   *
+   * @param node the outbound node to connect to
+   * @param type the address type
+   * @param configuration current node configuration
+   */
   public ManagedOutboundRSocketChannelProvider(final Node node, final AddressType type, final Configuration configuration) {
     super(node, type, configuration);
+    this.clientTransportProvider = address -> TcpClientTransport.create(address.hostName(), address.port());
+    this.connectionTimeout = Duration.ofMillis(100);
+  }
+
+  /**
+   * Build a instance of provider that will create {@link RSocketOutboundChannel} using a different RSocket client transport.
+   *
+   * @param node the outbound node to connect to
+   * @param type the address type
+   * @param configuration current node configuration
+   * @param connectionTimeout connection timeout duration
+   * @param clientTransportProvider function that given a remote node address, returns a instance of {@link ClientTransport}
+   */
+  public ManagedOutboundRSocketChannelProvider(final Node node, final AddressType type, final Configuration configuration,
+                                               final Duration connectionTimeout,
+                                               final Function<Address, ClientTransport> clientTransportProvider) {
+    super(node, type, configuration);
+    this.connectionTimeout = connectionTimeout;
+    this.clientTransportProvider = clientTransportProvider;
   }
 
   @Override
   protected ManagedOutboundChannel unopenedChannelFor(final Node node, final Configuration configuration, final AddressType type) {
     final Address address = addressOf(node, type);
-    return new RSocketOutboundChannel(address, transportFor(address), configuration.logger());
+    return new RSocketOutboundChannel(address, transportFor(address), this.connectionTimeout, configuration.logger());
   }
 
 }
