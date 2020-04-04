@@ -20,6 +20,7 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.fdx.bidirectional.ClientRequestResponseChannel;
+import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.node.Address;
 import org.slf4j.Logger;
@@ -32,7 +33,17 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Implementation of {@link ClientRequestResponseChannel} based on Netty (https://netty.io/wiki/user-guide-for-4.x.html)
+ * Implementation of {@link ClientRequestResponseChannel} based on <a href="https://netty.io/wiki/user-guide-for-4.x.html">Netty</a>
+ * <p>
+ * <b>Important</b>. Due to streaming nature of TCP, there is no guarantee that what is read is exactly what server wrote.
+ * {@link ResponseChannelConsumer} might receive a {@link ConsumerByteBuffer} that contain a partial or event multiple server replies.
+ * Because of that, and the fact that the channel has no knowledge of the nature of messages being exchanged, <b>the {@link ResponseChannelConsumer} is responsible for extracting the message</b>.
+ * See Netty docs <a href="https://netty.io/wiki/user-guide-for-4.x.html#dealing-with-a-stream-based-transport">Dealing with a Stream-based Transport</a> for more information.
+ * </p>
+ * <p>
+ * This channel hoverer guarantees that the {@link ConsumerByteBuffer} will never hold more bytes than what is configure by {@code maxMessageSize}.
+ * A received {@link ByteBuf}, with size greater than {@code maxMessageSize}, will be split into multiple {@link ByteBuf}.
+ * </p>
  */
 public class NettyClientRequestResponseChannel implements ClientRequestResponseChannel {
   private final static Logger logger = LoggerFactory.getLogger(NettyClientRequestResponseChannel.class);
