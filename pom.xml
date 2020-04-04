@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.vlingo</groupId>
   <artifactId>vlingo-wire</artifactId>
-  <version>1.2.11-SNAPSHOT</version>
+  <version>1.2.14-SNAPSHOT</version>
   <name>vlingo-wire</name>
   <description>Wire protocol messaging implementations, such as with full-duplex TCP and UDP multicast, using vlingo/actors.</description>
   <url>https://github.com/vlingo/vlingo-wire</url>
@@ -82,7 +82,7 @@
     <dependency>
       <groupId>io.vlingo</groupId>
       <artifactId>vlingo-actors</artifactId>
-      <version>1.2.11-SNAPSHOT</version>
+      <version>1.2.14-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>io.netty</groupId>
@@ -116,6 +116,9 @@
     <repository>
       <id>jcenter</id>
       <url>https://jcenter.bintray.com/</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
     </repository>
 
     <repository>
@@ -124,15 +127,12 @@
       <releases>
         <enabled>false</enabled>
       </releases>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
     </repository>
   </repositories>
 
   <distributionManagement>
     <repository>
-      <id>bintray-delivery</id>
+      <id>bintray-deploy</id>
       <name>vlingo-vlingo-platform-java</name>
       <url>https://api.bintray.com/maven/vlingo/vlingo-platform-java/vlingo-wire/;publish=1</url>
     </repository>
