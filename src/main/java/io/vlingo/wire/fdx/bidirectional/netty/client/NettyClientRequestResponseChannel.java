@@ -156,7 +156,7 @@ public class NettyClientRequestResponseChannel implements ClientRequestResponseC
                                             .sync();
 
         this.channelFuture.await(this.connectionTimeout.toMillis(), TimeUnit.MILLISECONDS);
-      } catch (InterruptedException e) {
+      } catch (final InterruptedException e) {
         logger.error("Thread Interruption on client channel creation", e);
         Thread.currentThread()
               .interrupt();
