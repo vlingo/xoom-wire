@@ -42,11 +42,11 @@ public abstract class BaseServerChannelTest extends BaseWireTest {
 
     serverConsumer.currentExpectedRequestLength = request.length();
     clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
-    request(request);
-
     serverConsumer.untilConsume = TestUntil.happenings(1);
     clientConsumer.untilConsume = TestUntil.happenings(1);
 
+    request(request);
+    
     while (serverConsumer.untilConsume.remaining() > 0) {
       ;
     }
