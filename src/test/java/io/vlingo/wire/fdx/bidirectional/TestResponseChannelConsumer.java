@@ -7,22 +7,22 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.Converters;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class TestResponseChannelConsumer implements ResponseChannelConsumer {
   public int currentExpectedResponseLength;
   public int consumeCount;
   public List<String> responses = new ArrayList<>();
   public TestUntil untilConsume;
-  
+
   private final StringBuilder responseBuilder = new StringBuilder();
-  
+
   @Override
   public void consume(final ConsumerByteBuffer buffer) {
     final String responsePart = Converters.bytesToText(buffer.array(), 0, buffer.limit());
@@ -32,22 +32,27 @@ public class TestResponseChannelConsumer implements ResponseChannelConsumer {
       // requests when multiple are received at one time
       final String combinedResponse = responseBuilder.toString();
       final int combinedLength = combinedResponse.length();
-      responseBuilder.setLength(0); // reuse
 
       int currentIndex = 0;
       boolean last = false;
       while (!last) {
-        final String request = combinedResponse.substring(currentIndex, currentIndex+currentExpectedResponseLength);
+        final String request = combinedResponse.substring(currentIndex, currentIndex + currentExpectedResponseLength);
         currentIndex += currentExpectedResponseLength;
 
         responses.add(request);
         ++consumeCount;
 
-        last = currentIndex == combinedLength;
-
+        responseBuilder.setLength(0); // reuse
+        if (currentIndex + currentExpectedResponseLength > combinedLength) {
+          //Received combined responses has a part of a response.
+          // Should save the part and append to the next combined responses.
+          last = true;
+          responseBuilder.append(combinedResponse, currentIndex, combinedLength);
+        } else {
+          last = currentIndex == combinedLength;
+        }
         untilConsume.happened();
       }
-    }
-    buffer.release();
+    } buffer.release();
   }
 }
