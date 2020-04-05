@@ -18,6 +18,7 @@ import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -177,6 +178,15 @@ public abstract class BaseServerChannelTest extends BaseWireTest {
     for (int idx = 0; idx < TOTAL; ++idx) {
       assertEquals(clientConsumer.responses.get(idx), serverConsumer.requests.get(idx));
     }
+  }
+
+  @Test
+  public void testServerStops() throws InterruptedException {
+    this.server.stop();
+
+    Thread.sleep(300);
+
+    Assert.assertTrue(this.server.isStopped());
   }
 
   protected void request(final String request) {
