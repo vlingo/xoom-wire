@@ -60,15 +60,6 @@ public class RSocketServerChannelActor extends Actor implements ServerRequestRes
   public void close() {
     if (isStopped())
       return;
-
-    if (this.serverSocket != null) {
-      try {
-        this.serverSocket.dispose();
-      } catch (final Exception e) {
-        logger().error("Failed to close receive socket for: {}", name, e);
-      }
-    }
-
     selfAs(Stoppable.class).stop();
   }
 
@@ -79,6 +70,14 @@ public class RSocketServerChannelActor extends Actor implements ServerRequestRes
 
   @Override
   public void stop() {
+    if (this.serverSocket != null) {
+      try {
+        this.serverSocket.dispose();
+      } catch (final Exception e) {
+        logger().error("Failed to close receive socket for: {}", name, e);
+      }
+    }
+
     super.stop();
   }
 
