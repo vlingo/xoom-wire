@@ -19,8 +19,12 @@ import io.vlingo.actors.Stoppable;
 import io.vlingo.common.Completes;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.fdx.bidirectional.ServerRequestResponseChannel;
+import io.vlingo.wire.message.ConsumerByteBufferPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Implementation of {@link ServerRequestResponseChannel} based on Netty (https://netty.io/wiki/user-guide-for-4.x.html)
@@ -33,12 +37,28 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
   private final EventLoopGroup bossGroup;
   private final EventLoopGroup workerGroup;
   private final ChannelFuture channelFuture;
+  private final Duration gracefulShutdownQuietPeriod;
+  private final Duration gracefulShutdownTimeout;
 
+  /**
+   * Create a instance of {@link NettyServerChannelActor}.
+   *
+   * @param provider                    {@link RequestChannelConsumerProvider} provider
+   * @param port                        server port to bind to
+   * @param name                        server name, for logging
+   * @param processorPoolSize           request processors pool size
+   * @param maxBufferPoolSize           {@link ConsumerByteBufferPool} size
+   * @param maxMessageSize              max message size
+   * @param gracefulShutdownQuietPeriod graceful shutdown ensures that no tasks are submitted for <i>'the quiet period'</i> before it shuts itself down.
+   * @param gracefulShutdownTimeout     the maximum amount of time to wait until the Netty resources are shut down
+   */
   public NettyServerChannelActor(final RequestChannelConsumerProvider provider, final int port, final String name, final int processorPoolSize,
-                                 final int maxBufferPoolSize, final int maxMessageSize) {
+                                 final int maxBufferPoolSize, final int maxMessageSize, final Duration gracefulShutdownQuietPeriod,
+                                 final Duration gracefulShutdownTimeout) {
     this.port = port;
     this.name = name;
-
+    this.gracefulShutdownQuietPeriod = gracefulShutdownQuietPeriod;
+    this.gracefulShutdownTimeout = gracefulShutdownTimeout;
     this.bossGroup = new NioEventLoopGroup();
     this.workerGroup = new NioEventLoopGroup(processorPoolSize);
 
@@ -65,15 +85,18 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
 
   @Override
   public void close() {
-    if (!isStopped()) {
-      selfAs(Stoppable.class).stop();
-    }
+    if (isStopped())
+      return;
+
+    selfAs(Stoppable.class).stop();
   }
 
   @Override
   public void stop() {
+    logger.debug("Netty server actor {} will stop", this.name);
     try {
-      if (this.channelFuture.channel().isActive()) {
+      if (this.channelFuture.channel()
+                            .isActive()) {
         this.channelFuture.channel()
                           .close()
                           .await()
@@ -81,13 +104,13 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
       }
 
       if (!this.bossGroup.isShutdown()) {
-        this.bossGroup.shutdownGracefully()
+        this.bossGroup.shutdownGracefully(gracefulShutdownQuietPeriod.toMillis(), gracefulShutdownTimeout.toMillis(), TimeUnit.MILLISECONDS)
                       .await()
                       .sync();
       }
 
       if (!this.workerGroup.isShutdown()) {
-        this.workerGroup.shutdownGracefully()
+        this.workerGroup.shutdownGracefully(gracefulShutdownQuietPeriod.toMillis(), gracefulShutdownTimeout.toMillis(), TimeUnit.MILLISECONDS)
                         .await()
                         .sync();
       }
@@ -96,6 +119,8 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
     } catch (Throwable throwable) {
       logger.error("Netty server actor {} was not closed properly", this.name, throwable);
     }
+
+    super.stop();
   }
 
   @Override
@@ -112,20 +137,53 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
     private final int processorPoolSize;
     private final int maxBufferPoolSize;
     private final int maxMessageSize;
+    private final Duration gracefulShutdownQuietPeriod;
+    private final Duration gracefulShutdownTimeout;
 
+    /**
+     * Create a instance of {@link NettyServerChannelActor}.
+     *
+     * @param provider          {@link RequestChannelConsumerProvider} provider
+     * @param port              server port to bind to
+     * @param name              server name, for logging
+     * @param processorPoolSize request processors pool size
+     * @param maxBufferPoolSize {@link ConsumerByteBufferPool} size
+     * @param maxMessageSize    max message size
+     */
     public Instantiator(final RequestChannelConsumerProvider provider, final int port, final String name, final int processorPoolSize,
                         final int maxBufferPoolSize, final int maxMessageSize) {
+      this(provider, port, name, processorPoolSize, maxBufferPoolSize, maxMessageSize, Duration.ofMillis(0), Duration.ofMillis(0));
+    }
+
+    /**
+     * Create a instance of {@link NettyServerChannelActor}, with support of graceful shutdown.
+     *
+     * @param provider                    {@link RequestChannelConsumerProvider} provider
+     * @param port                        server port to bind to
+     * @param name                        server name, for logging
+     * @param processorPoolSize           request processors pool size
+     * @param maxBufferPoolSize           {@link ConsumerByteBufferPool} size
+     * @param maxMessageSize              max message size
+     * @param gracefulShutdownQuietPeriod graceful shutdown ensures that no tasks are submitted for <b>gracefulShutdownQuietPeriod</b> before it shuts itself down.
+     * @param gracefulShutdownTimeout     the maximum amount of time to wait until the Netty resources are shut down
+     */
+    public Instantiator(final RequestChannelConsumerProvider provider, final int port, final String name, final int processorPoolSize,
+                        final int maxBufferPoolSize, final int maxMessageSize, final Duration gracefulShutdownQuietPeriod,
+                        final Duration gracefulShutdownTimeout) {
       this.provider = provider;
       this.port = port;
       this.name = name;
       this.processorPoolSize = processorPoolSize;
       this.maxBufferPoolSize = maxBufferPoolSize;
       this.maxMessageSize = maxMessageSize;
+      this.gracefulShutdownQuietPeriod = gracefulShutdownQuietPeriod;
+      this.gracefulShutdownTimeout = gracefulShutdownTimeout;
     }
 
     @Override
     public NettyServerChannelActor instantiate() {
-      return new NettyServerChannelActor(this.provider, this.port, this.name, this.processorPoolSize, this.maxBufferPoolSize, this.maxMessageSize);
+      return new NettyServerChannelActor(this.provider, this.port, this.name, this.processorPoolSize, this.maxBufferPoolSize, this.maxMessageSize,
+                                         this.gracefulShutdownQuietPeriod, this.gracefulShutdownTimeout);
     }
 
     @Override
