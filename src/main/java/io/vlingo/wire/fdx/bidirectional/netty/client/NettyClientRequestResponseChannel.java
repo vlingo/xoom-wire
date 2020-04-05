@@ -90,14 +90,14 @@ public class NettyClientRequestResponseChannel implements ClientRequestResponseC
   @Override
   public void close() {
     try {
-      if (this.channelFuture != null) {
+      if (this.channelFuture != null && this.channelFuture.channel().isActive()) {
         this.channelFuture.channel()
                           .close()
                           .await()
                           .sync();
       }
 
-      if (this.workerGroup != null) {
+      if (this.workerGroup != null && !this.workerGroup.isShutdown()) {
         this.workerGroup.shutdownGracefully()
                         .await()
                         .sync();
