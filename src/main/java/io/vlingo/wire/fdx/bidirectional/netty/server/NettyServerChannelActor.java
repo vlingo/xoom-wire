@@ -15,6 +15,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.vlingo.actors.Actor;
 import io.vlingo.actors.ActorInstantiator;
+import io.vlingo.actors.Stoppable;
 import io.vlingo.common.Completes;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.fdx.bidirectional.ServerRequestResponseChannel;
@@ -64,19 +65,32 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
 
   @Override
   public void close() {
+    if (!isStopped()) {
+      selfAs(Stoppable.class).stop();
+    }
+  }
+
+  @Override
+  public void stop() {
     try {
-      this.channelFuture.channel()
-                        .close()
-                        .await()
-                        .sync();
+      if (this.channelFuture.channel().isActive()) {
+        this.channelFuture.channel()
+                          .close()
+                          .await()
+                          .sync();
+      }
 
-      this.bossGroup.shutdownGracefully()
-                    .await()
-                    .sync();
-
-      this.workerGroup.shutdownGracefully()
+      if (!this.bossGroup.isShutdown()) {
+        this.bossGroup.shutdownGracefully()
                       .await()
                       .sync();
+      }
+
+      if (!this.workerGroup.isShutdown()) {
+        this.workerGroup.shutdownGracefully()
+                        .await()
+                        .sync();
+      }
 
       logger.info("Netty server actor {} closed", this.name);
     } catch (Throwable throwable) {
