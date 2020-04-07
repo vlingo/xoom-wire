@@ -49,7 +49,7 @@ public abstract class BaseServerChannelTest extends BaseWireTest {
     clientConsumer.untilConsume = TestUntil.happenings(1);
 
     request(request);
-    
+
     while (serverConsumer.untilConsume.remaining() > 0) {
       ;
     }
@@ -240,7 +240,9 @@ public abstract class BaseServerChannelTest extends BaseWireTest {
                                                  clientConsumer,
                                                  maxBufferPoolSize,
                                                  maxMessageSize,
-                                                 Duration.ofMillis(1000));
+                                                 Duration.ofMillis(1000),
+                                                 Duration.ZERO,
+                                                 Duration.ZERO);
   }
 
 }

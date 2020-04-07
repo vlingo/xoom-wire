@@ -55,27 +55,34 @@ public class NettyClientRequestResponseChannel implements ClientRequestResponseC
   private final Duration connectionTimeout;
   private ChannelFuture channelFuture;
   private EventLoopGroup workerGroup;
+  private final Duration gracefulShutdownQuietPeriod;
+  private final Duration gracefulShutdownTimeout;
 
   /**
-   * Build a instance of client channel.
+   * Build a instance of client channel with support of graceful shutdown.
    *
-   * @param address           the address to connect to to
-   * @param consumer          {@link ResponseChannelConsumer} for consuming the response buffers
-   * @param maxBufferPoolSize {@link ConsumerByteBufferPool} size
-   * @param maxMessageSize    max message size
-   * @param connectionTimeout connection timeout
+   * @param address                     the address to connect to to
+   * @param consumer                    {@link ResponseChannelConsumer} for consuming the response buffers
+   * @param maxBufferPoolSize           {@link ConsumerByteBufferPool} size
+   * @param maxMessageSize              max message size
+   * @param connectionTimeout           connection timeout
+   * @param gracefulShutdownQuietPeriod graceful shutdown ensures that no tasks are submitted for <i>'the quiet period'</i> before it shuts itself down.
+   * @param gracefulShutdownTimeout     the maximum amount of time to wait until the Netty resources are shut down
    */
   public NettyClientRequestResponseChannel(final Address address, final ResponseChannelConsumer consumer, final int maxBufferPoolSize, final int maxMessageSize,
-                                           final Duration connectionTimeout) {
+                                           final Duration connectionTimeout, final Duration gracefulShutdownQuietPeriod,
+                                           final Duration gracefulShutdownTimeout) {
     this.address = address;
     this.consumer = consumer;
     this.maxBufferPoolSize = maxBufferPoolSize;
     this.maxMessageSize = maxMessageSize;
     this.connectionTimeout = connectionTimeout;
+    this.gracefulShutdownQuietPeriod = gracefulShutdownQuietPeriod;
+    this.gracefulShutdownTimeout = gracefulShutdownTimeout;
   }
 
   /**
-   * Build a instance of client channel with default connection timeout of 1000ms.
+   * Build a instance of client channel with default connection timeout of 1000ms and without graceful shutdown.
    *
    * @param address           the address to connect to to
    * @param consumer          {@link ResponseChannelConsumer} for consuming the response buffers
@@ -84,13 +91,14 @@ public class NettyClientRequestResponseChannel implements ClientRequestResponseC
    */
   public NettyClientRequestResponseChannel(final Address address, final ResponseChannelConsumer consumer, final int maxBufferPoolSize,
                                            final int maxMessageSize) {
-    this(address, consumer, maxBufferPoolSize, maxMessageSize, Duration.ofMillis(1000));
+    this(address, consumer, maxBufferPoolSize, maxMessageSize, Duration.ofMillis(1000), Duration.ZERO, Duration.ZERO);
   }
 
   @Override
   public void close() {
     try {
-      if (this.channelFuture != null && this.channelFuture.channel().isActive()) {
+      if (this.channelFuture != null && this.channelFuture.channel()
+                                                          .isActive()) {
         this.channelFuture.channel()
                           .close()
                           .await()
@@ -98,7 +106,7 @@ public class NettyClientRequestResponseChannel implements ClientRequestResponseC
       }
 
       if (this.workerGroup != null && !this.workerGroup.isShutdown()) {
-        this.workerGroup.shutdownGracefully()
+        this.workerGroup.shutdownGracefully(this.gracefulShutdownQuietPeriod.toMillis(), this.gracefulShutdownTimeout.toMillis(), TimeUnit.MILLISECONDS)
                         .await()
                         .sync();
       }

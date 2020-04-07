@@ -152,7 +152,7 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
      */
     public Instantiator(final RequestChannelConsumerProvider provider, final int port, final String name, final int processorPoolSize,
                         final int maxBufferPoolSize, final int maxMessageSize) {
-      this(provider, port, name, processorPoolSize, maxBufferPoolSize, maxMessageSize, Duration.ofMillis(0), Duration.ofMillis(0));
+      this(provider, port, name, processorPoolSize, maxBufferPoolSize, maxMessageSize, Duration.ZERO, Duration.ZERO);
     }
 
     /**
