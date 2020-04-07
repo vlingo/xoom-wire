@@ -46,7 +46,8 @@ public class NettyClientRequestResponseChannelTest {
 
     final Address address = Address.from(Host.of("localhost"), 8080, AddressType.MAIN);
 
-    final NettyClientRequestResponseChannel clientChannel = new NettyClientRequestResponseChannel(address, consumer, 1, 1, Duration.ofMillis(10));
+    final NettyClientRequestResponseChannel clientChannel = new NettyClientRequestResponseChannel(address, consumer, 1, 1, Duration.ofMillis(10),
+                                                                                                  Duration.ofMillis(1), Duration.ofMillis(1));
 
     try {
       clientChannel.requestWith(ByteBuffer.wrap(UUID.randomUUID()
