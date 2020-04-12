@@ -9,7 +9,6 @@ package io.vlingo.wire.fdx.bidirectional;
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.World;
-import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.BaseWireTest;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.fdx.bidirectional.netty.client.NettyClientRequestResponseChannel;
@@ -25,6 +24,7 @@ import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 
+import static io.vlingo.wire.fdx.bidirectional.TestRequestChannelConsumer.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
@@ -45,28 +45,24 @@ public abstract class BaseServerChannelTest extends BaseWireTest {
 
     serverConsumer.currentExpectedRequestLength = request.length();
     clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
-    serverConsumer.untilConsume = TestUntil.happenings(1);
-    clientConsumer.untilConsume = TestUntil.happenings(1);
+    serverConsumer.state = new State(1);
+    // TODO: add a generalized State class
+    clientConsumer.state = new TestResponseChannelConsumer.State(1);
 
     request(request);
-
-    while (serverConsumer.untilConsume.remaining() > 0) {
-      ;
-    }
-    serverConsumer.untilConsume.completes();
-
-    while (clientConsumer.untilConsume.remaining() > 0) {
+    int remaining = clientConsumer.state.access.readFrom("remaining");
+    while (remaining != 0) {
       client.probeChannel();
+      remaining = clientConsumer.state.access.readFrom("remaining");
     }
-    clientConsumer.untilConsume.completes();
 
     assertFalse(serverConsumer.requests.isEmpty());
-    assertEquals(1, serverConsumer.consumeCount);
-    assertEquals(serverConsumer.consumeCount, serverConsumer.requests.size());
+    assertEquals(1, (int) serverConsumer.state.access.readFrom("consumeCount"));
+    assertEquals((int) serverConsumer.state.access.readFrom("consumeCount"), serverConsumer.requests.size());
 
     assertFalse(clientConsumer.responses.isEmpty());
-    assertEquals(1, clientConsumer.consumeCount);
-    assertEquals(clientConsumer.consumeCount, clientConsumer.responses.size());
+    assertEquals(1, (int) clientConsumer.state.access.readFrom("consumeCount"));
+    assertEquals((int) clientConsumer.state.access.readFrom("consumeCount"), clientConsumer.responses.size());
 
     assertEquals(clientConsumer.responses.get(0), serverConsumer.requests.get(0));
   }
@@ -81,32 +77,28 @@ public abstract class BaseServerChannelTest extends BaseWireTest {
     clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
 
     // simulate network latency for parts of single request
-    serverConsumer.untilConsume = TestUntil.happenings(1);
-    clientConsumer.untilConsume = TestUntil.happenings(1);
+    serverConsumer.state = new TestRequestChannelConsumer.State(1);
+    clientConsumer.state = new TestResponseChannelConsumer.State(1);
 
     request(requestPart1);
     Thread.sleep(100);
     request(requestPart2);
     Thread.sleep(200);
     request(requestPart3);
-    while (serverConsumer.untilConsume.remaining() > 0) {
-      ;
-    }
-    serverConsumer.untilConsume.completes();
 
-    while (clientConsumer.untilConsume.remaining() > 0) {
-      Thread.sleep(10);
+    int remaining = clientConsumer.state.access.readFrom("remaining");
+    while (remaining != 0) {
       client.probeChannel();
+      remaining = clientConsumer.state.access.readFrom("remaining");
     }
-    clientConsumer.untilConsume.completes();
 
     assertFalse(serverConsumer.requests.isEmpty());
-    assertEquals(1, serverConsumer.consumeCount);
-    assertEquals(serverConsumer.consumeCount, serverConsumer.requests.size());
+    assertEquals(1, (int) serverConsumer.state.access.readFrom("consumeCount"));
+    assertEquals((int) serverConsumer.state.access.readFrom("consumeCount"), serverConsumer.requests.size());
 
     assertFalse(clientConsumer.responses.isEmpty());
-    assertEquals(1, clientConsumer.consumeCount);
-    assertEquals(clientConsumer.consumeCount, clientConsumer.responses.size());
+    assertEquals(1, (int) clientConsumer.state.access.readFrom("consumeCount"));
+    assertEquals((int) clientConsumer.state.access.readFrom("consumeCount"), clientConsumer.responses.size());
 
     assertEquals(clientConsumer.responses.get(0), serverConsumer.requests.get(0));
   }
@@ -118,27 +110,26 @@ public abstract class BaseServerChannelTest extends BaseWireTest {
     serverConsumer.currentExpectedRequestLength = request.length() + 1; // digits 0 - 9
     clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
 
-    serverConsumer.untilConsume = TestUntil.happenings(10);
-    clientConsumer.untilConsume = TestUntil.happenings(10);
+    serverConsumer.state = new TestRequestChannelConsumer.State(10);
+    clientConsumer.state = new TestResponseChannelConsumer.State(10);
 
     for (int idx = 0; idx < 10; ++idx) {
       request(request + idx);
     }
 
-    while (clientConsumer.untilConsume.remaining() > 0) {
+    int remaining = clientConsumer.state.access.readFrom("remaining");
+    while (remaining != 0) {
       client.probeChannel();
+      remaining = clientConsumer.state.access.readFrom("remaining");
     }
 
-    serverConsumer.untilConsume.completes();
-    clientConsumer.untilConsume.completes();
-
     assertFalse(serverConsumer.requests.isEmpty());
-    assertEquals(10, serverConsumer.consumeCount);
-    assertEquals(serverConsumer.consumeCount, serverConsumer.requests.size());
+    assertEquals(10, (int) serverConsumer.state.access.readFrom("consumeCount"));
+    assertEquals((int) serverConsumer.state.access.readFrom("consumeCount"), serverConsumer.requests.size());
 
     assertFalse(clientConsumer.responses.isEmpty());
-    assertEquals(10, clientConsumer.consumeCount);
-    assertEquals(clientConsumer.consumeCount, clientConsumer.responses.size());
+    assertEquals(10, (int) clientConsumer.state.access.readFrom("consumeCount"));
+    assertEquals((int) clientConsumer.state.access.readFrom("consumeCount"), clientConsumer.responses.size());
 
     for (int idx = 0; idx < 10; ++idx) {
       assertEquals(clientConsumer.responses.get(idx), serverConsumer.requests.get(idx));
@@ -154,26 +145,26 @@ public abstract class BaseServerChannelTest extends BaseWireTest {
     serverConsumer.currentExpectedRequestLength = request.length() + 3; // digits 000 - 999
     clientConsumer.currentExpectedResponseLength = serverConsumer.currentExpectedRequestLength;
 
-    serverConsumer.untilConsume = TestUntil.happenings(TOTAL);
-    clientConsumer.untilConsume = TestUntil.happenings(TOTAL);
+    serverConsumer.state = new TestRequestChannelConsumer.State(TOTAL);
+    clientConsumer.state = new TestResponseChannelConsumer.State(TOTAL);
 
     for (int idx = 0; idx < TOTAL; ++idx) {
       request(request + String.format("%03d", idx));
     }
 
-    while (clientConsumer.untilConsume.remaining() > 0) {
+    int remaining = clientConsumer.state.access.readFrom("remaining");
+    while (remaining != 0) {
       client.probeChannel();
+      remaining = clientConsumer.state.access.readFrom("remaining");
     }
-    serverConsumer.untilConsume.completes();
-    clientConsumer.untilConsume.completes();
 
     assertFalse(serverConsumer.requests.isEmpty());
-    assertEquals(TOTAL, serverConsumer.consumeCount);
-    assertEquals(serverConsumer.consumeCount, serverConsumer.requests.size());
+    assertEquals(TOTAL, (int) serverConsumer.state.access.readFrom("consumeCount"));
+    assertEquals((int) serverConsumer.state.access.readFrom("consumeCount"), serverConsumer.requests.size());
 
     assertFalse(clientConsumer.responses.isEmpty());
-    assertEquals(TOTAL, clientConsumer.consumeCount);
-    assertEquals(clientConsumer.consumeCount, clientConsumer.responses.size());
+    assertEquals(TOTAL, (int) clientConsumer.state.access.readFrom("consumeCount"));
+    assertEquals((int) clientConsumer.state.access.readFrom("consumeCount"), clientConsumer.responses.size());
 
     for (int idx = 0; idx < TOTAL; ++idx) {
       assertEquals(clientConsumer.responses.get(idx), serverConsumer.requests.get(idx));

@@ -9,8 +9,9 @@ package io.vlingo.wire.fdx.bidirectional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import io.vlingo.actors.testkit.TestUntil;
+import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.channel.RequestChannelConsumer;
 import io.vlingo.wire.channel.RequestResponseContext;
 import io.vlingo.wire.message.BasicConsumerByteBuffer;
@@ -18,18 +19,16 @@ import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.Converters;
 
 public class TestRequestChannelConsumer implements RequestChannelConsumer {
-  public int currentExpectedRequestLength;
+  int currentExpectedRequestLength;
   public int consumeCount;
-  public List<String> requests = new ArrayList<>();
-  public TestUntil untilClosed;
-  public TestUntil untilConsume;
+  List<String> requests = new ArrayList<>();
+  State state;
   
   private StringBuilder requestBuilder = new StringBuilder();
   private String remaining = "";
 
   @Override
   public void closeWith(final RequestResponseContext<?> requestResponseContext, final Object data) {
-    if (untilClosed != null) untilClosed.happened();
   }
 
   @Override
@@ -56,15 +55,34 @@ public class TestRequestChannelConsumer implements RequestChannelConsumer {
         final String request = combinedRequests.substring(currentIndex, endIndex);
         currentIndex += currentExpectedRequestLength;
         requests.add(request);
-        ++consumeCount;
-        
+        state.access.writeUsing("consumeCount", 1);
+
         final ConsumerByteBuffer responseBuffer = new BasicConsumerByteBuffer(1, currentExpectedRequestLength);
         context.respondWith(responseBuffer.clear().put(request.getBytes()).flip()); // echo back
         
         last = currentIndex == combinedLength;
-        
-        if (untilConsume != null) untilConsume.happened();
       }
+    }
+  }
+
+  public static class State {
+    AccessSafely access;
+    final String[] answers;
+    int index;
+    final AtomicInteger consumeCount = new AtomicInteger(0);
+
+    public State(final int totalWrites) {
+      this.answers = new String[totalWrites];
+      this.index = 0;
+      this.access = afterCompleting(totalWrites);
+    }
+
+    private AccessSafely afterCompleting(final int totalWrites) {
+      access = AccessSafely
+              .afterCompleting(totalWrites)
+              .writingWith("consumeCount", (Integer increment) -> consumeCount.set(consumeCount.incrementAndGet()))
+              .readingWith("consumeCount", consumeCount::get);
+      return access;
     }
   }
 }
