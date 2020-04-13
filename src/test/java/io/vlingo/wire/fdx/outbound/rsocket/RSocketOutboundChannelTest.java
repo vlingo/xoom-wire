@@ -43,7 +43,7 @@ public class RSocketOutboundChannelTest {
     final Closeable serverSocket = createServerSocket(serverTransport, "node1", firstCdl);
 
     final RSocketOutboundChannel outbound = new RSocketOutboundChannel(new Address(Host.of("127.0.0.1"), 0, AddressType.MAIN), localClientTransport,
-                                                                       Duration.ofMillis(200), logger);
+                                                                       Duration.ofMillis(2000), logger);
 
     final String message = UUID.randomUUID().toString();
 
