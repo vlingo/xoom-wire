@@ -10,13 +10,13 @@ package io.vlingo.wire.fdx.inbound;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import io.vlingo.wire.fdx.inbound.MockInboundStreamInterest.TestResults;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.testkit.TestActor;
-import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.actors.testkit.TestWorld;
 import io.vlingo.wire.channel.MockChannelReader;
 import io.vlingo.wire.fdx.inbound.InboundStream.InboundStreamInstantiator;
@@ -31,19 +31,19 @@ public class InboundStreamTest extends AbstractMessageTool {
 
   @Test
   public void testInbound() throws Exception {
-    interest.testResults.untilStops = TestUntil.happenings(1);
-    while (reader.probeChannelCount.get() == 0)
+    interest.testResults = new TestResults(1);
+    reader.results = new MockChannelReader.Results(1);
+    while ((int) reader.results.access.readFrom("probeChannelCount") == 0)
       ;
     inboundStream.actor().stop();
-    int count = 0;
-    for (final String message : interest.testResults.messages) {
-      ++count;
-      assertEquals(MockChannelReader.MessagePrefix + count, message);
+    int count;
+    for (count = 0; count < (int) interest.testResults.access.readFrom("messageCount"); count++) {
+      String message = interest.testResults.access.readFrom("messages", count);
+      assertEquals(MockChannelReader.MessagePrefix + (count + 1), message);
     }
-    interest.testResults.untilStops.completes();
 
-    assertTrue(interest.testResults.messageCount.get() > 0);
-    assertEquals(count, reader.probeChannelCount.get());
+    assertTrue((int) interest.testResults.access.readFrom("messageCount") > 0);
+    assertEquals(count, (int) reader.results.access.readFrom("probeChannelCount"));
   }
 
   @Before

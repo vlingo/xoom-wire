@@ -7,6 +7,7 @@
 
 package io.vlingo.wire.channel;
 
+import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.message.AbstractMessageTool;
 import io.vlingo.wire.message.RawMessage;
 
@@ -15,8 +16,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class MockChannelReader extends AbstractMessageTool implements ChannelReader {
   public static final String MessagePrefix = "Message-";
-  
-  public AtomicInteger probeChannelCount = new AtomicInteger(0);
+
+  public Results results;
 
   private ChannelReaderConsumer consumer;
   
@@ -45,10 +46,28 @@ public class MockChannelReader extends AbstractMessageTool implements ChannelRea
 
   @Override
   public void probeChannel() {
-    probeChannelCount.incrementAndGet();
+    this.results.access.writeUsing("probeChannelCount", 1);
     
-    final RawMessage message = RawMessage.from(0, 0, MessagePrefix + probeChannelCount.get());
+    final RawMessage message = RawMessage.from(0, 0, MessagePrefix + this.results.access.readFrom("probeChannelCount"));
     
     consumer.consume(message);
+  }
+
+  public static class Results {
+    public AccessSafely access;
+    public AtomicInteger probeChannelCount = new AtomicInteger(0);
+
+    public Results(final int totalWrites) {
+      this.access = afterCompleting(totalWrites);
+    }
+
+    private AccessSafely afterCompleting(final int totalWrites) {
+      access = AccessSafely
+              .afterCompleting(totalWrites)
+              .writingWith("probeChannelCount", (Integer inc) -> probeChannelCount.incrementAndGet())
+              .readingWith("probeChannelCount", probeChannelCount::get);
+
+      return access;
+    }
   }
 }

@@ -7,19 +7,20 @@
 
 package io.vlingo.wire.fdx.bidirectional;
 
-import io.vlingo.actors.testkit.TestUntil;
+import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.Converters;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestResponseChannelConsumer implements ResponseChannelConsumer {
   public int currentExpectedResponseLength;
   public int consumeCount;
   public List<String> responses = new ArrayList<>();
-  public TestUntil untilConsume;
+  public State state;
 
   private final StringBuilder responseBuilder = new StringBuilder();
 
@@ -40,7 +41,7 @@ public class TestResponseChannelConsumer implements ResponseChannelConsumer {
         currentIndex += currentExpectedResponseLength;
 
         responses.add(request);
-        ++consumeCount;
+        state.access.writeUsing("consumeCount", 1);
 
         responseBuilder.setLength(0); // reuse
         if (currentIndex + currentExpectedResponseLength > combinedLength) {
@@ -51,8 +52,32 @@ public class TestResponseChannelConsumer implements ResponseChannelConsumer {
         } else {
           last = currentIndex == combinedLength;
         }
-        untilConsume.happened();
       }
     } buffer.release();
+  }
+
+  public static class State {
+    public AccessSafely access;
+    AtomicInteger consumeCount = new AtomicInteger(0);
+    AtomicInteger remaining;
+
+    public State(final int totalWrites) {
+      this.remaining = new AtomicInteger(totalWrites);
+      this.access = afterCompleting(totalWrites);
+    }
+
+    private AccessSafely afterCompleting(final int totalWrites) {
+      access = AccessSafely
+              .afterCompleting(totalWrites)
+              .writingWith("consumeCount", (Integer increment) -> increment())
+              .readingWith("consumeCount", consumeCount::get)
+              .readingWith("remaining", remaining::get);
+      return access;
+    }
+
+    private void increment() {
+      consumeCount.incrementAndGet();
+      remaining.decrementAndGet();
+    }
   }
 }
