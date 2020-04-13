@@ -12,6 +12,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import io.vlingo.actors.testkit.AccessSafely;
 import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.message.AbstractMessageTool;
 import io.vlingo.wire.message.RawMessage;
@@ -33,9 +34,33 @@ public class MockInboundStreamInterest extends AbstractMessageTool implements In
             " count-down: " + testResults.access.readFrom("remaining"));
   }
 
-  static class TestResults {
-    public final AtomicInteger messageCount = new AtomicInteger(0);
-    public final List<String> messages = new CopyOnWriteArrayList<>();
-    public TestUntil untilStops;
+  public static class TestResults {
+    AccessSafely access;
+    final AtomicInteger messageCount = new AtomicInteger(0);
+    final List<String> messages = new CopyOnWriteArrayList<>();
+    AtomicInteger remaining;
+
+    public TestResults(final int totalWrites) {
+      this.remaining = new AtomicInteger(totalWrites);
+      this.access = afterCompleting(totalWrites);
+    }
+
+    private AccessSafely afterCompleting(final int totalWrites) {
+      access = AccessSafely
+              .afterCompleting(totalWrites)
+              .writingWith("messages", (Consumer<String>) messages::add)
+              .readingWith("messages", (Integer index) -> messages.get(index))
+              .readingWith("messagesSize", messages::size)
+              .writingWith("messageCount", (Integer increment) -> increment())
+              .readingWith("messageCount", messageCount::get)
+              .readingWith("remaining", remaining::get);
+
+      return access;
+    }
+
+    private void increment() {
+      messageCount.incrementAndGet();
+      remaining.decrementAndGet();
+    }
   }
 }
