@@ -4,6 +4,7 @@
 // Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain
 // one at https://mozilla.org/MPL/2.0/.
+
 package io.vlingo.wire.fdx.bidirectional.netty.client;
 
 import io.netty.bootstrap.ServerBootstrap;
@@ -15,9 +16,7 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
-import io.vlingo.wire.fdx.bidirectional.TestRequestChannelConsumer;
 import io.vlingo.wire.fdx.bidirectional.TestResponseChannelConsumer;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
