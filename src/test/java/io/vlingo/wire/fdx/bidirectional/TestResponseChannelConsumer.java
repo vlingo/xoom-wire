@@ -57,7 +57,7 @@ public class TestResponseChannelConsumer implements ResponseChannelConsumer {
   }
 
   public static class State {
-    AccessSafely access;
+    public AccessSafely access;
     AtomicInteger consumeCount = new AtomicInteger(0);
     AtomicInteger remaining;
 
@@ -76,8 +76,8 @@ public class TestResponseChannelConsumer implements ResponseChannelConsumer {
     }
 
     private void increment() {
-      consumeCount.set(consumeCount.incrementAndGet());
-      remaining.set(remaining.decrementAndGet());
+      consumeCount.incrementAndGet();
+      remaining.decrementAndGet();
     }
   }
 }
