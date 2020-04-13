@@ -10,6 +10,7 @@ package io.vlingo.wire.fdx.inbound;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.message.AbstractMessageTool;
@@ -17,17 +18,19 @@ import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.AddressType;
 
 public class MockInboundStreamInterest extends AbstractMessageTool implements InboundStreamInterest {
-  public TestResults testResults = new TestResults();
+  public TestResults testResults;
 
   public MockInboundStreamInterest() { }
   
   @Override
   public void handleInboundStreamMessage(final AddressType addressType, final RawMessage message) {
     final String textMessage = message.asTextMessage();
-    testResults.messages.add(textMessage);
-    testResults.messageCount.incrementAndGet();
-    System.out.println("INTEREST: " + textMessage + " list-size: " + testResults.messages.size() + " count: " + testResults.messageCount.get() + " count-down: " + testResults.untilStops.remaining());
-    testResults.untilStops.happened();
+    testResults.access.writeUsing("messages", textMessage);
+    testResults.access.writeUsing("messageCount", 1);
+    System.out.println("INTEREST: " + textMessage +
+            " list-size: " + testResults.access.readFrom("messagesSize") +
+            " count: " + testResults.access.readFrom("messageCount") +
+            " count-down: " + testResults.access.readFrom("remaining"));
   }
 
   static class TestResults {

@@ -16,7 +16,6 @@ import org.junit.Test;
 
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.testkit.TestActor;
-import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.actors.testkit.TestWorld;
 import io.vlingo.wire.channel.MockChannelReader;
 import io.vlingo.wire.fdx.inbound.InboundStream.InboundStreamInstantiator;
@@ -35,12 +34,11 @@ public class InboundStreamTest extends AbstractMessageTool {
     while (reader.probeChannelCount.get() == 0)
       ;
     inboundStream.actor().stop();
-    int count = 0;
-    for (final String message : interest.testResults.messages) {
-      ++count;
-      assertEquals(MockChannelReader.MessagePrefix + count, message);
+    int count;
+    for (count = 0; count < (int) interest.testResults.access.readFrom("messageCount"); count++) {
+      String message = interest.testResults.access.readFrom("messages", count);
+      assertEquals(MockChannelReader.MessagePrefix + (count + 1), message);
     }
-    interest.testResults.untilStops.completes();
 
     assertTrue(interest.testResults.messageCount.get() > 0);
     assertEquals(count, reader.probeChannelCount.get());
