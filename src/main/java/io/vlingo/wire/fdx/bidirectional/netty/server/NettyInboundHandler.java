@@ -6,6 +6,9 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.netty.server;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.EmptyByteBuf;
 import io.netty.buffer.Unpooled;
@@ -19,8 +22,6 @@ import io.vlingo.wire.channel.RequestResponseContext;
 import io.vlingo.wire.channel.ResponseSenderChannel;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBufferPool;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 final class NettyInboundHandler extends ChannelInboundHandlerAdapter implements ResponseSenderChannel {
   private final static Logger logger = LoggerFactory.getLogger(NettyInboundHandler.class);
@@ -77,8 +78,16 @@ final class NettyInboundHandler extends ChannelInboundHandlerAdapter implements 
   }
 
   @Override
+  public void explicitClose(final RequestResponseContext<?> context, final boolean option) {
+    // Assume unnecessary:
+    // final NettyServerChannelContext nettyChannelContext = (NettyServerChannelContext) context;
+    // nettyChannelContext.requireExplicitClose(option);
+  }
+
+  @Override
   public void respondWith(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer) {
-    final ChannelHandlerContext nettyChannelContext = ((NettyServerChannelContext) context).getNettyChannelContext();
+    final NettyServerChannelContext nettyServerChannelContext = (NettyServerChannelContext) context;
+    final ChannelHandlerContext nettyChannelContext = nettyServerChannelContext.getNettyChannelContext();
 
     final ByteBuf replyBuffer = nettyChannelContext.alloc()
                                                    .buffer(buffer.limit());
@@ -92,5 +101,8 @@ final class NettyInboundHandler extends ChannelInboundHandlerAdapter implements 
                            logger.trace("Reply sent");
                          }
                        });
+
+    // Assume unnecessary:
+    // nettyServerChannelContext.closeIfNotExplicitClose();
   }
 }
