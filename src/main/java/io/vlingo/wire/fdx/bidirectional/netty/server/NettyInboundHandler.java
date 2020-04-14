@@ -103,6 +103,6 @@ final class NettyInboundHandler extends ChannelInboundHandlerAdapter implements 
                        });
 
     // Assume unnecessary:
-    // nettyServerChannelContext.closeIfNotExplicitClose();
+    // nettyServerChannelContext.eagerClose();
   }
 }
