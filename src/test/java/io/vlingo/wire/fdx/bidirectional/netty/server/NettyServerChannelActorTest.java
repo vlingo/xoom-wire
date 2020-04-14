@@ -6,18 +6,18 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.netty.server;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import io.vlingo.actors.Definition;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.fdx.bidirectional.BaseServerChannelTest;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class NettyServerChannelActorTest extends BaseServerChannelTest {
   private static AtomicInteger TEST_PORT = new AtomicInteger(37370);
 
   @Override
   protected int getNextTestPort() {
-    return TEST_PORT.getAndIncrement();
+    return TEST_PORT.incrementAndGet();
   }
 
   @Override
