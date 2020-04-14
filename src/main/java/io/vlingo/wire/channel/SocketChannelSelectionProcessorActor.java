@@ -75,6 +75,11 @@ public class SocketChannelSelectionProcessorActor extends Actor
   }
 
   @Override
+  public void explicitClose(final RequestResponseContext<?> context, final boolean option) {
+    ((Context) context).requireExplicitClose(option);
+  }
+
+  @Override
   public void respondWith(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer) {
     ((Context) context).queueWritable(buffer);
   }
@@ -127,6 +132,9 @@ public class SocketChannelSelectionProcessorActor extends Actor
   //=========================================
 
   private void close(final Context context, final SelectionKey key) {
+    System.out.println("////////////////////////////////////");
+    System.out.println("////// CLOSING FOR READ FAIL ///////");
+    System.out.println("////////////////////////////////////");
     try {
       context.close();
     } catch (Exception e) {
@@ -206,18 +214,22 @@ public class SocketChannelSelectionProcessorActor extends Actor
   }
 
   private void write(final SelectionKey key) throws Exception {
-    final SocketChannel channel = (SocketChannel) key.channel();
-
-    if (!channel.isOpen()) {
-      key.cancel();
-      return;
-    }
+//    final SocketChannel channel = (SocketChannel) key.channel();
+//
+//    if (!channel.isOpen()) {
+//      key.cancel();
+//      return;
+//    }
 
     write((Context) key.attachment());
   }
 
   private void write(final Context context) throws Exception {
     if (context.isChannelClosed()) {
+      System.out.println("////////////////////////////////////");
+      System.out.println("////// WRITE: CHANNEL CLOSED ///////");
+      System.out.println("///////////// HAS WRITABLE DATA: " + context.writablesCount());
+      System.out.println("////////////////////////////////////");
       context.close();
       return;
     }
@@ -226,6 +238,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
         writeWithCachedData(context, context.clientChannel);
       }
     }
+    context.eagerClose();
   }
 
   private void writeWithCachedData(final Context context, final SocketChannel channel) throws Exception {
@@ -261,6 +274,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
     private final RequestChannelConsumer consumer;
     private Object consumerData;
     private final String id;
+    private boolean requireExplicitClose;
     private final Queue<ConsumerByteBuffer> writables;
     private boolean writeMode;
 
@@ -300,12 +314,17 @@ public class SocketChannelSelectionProcessorActor extends Actor
       this.clientChannel = clientChannel;
       this.consumer = provider.requestChannelConsumer();
       this.id = "" + (++contextId);
+      this.requireExplicitClose = true;
       this.writables = new LinkedList<>();
       this.writeMode = false;
     }
 
     boolean isChannelClosed() {
       return !clientChannel.isOpen();
+    }
+
+    boolean isChannelOpen() {
+      return clientChannel.isOpen();
     }
 
     void close() {
@@ -315,7 +334,31 @@ public class SocketChannelSelectionProcessorActor extends Actor
         selector.keyFor(clientChannel).cancel();
         clientChannel.close();
       } catch (Exception e) {
-        logger().info("Client channel didn't close normally, but is probably already closed.");
+        if (hasNextWritable()) {
+          logger().info("Client channel didn't close normally and still has writable data.");
+        }
+      }
+    }
+
+    void eagerClose() {
+      if (requireExplicitClose) return;
+
+      if (isChannelOpen()) {
+        System.out.println("////////////////////////////////////");
+        System.out.println("////// CLOSING NOT KEEP ALIVE //////");
+        System.out.println("////////////////////////////////////");
+        close();
+      } else {
+        if (requireExplicitClose) {
+          System.out.println("####################################");
+          System.out.println("############ KEEP ALIVE ############");
+          System.out.println("#####################################");
+        }
+        if (!isChannelOpen()) {
+          System.out.println("####################################");
+          System.out.println("######### CHANNEL NOT OPEN #########");
+          System.out.println("#####################################");
+        }
       }
     }
 
@@ -341,6 +384,11 @@ public class SocketChannelSelectionProcessorActor extends Actor
       return writables.peek() != null;
     }
 
+    void requireExplicitClose(final boolean option) {
+      System.out.println("######### REQUIRE EXPLICIT CLOSE ######### >>> " + option);
+      requireExplicitClose = option;
+    }
+
     ConsumerByteBuffer nextWritable() {
       return writables.peek();
     }
@@ -363,6 +411,10 @@ public class SocketChannelSelectionProcessorActor extends Actor
       selector.registerWith(clientChannel, options, this);
 
       writeMode = on;
+    }
+
+    int writablesCount() {
+      return writables.size();
     }
   }
 }
