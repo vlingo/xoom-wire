@@ -6,6 +6,17 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+
+import java.nio.ByteBuffer;
+import java.time.Duration;
+
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+
 import io.vlingo.actors.Definition;
 import io.vlingo.actors.Logger;
 import io.vlingo.actors.World;
@@ -17,27 +28,19 @@ import io.vlingo.wire.message.ByteBufferAllocator;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.nio.ByteBuffer;
-import java.time.Duration;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 
 public abstract class BaseServerChannelTest extends BaseWireTest {
   private static final int POOL_SIZE = 100;
 
   private ByteBuffer buffer;
   private TestResponseChannelConsumer clientConsumer;
+  private Logger logger;
   private TestRequestChannelConsumerProvider provider;
   private TestRequestChannelConsumer serverConsumer;
   private World world;
   protected ClientRequestResponseChannel client;
   protected ServerRequestResponseChannel server;
+  protected int testPort;
 
   @Test
   public void testBasicRequestResponse() throws Exception {
@@ -189,7 +192,7 @@ public abstract class BaseServerChannelTest extends BaseWireTest {
     Assert.assertTrue(this.server.isStopped());
   }
 
-  protected void request(final String request) {
+  protected void request(final String request) throws Exception {
     buffer.clear();
     buffer.put(request.getBytes());
     buffer.flip();
@@ -201,11 +204,11 @@ public abstract class BaseServerChannelTest extends BaseWireTest {
     world = World.startWithDefaults("test-request-response-channel");
 
     buffer = ByteBufferAllocator.allocate(1024);
-    final Logger logger = Logger.basicLogger();
+    logger = Logger.basicLogger();
     provider = new TestRequestChannelConsumerProvider();
     serverConsumer = (TestRequestChannelConsumer) provider.consumer;
 
-    final int testPort = getNextTestPort();
+    testPort = getNextTestPort();
 
     final Definition definition = getServerDefinition(provider, testPort, POOL_SIZE, 10240);
     server = world.actorFor(ServerRequestResponseChannel.class, definition);
