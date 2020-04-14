@@ -4,6 +4,7 @@
 // Mozilla Public License, v. 2.0. If a copy of the MPL
 // was not distributed with this file, You can obtain
 // one at https://mozilla.org/MPL/2.0/.
+
 package io.vlingo.wire.fdx.bidirectional.netty.client;
 
 import java.net.ConnectException;
@@ -29,7 +30,6 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.fdx.bidirectional.TestResponseChannelConsumer;
 import io.vlingo.wire.node.Address;
@@ -85,7 +85,7 @@ public class NettyClientRequestResponseChannelTest {
 
       final TestResponseChannelConsumer clientConsumer = new TestResponseChannelConsumer();
       clientConsumer.currentExpectedResponseLength = replyMsSize;
-      clientConsumer.untilConsume = TestUntil.happenings(nrExpectedMessages);
+      clientConsumer.state = new TestResponseChannelConsumer.State(nrExpectedMessages);
 
       final Address address = Address.from(Host.of("localhost"), testPort, AddressType.MAIN);
 
@@ -101,7 +101,7 @@ public class NettyClientRequestResponseChannelTest {
       Assert.assertTrue("Server should have received connection request", connectionsCount.await(2, TimeUnit.SECONDS));
       Assert.assertTrue("Server should have received all messages.", serverReceivedMessagesCount.await(4, TimeUnit.SECONDS));
 
-      Assert.assertTrue("Client should have received all server replies", clientConsumer.untilConsume.completesWithin(TimeUnit.SECONDS.toMillis(4)));
+      Assert.assertEquals("Client should have received all server replies", 0, (int) clientConsumer.state.access.readFrom("remaining"));
 
       clientSentMessages.forEach(clientRequest -> {
         Assert.assertTrue("Server should have received request: " + clientRequest, serverReceivedMessage.contains(clientRequest));
