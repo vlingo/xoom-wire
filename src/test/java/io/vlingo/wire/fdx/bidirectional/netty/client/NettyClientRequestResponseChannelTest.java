@@ -6,6 +6,20 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.netty.client;
 
+import java.net.ConnectException;
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.time.Duration;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.junit.Assert;
+import org.junit.Test;
+
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
@@ -21,19 +35,6 @@ import io.vlingo.wire.fdx.bidirectional.TestResponseChannelConsumer;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
-import org.junit.Assert;
-import org.junit.Test;
-
-import java.net.ConnectException;
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.time.Duration;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class NettyClientRequestResponseChannelTest {
   private static AtomicInteger TEST_PORT = new AtomicInteger(37370);
@@ -77,7 +78,7 @@ public class NettyClientRequestResponseChannelTest {
     final NioEventLoopGroup childGroup = new NioEventLoopGroup(2);
 
     try {
-      final int testPort = TEST_PORT.getAndIncrement();
+      final int testPort = TEST_PORT.incrementAndGet();
 
       server = bootstrapServer(requestMsgSize, connectionsCount, serverReceivedMessagesCount, serverReceivedMessage, serverSentMessages, parentGroup,
                                childGroup, testPort);
