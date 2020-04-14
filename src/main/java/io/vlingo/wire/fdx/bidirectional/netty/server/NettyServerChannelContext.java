@@ -19,9 +19,24 @@ final class NettyServerChannelContext implements RequestResponseContext<Consumer
   private Object consumerData;
   private ResponseSenderChannel sender;
 
+  // Assume unnecessary:
+  // private boolean explicitClose;
+
   NettyServerChannelContext(final ChannelHandlerContext nettyChannelContext, final ResponseSenderChannel sender) {
     this.nettyChannelContext = nettyChannelContext;
     this.sender = sender;
+
+    // Assume unnecessary:
+    // this.explicitClose = true;
+  }
+
+  void eagerClose() {
+    // Assume unnecessary:
+    // if (explicitClose) return;
+    // final ChannelHandlerContext channelHandlerContext = getNettyChannelContext();
+    // if (channelHandlerContext.channel().isOpen()) {
+    //   channelHandlerContext.close();
+    // }
   }
 
   @Override
@@ -44,6 +59,11 @@ final class NettyServerChannelContext implements RequestResponseContext<Consumer
   @Override
   public String id() {
     return null;
+  }
+
+  void requireExplicitClose(final boolean option) {
+    // Assume unnecessary:
+    // explicitClose = option;
   }
 
   @Override
