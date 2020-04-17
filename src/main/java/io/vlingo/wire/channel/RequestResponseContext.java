@@ -28,4 +28,8 @@ public interface RequestResponseContext<R> {
   default void respondWith(final ConsumerByteBuffer buffer) {
     sender().respondWith(this, buffer);
   }
+
+  default void respondWith(final ConsumerByteBuffer buffer, final boolean closeFollowing) {
+    sender().respondWith(this, buffer, closeFollowing);
+  }
 }

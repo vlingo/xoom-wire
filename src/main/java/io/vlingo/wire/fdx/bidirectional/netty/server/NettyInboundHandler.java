@@ -6,12 +6,17 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.netty.server;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.EmptyByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
@@ -28,11 +33,18 @@ final class NettyInboundHandler extends ChannelInboundHandlerAdapter implements 
   private final RequestChannelConsumer consumer;
   private final ConsumerByteBufferPool readBufferPool;
 
+  private static final AtomicInteger nextInstanceId = new AtomicInteger();
+  private final int instanceId;
+
   NettyInboundHandler(final RequestChannelConsumerProvider consumerProvider, final int maxBufferPoolSize, final int maxMessageSize) {
     this.consumer = consumerProvider.requestChannelConsumer();
     this.readBufferPool = new ConsumerByteBufferPool(ElasticResourcePool.Config.of(maxBufferPoolSize), maxMessageSize);
+
+    this.instanceId = nextInstanceId.incrementAndGet();
+    System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>> NettyInboundHandler::ctor(): " + instanceId + " CONSUMER: " + consumer);
   }
 
+  private final Map<String, NettyServerChannelContext> contexts = new HashMap<>();
   @Override
   public void channelRead(final ChannelHandlerContext ctx, final Object msg) {
     if (msg == null || msg == Unpooled.EMPTY_BUFFER || msg instanceof EmptyByteBuf) {
@@ -41,8 +53,15 @@ final class NettyInboundHandler extends ChannelInboundHandlerAdapter implements 
     if (logger.isTraceEnabled()) {
       logger.debug("Request received");
     }
+
+    System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>> NettyInboundHandler::channelRead(): " + instanceId);
+
     try {
-      final NettyServerChannelContext channelContext = new NettyServerChannelContext(ctx, this);
+      NettyServerChannelContext channelContext = contexts.get(ctx.name());
+      if (channelContext == null) {
+        channelContext = new NettyServerChannelContext(ctx, this);
+        contexts.put(ctx.name(), channelContext);
+      }
 
       final ConsumerByteBuffer pooledBuffer = readBufferPool.acquire("NettyClientHandler#channelRead");
       try {
@@ -73,19 +92,25 @@ final class NettyInboundHandler extends ChannelInboundHandlerAdapter implements 
 
   @Override
   public void abandon(final RequestResponseContext<?> context) {
+    logger.trace(">>>>>>>>>>>>>>>>>>>>>>>>>>>> NettyInboundHandler::abandon(): " + instanceId);
     final ChannelHandlerContext nettyChannelContext = ((NettyServerChannelContext) context).getNettyChannelContext();
     nettyChannelContext.close();
   }
 
   @Override
   public void explicitClose(final RequestResponseContext<?> context, final boolean option) {
-    // Assume unnecessary:
-    // final NettyServerChannelContext nettyChannelContext = (NettyServerChannelContext) context;
-    // nettyChannelContext.requireExplicitClose(option);
+
   }
 
   @Override
   public void respondWith(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer) {
+    respondWith(context, buffer, false);
+  }
+
+  @Override
+  public void respondWith(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer, final boolean closeFollowing) {
+    System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>> NettyInboundHandler::respondWith(): " + instanceId + " : CLOSE? " + closeFollowing);
+
     final NettyServerChannelContext nettyServerChannelContext = (NettyServerChannelContext) context;
     final ChannelHandlerContext nettyChannelContext = nettyServerChannelContext.getNettyChannelContext();
 
@@ -93,16 +118,25 @@ final class NettyInboundHandler extends ChannelInboundHandlerAdapter implements 
                                                    .buffer(buffer.limit());
     replyBuffer.writeBytes(buffer.asByteBuffer());
 
-    nettyChannelContext.writeAndFlush(replyBuffer)
-                       .addListener(future -> {
-                         if (!future.isSuccess()) {
-                           logger.error("Failed to send reply", future.cause());
-                         } else {
-                           logger.trace("Reply sent");
-                         }
-                       });
+    try {
+      final ChannelFuture writeCompletable = nettyChannelContext.writeAndFlush(replyBuffer);
 
-    // Assume unnecessary:
-    // nettyServerChannelContext.eagerClose();
+      writeCompletable
+        .addListener(future -> {
+                           if (future.isSuccess()) {
+                             logger.trace("Reply sent");
+                           } else {
+                             logger.error("Failed to send reply", future.cause());
+                           }
+                         });
+
+      writeCompletable.await().syncUninterruptibly();
+      if (writeCompletable.isDone() && closeFollowing) {
+        nettyChannelContext.close();
+      }
+
+    } catch (InterruptedException e) {
+      logger.trace("Timeout: NettyInboundHandler::respondWith() writeAndFlush().await()");
+    }
   }
 }

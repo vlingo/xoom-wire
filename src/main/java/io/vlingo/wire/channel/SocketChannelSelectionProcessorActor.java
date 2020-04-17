@@ -84,6 +84,13 @@ public class SocketChannelSelectionProcessorActor extends Actor
     ((Context) context).queueWritable(buffer);
   }
 
+  @Override
+  public void respondWith(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer, final boolean closeFollowing) {
+    Context internalContext = (Context) context;
+    internalContext.queueWritable(buffer);
+    internalContext.requireExplicitClose(false);
+  }
+
 
   //=========================================
   // SocketChannelSelectionProcessor
