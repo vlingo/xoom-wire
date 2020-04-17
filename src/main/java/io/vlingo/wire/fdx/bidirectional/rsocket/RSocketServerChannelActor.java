@@ -12,8 +12,8 @@ import io.rsocket.Closeable;
 import io.rsocket.ConnectionSetupPayload;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
-import io.rsocket.RSocketFactory;
 import io.rsocket.SocketAcceptor;
+import io.rsocket.core.RSocketServer;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.ServerTransport;
 import io.vlingo.actors.Actor;
@@ -37,14 +37,10 @@ public class RSocketServerChannelActor extends Actor implements ServerRequestRes
                                    final String name, final int maxBufferPoolSize, final int messageBufferSize) {
     this.name = name;
     this.port = port;
-    this.serverSocket = RSocketFactory.receive()
-                                      .errorConsumer(throwable -> {
-                                        logger().error("Unexpected error in server channel", throwable);
-                                      })
-                                      .frameDecoder(PayloadDecoder.ZERO_COPY)
+    this.serverSocket = RSocketServer.create()
+                                      .payloadDecoder(PayloadDecoder.ZERO_COPY)
                                       .acceptor(new SocketAcceptorImpl(provider, maxBufferPoolSize, messageBufferSize, logger()))
-                                      .transport(serverTransport)
-                                      .start()
+                                      .bind(serverTransport)
                                       .block();
 
     if (this.serverSocket != null) {

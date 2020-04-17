@@ -8,12 +8,11 @@
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.time.Duration;
 
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
-import io.rsocket.RSocketFactory;
+import io.rsocket.core.RSocketConnector;
 import io.rsocket.exceptions.ApplicationErrorException;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.ClientTransport;
@@ -88,15 +87,9 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
   private void prepareChannel() {
     try {
       if (this.channelSocket == null || this.channelSocket.isDisposed()) {
-        this.channelSocket = RSocketFactory.connect()
-                                           .errorConsumer(throwable -> {
-                                             if (!(throwable instanceof ClosedChannelException)) {
-                                               logger.error("Unexpected error in RSocket client channel for address {}", this.address, throwable);
-                                             }
-                                           })
-                                           .frameDecoder(PayloadDecoder.ZERO_COPY)
-                                           .transport(transport)
-                                           .start()
+        this.channelSocket = RSocketConnector.create()
+                                           .payloadDecoder(PayloadDecoder.ZERO_COPY)
+                                           .connect(transport)
                                            .timeout(this.connectionTimeout)
                                            .doOnError(throwable -> {
                                              logger.error("Failed to create RSocket client channel for address {}", this.address, throwable);
