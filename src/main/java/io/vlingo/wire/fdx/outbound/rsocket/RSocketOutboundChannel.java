@@ -8,7 +8,7 @@ package io.vlingo.wire.fdx.outbound.rsocket;
 
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
-import io.rsocket.RSocketFactory;
+import io.rsocket.core.RSocketConnector;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.ClientTransport;
 import io.rsocket.util.DefaultPayload;
@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
@@ -96,15 +95,9 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
   private Optional<RSocket> prepareSocket() {
     if (this.clientSocket == null || this.clientSocket.isDisposed()) {
       try {
-        this.clientSocket = RSocketFactory.connect()
-                                          .errorConsumer(throwable -> {
-                                            if (!(throwable instanceof ClosedChannelException)) {
-                                              logger.error("Unexpected error in RSocket outbound channel", throwable);
-                                            }
-                                          })
-                                          .frameDecoder(PayloadDecoder.ZERO_COPY)
-                                          .transport(transport)
-                                          .start()
+        this.clientSocket = RSocketConnector.create()
+                                          .payloadDecoder(PayloadDecoder.ZERO_COPY)
+                                          .connect(transport)
                                           .timeout(connectionTimeout, Mono.error(new TimeoutException("Timeout establishing connection for " + this.address)))
                                           .block();
 

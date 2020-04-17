@@ -18,6 +18,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import io.rsocket.core.RSocketServer;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -27,7 +28,6 @@ import io.rsocket.AbstractRSocket;
 import io.rsocket.Closeable;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
-import io.rsocket.RSocketFactory;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.ClientTransport;
 import io.rsocket.transport.local.LocalClientTransport;
@@ -91,12 +91,11 @@ public class RSocketClientChannelTest {
       }
     };
 
-    final Closeable server = RSocketFactory.receive()
-                                           .frameDecoder(PayloadDecoder.ZERO_COPY)
-                                           .acceptor((connectionSetupPayload, rSocket) -> Mono.just(responseHandler))
-                                           .transport(this.serverTransport)
-                                           .start()
-                                           .block();
+    final Closeable server = RSocketServer.create()
+                                          .payloadDecoder(PayloadDecoder.ZERO_COPY)
+                                          .acceptor((connectionSetupPayload, rSocket) -> Mono.just(responseHandler))
+                                          .bind(this.serverTransport)
+                                          .block();
 
     Assert.assertNotNull("Server failed to start", server);
     final Address address = buildAddress(0);
@@ -167,13 +166,10 @@ public class RSocketClientChannelTest {
       }
     };
 
-    final Closeable server = RSocketFactory.receive()
-                                           .resume()
-                                           .errorConsumer(Throwable::printStackTrace)
-                                           .frameDecoder(PayloadDecoder.ZERO_COPY)
+    final Closeable server = RSocketServer.create()
+                                           .payloadDecoder(PayloadDecoder.ZERO_COPY)
                                            .acceptor((connectionSetupPayload, rSocket) -> Mono.just(responseHandler))
-                                           .transport(this.serverTransport)
-                                           .start()
+                                           .bind(this.serverTransport)
                                            .subscribeOn(Schedulers.single())
                                            .block();
 
@@ -207,12 +203,12 @@ public class RSocketClientChannelTest {
   public void testServerUnrecoverableError() throws InterruptedException {
     final ResponseChannelConsumer consumer = buffer -> Assert.fail("No messages are expected");
 
-    final Closeable server = RSocketFactory.receive()
-                                           .frameDecoder(PayloadDecoder.ZERO_COPY)
-                                           .acceptor((connectionSetupPayload, rSocket) -> Mono.error(new RuntimeException("Channel could not be created")))
-                                           .transport(this.serverTransport)
-                                           .start()
-                                           .block();
+    final Closeable server = RSocketServer.create()
+                              .payloadDecoder(PayloadDecoder.ZERO_COPY)
+                              .acceptor((connectionSetupPayload, rSocket) -> Mono.error(new RuntimeException("Channel could not be created")))
+                              .bind(this.serverTransport)
+                              .subscribeOn(Schedulers.single())
+                              .block();
 
     Assert.assertNotNull("Server failed to start", server);
     final Address address = buildAddress(0);

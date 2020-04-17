@@ -11,8 +11,8 @@ import io.rsocket.Closeable;
 import io.rsocket.ConnectionSetupPayload;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
-import io.rsocket.RSocketFactory;
 import io.rsocket.SocketAcceptor;
+import io.rsocket.core.RSocketServer;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.ServerTransport;
 import io.vlingo.actors.Logger;
@@ -23,7 +23,6 @@ import io.vlingo.wire.message.RawMessageBuilder;
 import reactor.core.publisher.Mono;
 
 import java.nio.ByteBuffer;
-import java.nio.channels.ClosedChannelException;
 
 public class RSocketChannelInboundReader implements ChannelReader, ChannelMessageDispatcher {
   private final Logger logger;
@@ -84,16 +83,10 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
       this.serverSocket.dispose();
     }
 
-    serverSocket = RSocketFactory.receive()
-                                 .errorConsumer(throwable -> {
-                                   if (!(throwable instanceof ClosedChannelException)) {
-                                     logger.error("Unexpected error in inbound channel", throwable);
-                                   }
-                                 })
-                                 .frameDecoder(PayloadDecoder.ZERO_COPY)
+    serverSocket = RSocketServer.create()
+                                 .payloadDecoder(PayloadDecoder.ZERO_COPY)
                                  .acceptor(new SocketAcceptorImpl(this, name, maxMessageSize, logger))
-                                 .transport(serverTransport)
-                                 .start()
+                                 .bind(serverTransport)
                                  .doOnError(throwable -> logger.error("Failed to create RSocket inbound channel {} at port {}", name, port, throwable))
                                  .block();
 
