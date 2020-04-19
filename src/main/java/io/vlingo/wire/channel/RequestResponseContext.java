@@ -21,10 +21,6 @@ public interface RequestResponseContext<R> {
     sender().abandon(this);
   }
 
-  default void explicitClose(final boolean option) {
-    sender().explicitClose(this, option);
-  }
-
   default void respondWith(final ConsumerByteBuffer buffer) {
     sender().respondWith(this, buffer);
   }
