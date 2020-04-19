@@ -16,7 +16,10 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.vlingo.actors.Actor;
@@ -33,6 +36,8 @@ import io.vlingo.wire.message.ConsumerByteBufferPool;
 public class NettyServerChannelActor extends Actor implements ServerRequestResponseChannel {
   private final static Logger logger = LoggerFactory.getLogger(NettyServerChannelActor.class);
 
+  private enum OptimalTransport { NIO, Epoll };
+
   private final int port;
   private final String name;
   private final EventLoopGroup bossGroup;
@@ -40,6 +45,7 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
   private final ChannelFuture channelFuture;
   private final Duration gracefulShutdownQuietPeriod;
   private final Duration gracefulShutdownTimeout;
+  private final OptimalTransport optimalTransport;
 
   /**
    * Create a instance of {@link NettyServerChannelActor}.
@@ -60,19 +66,20 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
     this.name = name;
     this.gracefulShutdownQuietPeriod = gracefulShutdownQuietPeriod;
     this.gracefulShutdownTimeout = gracefulShutdownTimeout;
-    this.bossGroup = new NioEventLoopGroup();
-    this.workerGroup = new NioEventLoopGroup(processorPoolSize);
+    this.optimalTransport = optimalTransport();
+    this.bossGroup = eventLoopGroup();
+    this.workerGroup = eventLoopGroup(processorPoolSize);
 
     try {
       final ServerBootstrap b = new ServerBootstrap();
 
       this.channelFuture = b.group(bossGroup, workerGroup)
-                            .channel(NioServerSocketChannel.class)
+                            .channel(serverSocketChannelType())
                             .childHandler(new ChannelInitializer<SocketChannel>() {
                               @Override
-                              public void initChannel(SocketChannel ch) throws Exception {
-                                System.out.println("########### INIT CHANNEL: " + ch);
-                                ch.pipeline()
+                              public void initChannel(final SocketChannel channel) throws Exception {
+                                channel
+                                  .pipeline()
                                   .addLast(new NettyInboundHandler(provider, maxBufferPoolSize, maxMessageSize));
                               }
                             })
@@ -97,8 +104,7 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
   public void stop() {
     logger.debug("Netty server actor {} will stop", this.name);
     try {
-      if (this.channelFuture.channel()
-                            .isActive()) {
+      if (this.channelFuture.channel().isActive()) {
         this.channelFuture.channel()
                           .close()
                           .await()
@@ -191,6 +197,43 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
     @Override
     public Class<NettyServerChannelActor> type() {
       return NettyServerChannelActor.class;
+    }
+  }
+
+  private EventLoopGroup eventLoopGroup() {
+    switch (optimalTransport) {
+    case Epoll:
+      return new EpollEventLoopGroup();
+    case NIO:
+    default:
+      return new NioEventLoopGroup();
+    }
+  }
+
+  private EventLoopGroup eventLoopGroup(final int processorPoolSize) {
+    switch (optimalTransport) {
+    case Epoll:
+      return new EpollEventLoopGroup(processorPoolSize);
+    case NIO:
+    default:
+      return new NioEventLoopGroup(processorPoolSize);
+    }
+  }
+
+  private OptimalTransport optimalTransport() {
+    if (System.getProperty("os.name").equals("Linux")) {
+      return OptimalTransport.Epoll;
+    }
+    return OptimalTransport.NIO;
+  }
+
+  private Class<? extends ServerSocketChannel> serverSocketChannelType() {
+    switch (optimalTransport) {
+    case Epoll:
+      return EpollServerSocketChannel.class;
+    case NIO:
+    default:
+      return NioServerSocketChannel.class;
     }
   }
 }
