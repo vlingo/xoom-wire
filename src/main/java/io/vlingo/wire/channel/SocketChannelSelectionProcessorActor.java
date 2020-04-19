@@ -75,20 +75,15 @@ public class SocketChannelSelectionProcessorActor extends Actor
   }
 
   @Override
-  public void explicitClose(final RequestResponseContext<?> context, final boolean option) {
-    ((Context) context).requireExplicitClose(option);
-  }
-
-  @Override
   public void respondWith(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer) {
-    ((Context) context).queueWritable(buffer);
+    respondWith(context, buffer, false);
   }
 
   @Override
   public void respondWith(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer, final boolean closeFollowing) {
-    Context internalContext = (Context) context;
+    final Context internalContext = (Context) context;
     internalContext.queueWritable(buffer);
-    internalContext.requireExplicitClose(false);
+    internalContext.requireExplicitClose(!closeFollowing);
   }
 
 
@@ -138,10 +133,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
   // internal implementation
   //=========================================
 
-  private void close(final Context context, final SelectionKey key) {
-    System.out.println("////////////////////////////////////");
-    System.out.println("////// CLOSING FOR READ FAIL ///////");
-    System.out.println("////////////////////////////////////");
+  private void closeForPeerDisconnect(final Context context, final SelectionKey key) {
     try {
       context.close();
     } catch (Exception e) {
@@ -210,7 +202,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
     }
 
     if (bytesRead == -1) {
-      close(context, key);
+      closeForPeerDisconnect(context, key);
     }
 
     if (totalBytesRead > 0) {
@@ -221,22 +213,11 @@ public class SocketChannelSelectionProcessorActor extends Actor
   }
 
   private void write(final SelectionKey key) throws Exception {
-//    final SocketChannel channel = (SocketChannel) key.channel();
-//
-//    if (!channel.isOpen()) {
-//      key.cancel();
-//      return;
-//    }
-
     write((Context) key.attachment());
   }
 
   private void write(final Context context) throws Exception {
     if (context.isChannelClosed()) {
-      System.out.println("////////////////////////////////////");
-      System.out.println("////// WRITE: CHANNEL CLOSED ///////");
-      System.out.println("///////////// HAS WRITABLE DATA: " + context.writablesCount());
-      System.out.println("////////////////////////////////////");
       context.close();
       return;
     }
@@ -351,21 +332,15 @@ public class SocketChannelSelectionProcessorActor extends Actor
       if (requireExplicitClose) return;
 
       if (isChannelOpen()) {
-        System.out.println("////////////////////////////////////");
-        System.out.println("////// CLOSING NOT KEEP ALIVE //////");
-        System.out.println("////////////////////////////////////");
+//        logger().debug("############ EAGER CLOSE: NOT KEEP ALIVE ############");
         close();
-      } else {
-        if (requireExplicitClose) {
-          System.out.println("####################################");
-          System.out.println("############ KEEP ALIVE ############");
-          System.out.println("#####################################");
-        }
-        if (!isChannelOpen()) {
-          System.out.println("####################################");
-          System.out.println("######### CHANNEL NOT OPEN #########");
-          System.out.println("#####################################");
-        }
+//      } else {
+//        if (requireExplicitClose) {
+//          logger().debug("############ KEEP ALIVE ############");
+//        }
+//        if (!isChannelOpen()) {
+//          logger().debug("######### CHANNEL NOT OPEN #########");
+//        }
       }
     }
 
@@ -392,7 +367,7 @@ public class SocketChannelSelectionProcessorActor extends Actor
     }
 
     void requireExplicitClose(final boolean option) {
-      System.out.println("######### REQUIRE EXPLICIT CLOSE ######### >>> " + option);
+//      logger().debug("######### REQUIRE EXPLICIT CLOSE ######### >>> " + option);
       requireExplicitClose = option;
     }
 
@@ -420,8 +395,8 @@ public class SocketChannelSelectionProcessorActor extends Actor
       writeMode = on;
     }
 
-    int writablesCount() {
-      return writables.size();
-    }
+//    int writablesCount() {
+//      return writables.size();
+//    }
   }
 }
