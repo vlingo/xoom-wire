@@ -6,22 +6,22 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.netty.server;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 import io.netty.channel.ChannelHandlerContext;
 import io.vlingo.wire.channel.RequestResponseContext;
 import io.vlingo.wire.channel.ResponseSenderChannel;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 final class NettyServerChannelContext implements RequestResponseContext<ConsumerByteBuffer> {
-  private static AtomicLong contextId = new AtomicLong(0);
+  private static final AtomicLong contextId = new AtomicLong(0);
 
   private final ChannelHandlerContext nettyChannelContext;
   @SuppressWarnings("unused")
   private Object closingData;
   private Object consumerData;
   private final String id;
-  private ResponseSenderChannel sender;
+  private final ResponseSenderChannel sender;
 
   NettyServerChannelContext(final ChannelHandlerContext nettyChannelContext, final ResponseSenderChannel sender) {
     this.nettyChannelContext = nettyChannelContext;
