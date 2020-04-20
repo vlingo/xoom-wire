@@ -6,6 +6,12 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.netty.server;
 
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -23,11 +29,6 @@ import io.vlingo.common.Completes;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.fdx.bidirectional.ServerRequestResponseChannel;
 import io.vlingo.wire.message.ConsumerByteBufferPool;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Implementation of {@link ServerRequestResponseChannel} based on Netty (https://netty.io/wiki/user-guide-for-4.x.html)
@@ -202,9 +203,11 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
   private EventLoopGroup eventLoopGroup() {
     switch (optimalTransport) {
     case Epoll:
+      logger.info("Netty server using EpollEventLoopGroup", this.name);
       return new EpollEventLoopGroup();
     case NIO:
     default:
+      logger.info("Netty server using NioEventLoopGroup", this.name);
       return new NioEventLoopGroup();
     }
   }
@@ -212,26 +215,35 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
   private EventLoopGroup eventLoopGroup(final int processorPoolSize) {
     switch (optimalTransport) {
     case Epoll:
+      logger.info("Netty server using EpollEventLoopGroup " + processorPoolSize, this.name);
       return new EpollEventLoopGroup(processorPoolSize);
     case NIO:
     default:
+      logger.info("Netty server using NioEventLoopGroup " + processorPoolSize, this.name);
       return new NioEventLoopGroup(processorPoolSize);
     }
   }
 
   private OptimalTransport optimalTransport() {
-    if (System.getProperty("os.name").toLowerCase().contains("linux")) {
+    final String osName = System.getProperty("os.name");
+
+    logger.info("Netty server running on " + osName, this.name);
+
+    if (osName.toLowerCase().contains("linux")) {
       return OptimalTransport.Epoll;
     }
+
     return OptimalTransport.NIO;
   }
 
   private Class<? extends ServerSocketChannel> serverSocketChannelType() {
     switch (optimalTransport) {
     case Epoll:
+      logger.info("Netty server using EpollServerSocketChannel", this.name);
       return EpollServerSocketChannel.class;
     case NIO:
     default:
+      logger.info("Netty server using NioServerSocketChannel", this.name);
       return NioServerSocketChannel.class;
     }
   }
