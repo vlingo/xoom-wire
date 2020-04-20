@@ -10,6 +10,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.EmptyByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -130,14 +131,22 @@ final class NettyInboundHandler extends ChannelInboundHandlerAdapter implements 
           logger.error("Failed to send reply", future.cause());
         }
         if (closeFollowing) {
-          future
-            .channel()
-            .close()
-            .addListener(closeFuture -> {
-              logger.debug(">>>>> NettyInboundHandler::respondWith(): " + instanceId + " NAME: " + contextInstanceId + " : CLOSED");
-          });
+          closeConnection(contextInstanceId, future);
         }
       });
+  }
+
+  private void closeConnection(final String contextInstanceId, final ChannelFuture channelFuture) {
+    channelFuture
+      .channel()
+      .close()
+      .addListener(closeFuture -> {
+        if (closeFuture.isSuccess()){
+          logger.debug(">>>>> NettyInboundHandler::respondWith(): " + instanceId + " NAME: " + contextInstanceId + " : CLOSED");
+        } else {
+          logger.error(">>>>> NettyInboundHandler::respondWith(): " + instanceId + " NAME: " + contextInstanceId + " : FAILED TO CLOSE");
+        }
+    });
   }
 
   private NettyServerChannelContext getWireContext(final ChannelHandlerContext ctx) {
