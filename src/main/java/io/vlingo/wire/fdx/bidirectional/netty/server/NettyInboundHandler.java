@@ -6,6 +6,11 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.netty.server;
 
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.EmptyByteBuf;
 import io.netty.buffer.Unpooled;
@@ -21,17 +26,21 @@ import io.vlingo.wire.channel.RequestChannelConsumer;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.channel.RequestResponseContext;
 import io.vlingo.wire.channel.ResponseSenderChannel;
+import io.vlingo.wire.message.BasicConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBufferPool;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.atomic.AtomicLong;
 
 final class NettyInboundHandler extends ChannelInboundHandlerAdapter implements ResponseSenderChannel {
   private final static Logger logger = LoggerFactory.getLogger(NettyInboundHandler.class);
 
-  private static final AttributeKey<NettyServerChannelContext> WIRE_CONTEXT = AttributeKey.newInstance("$WIRE_CONTEXT");
+  private static final String WIRE_CONTEXT_NAME = "$WIRE_CONTEXT";
+  private static final AttributeKey<NettyServerChannelContext> WIRE_CONTEXT;
+
+  static {
+    WIRE_CONTEXT = AttributeKey.exists(WIRE_CONTEXT_NAME) ?
+            AttributeKey.valueOf(WIRE_CONTEXT_NAME) :
+            AttributeKey.newInstance(WIRE_CONTEXT_NAME);
+  }
 
   private final RequestChannelConsumer consumer;
   private String contextInstanceId;
@@ -134,6 +143,17 @@ final class NettyInboundHandler extends ChannelInboundHandlerAdapter implements 
           closeConnection(contextInstanceId, future);
         }
       });
+  }
+
+  @Override
+  public void respondWith(final RequestResponseContext<?> context, final Object response, final boolean closeFollowing) {
+    final String textResponse = response.toString();
+
+    final ConsumerByteBuffer buffer =
+            new BasicConsumerByteBuffer(0, textResponse.length() + 1024)
+            .put(textResponse.getBytes()).flip();
+
+    respondWith(context, buffer, closeFollowing);
   }
 
   private void closeConnection(final String contextInstanceId, final ChannelFuture channelFuture) {
