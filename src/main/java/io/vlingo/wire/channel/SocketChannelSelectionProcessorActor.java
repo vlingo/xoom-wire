@@ -23,7 +23,9 @@ import io.vlingo.actors.Stoppable;
 import io.vlingo.common.Cancellable;
 import io.vlingo.common.Scheduled;
 import io.vlingo.common.pool.ResourcePool;
+import io.vlingo.wire.message.BasicConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
+import io.vlingo.wire.message.Converters;
 
 public class SocketChannelSelectionProcessorActor extends Actor
     implements SocketChannelSelectionProcessor, ResponseSenderChannel, Scheduled<Object>, Stoppable {
@@ -84,6 +86,17 @@ public class SocketChannelSelectionProcessorActor extends Actor
     final Context internalContext = (Context) context;
     internalContext.queueWritable(buffer);
     internalContext.requireExplicitClose(!closeFollowing);
+  }
+
+  @Override
+  public void respondWith(final RequestResponseContext<?> context, final Object response, final boolean closeFollowing) {
+    final String textResponse = response.toString();
+
+    final ConsumerByteBuffer buffer =
+            new BasicConsumerByteBuffer(0, textResponse.length() + 1024)
+            .put(Converters.textToBytes(textResponse)).flip();
+
+    respondWith(context, buffer, closeFollowing);
   }
 
 

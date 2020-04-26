@@ -13,4 +13,5 @@ public interface ResponseSenderChannel {
   void abandon(final RequestResponseContext<?> context);
   void respondWith(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer);
   void respondWith(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer, final boolean closeFollowing);
+  void respondWith(final RequestResponseContext<?> context, final Object response, final boolean closeFollowing);
 }

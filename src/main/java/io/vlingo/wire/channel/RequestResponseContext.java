@@ -28,4 +28,13 @@ public interface RequestResponseContext<R> {
   default void respondWith(final ConsumerByteBuffer buffer, final boolean closeFollowing) {
     sender().respondWith(this, buffer, closeFollowing);
   }
+
+  default void respondWith(final Object response, final boolean closeFollowing) {
+    sender().respondWith(this, response, closeFollowing);
+  }
+
+  @SuppressWarnings("unchecked")
+  default <T> T typed() {
+    return (T) this;
+  }
 }

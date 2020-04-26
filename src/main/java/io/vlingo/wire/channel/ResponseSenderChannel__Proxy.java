@@ -42,9 +42,19 @@ public class ResponseSenderChannel__Proxy implements ResponseSenderChannel {
   }
 
   @Override
-  public void respondWith(RequestResponseContext<?> context, final ConsumerByteBuffer buffer, final boolean closeFollowing) {
+  public void respondWith(final RequestResponseContext<?> context, final ConsumerByteBuffer buffer, final boolean closeFollowing) {
     if (!actor.isStopped()) {
-      final SerializableConsumer<ResponseSenderChannel> consumer = (actor) -> actor.respondWith(context, buffer);
+      final SerializableConsumer<ResponseSenderChannel> consumer = (actor) -> actor.respondWith(context, buffer, closeFollowing);
+      mailbox.send(new LocalMessage<ResponseSenderChannel>(actor, ResponseSenderChannel.class, consumer, representationRespondWith2));
+    } else {
+      actor.deadLetters().failedDelivery(new DeadLetter(actor, representationRespondWith2));
+    }
+  }
+
+  @Override
+  public void respondWith(final RequestResponseContext<?> context, final Object response, final boolean closeFollowing) {
+    if (!actor.isStopped()) {
+      final SerializableConsumer<ResponseSenderChannel> consumer = (actor) -> actor.respondWith(context, response, closeFollowing);
       mailbox.send(new LocalMessage<ResponseSenderChannel>(actor, ResponseSenderChannel.class, consumer, representationRespondWith2));
     } else {
       actor.deadLetters().failedDelivery(new DeadLetter(actor, representationRespondWith2));
