@@ -2,7 +2,9 @@
 
 [![Javadocs](http://javadoc.io/badge/io.vlingo/vlingo-wire.svg?color=brightgreen)](http://javadoc.io/doc/io.vlingo/vlingo-wire) [![Build Status](https://travis-ci.org/vlingo/vlingo-wire.svg?branch=master)](https://travis-ci.org/vlingo/vlingo-wire) [ ![Download](https://api.bintray.com/packages/vlingo/vlingo-platform-java/vlingo-wire/images/download.svg) ](https://bintray.com/vlingo/vlingo-platform-java/vlingo-wire/_latestVersion) [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/vlingo-platform-java/community)
 
-The vlingo/PLATFORM wire protocol messaging implementations, such as with full-duplex TCP and UDP multicast, and RSocket, using vlingo/actors.
+The VLINGO/PLATFORM wire protocol messaging implementations, such as with full-duplex TCP and UDP multicast, and RSocket, using VLINGO/ACTORS.
+
+Docs: https://docs.vlingo.io/vlingo-wire
 
 ### Bintray
 
@@ -17,7 +19,7 @@ The vlingo/PLATFORM wire protocol messaging implementations, such as with full-d
     <dependency>
       <groupId>io.vlingo</groupId>
       <artifactId>vlingo-wire</artifactId>
-      <version>1.2.9</version>
+      <version>1.3.0</version>
       <scope>compile</scope>
     </dependency>
   </dependencies>
@@ -25,7 +27,7 @@ The vlingo/PLATFORM wire protocol messaging implementations, such as with full-d
 
 ```gradle
 dependencies {
-    compile 'io.vlingo:vlingo-wire:1.2.9'
+    compile 'io.vlingo:vlingo-wire:1.3.0'
 }
 
 repositories {
