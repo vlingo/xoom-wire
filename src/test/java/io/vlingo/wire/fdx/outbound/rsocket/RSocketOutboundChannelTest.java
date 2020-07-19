@@ -1,22 +1,8 @@
 package io.vlingo.wire.fdx.outbound.rsocket;
 
-import java.nio.ByteBuffer;
-import java.time.Duration;
-import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
-
-import io.rsocket.AbstractRSocket;
 import io.rsocket.Closeable;
-import io.rsocket.ConnectionSetupPayload;
-import io.rsocket.Payload;
-import io.rsocket.RSocket;
-import io.rsocket.RSocketFactory;
 import io.rsocket.SocketAcceptor;
+import io.rsocket.core.RSocketServer;
 import io.rsocket.transport.ClientTransport;
 import io.rsocket.transport.ServerTransport;
 import io.rsocket.transport.netty.client.TcpClientTransport;
@@ -28,7 +14,16 @@ import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 import reactor.core.publisher.Mono;
+
+import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class RSocketOutboundChannelTest {
   private static final Logger logger = Logger.basicLogger();
@@ -70,31 +65,17 @@ public class RSocketOutboundChannelTest {
   }
 
   private Closeable createServerSocket(ServerTransport<CloseableChannel> serverTransport, String name, CountDownLatch countDownLatch) {
-    final Closeable serverSocket = RSocketFactory.receive()
-                                                 .acceptor(new SocketAcceptor() {
-                                                   @Override
-                                                   public Mono<RSocket> accept(ConnectionSetupPayload connectionSetupPayload, RSocket rSocket) {
-                                                     return Mono.just(new AbstractRSocket() {
-                                                       @Override
-                                                       public Mono<Void> fireAndForget(Payload payload) {
-                                                         logger.debug("Server socket {} received message", name);
-                                                         countDownLatch.countDown();
-                                                         return Mono.empty();
-                                                       }
-                                                     });
-                                                   }
-                                                 })
-                                                 .transport(serverTransport)
-                                                 .start()
-                                                 .block();
+    final Closeable serverSocket = RSocketServer.create()
+                                                .acceptor(SocketAcceptor.forFireAndForget(payload -> {
+                                                  logger.debug("Server socket {} received message", name);
+                                                  countDownLatch.countDown();
+                                                  return Mono.empty();
+                                                }))
+                                                .bindNow(serverTransport);
 
-    if (serverSocket != null) {
-      serverSocket.onClose()
-                  .doFinally(signalType -> {
-                    logger.info("Server socket {} closed", name);
-                  })
-                  .subscribe();
-    }
+    serverSocket.onClose()
+                .doFinally(signalType -> logger.info("Server socket {} closed", name))
+                .subscribe();
 
     return serverSocket;
   }

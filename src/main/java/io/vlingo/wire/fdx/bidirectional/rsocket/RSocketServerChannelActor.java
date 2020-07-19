@@ -7,25 +7,18 @@
 
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
-import io.rsocket.AbstractRSocket;
 import io.rsocket.Closeable;
-import io.rsocket.ConnectionSetupPayload;
-import io.rsocket.Payload;
-import io.rsocket.RSocket;
 import io.rsocket.SocketAcceptor;
 import io.rsocket.core.RSocketServer;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.ServerTransport;
 import io.vlingo.actors.Actor;
 import io.vlingo.actors.ActorInstantiator;
-import io.vlingo.actors.Logger;
 import io.vlingo.actors.Stoppable;
 import io.vlingo.common.Completes;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.fdx.bidirectional.ServerRequestResponseChannel;
-import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 public class RSocketServerChannelActor extends Actor implements ServerRequestResponseChannel {
@@ -37,9 +30,20 @@ public class RSocketServerChannelActor extends Actor implements ServerRequestRes
                                    final String name, final int maxBufferPoolSize, final int messageBufferSize) {
     this.name = name;
     this.port = port;
+
     this.serverSocket = RSocketServer.create()
                                       .payloadDecoder(PayloadDecoder.ZERO_COPY)
-                                      .acceptor(new SocketAcceptorImpl(provider, maxBufferPoolSize, messageBufferSize, logger()))
+                                      .acceptor(SocketAcceptor.forRequestChannel(payloads -> {
+                                        final RSocketChannelContext context = new RSocketChannelContext(provider, maxBufferPoolSize, messageBufferSize, logger());
+
+                                        Flux.from(payloads)
+                                                .subscribeOn(Schedulers.single())
+                                                .doOnNext(context::consume)
+                                                .doOnError((throwable) -> logger().error("Unexpected error when consuming channel request", throwable))
+                                                .subscribe();
+
+                                        return Flux.from(context.processor());
+                                      }))
                                       .bind(serverTransport)
                                       .block();
 
@@ -75,33 +79,6 @@ public class RSocketServerChannelActor extends Actor implements ServerRequestRes
     }
 
     super.stop();
-  }
-
-  private static class SocketAcceptorImpl implements SocketAcceptor {
-    private final RSocket acceptor;
-
-    private SocketAcceptorImpl(final RequestChannelConsumerProvider consumerProvider, final int maxBufferPoolSize, final int maxMessageSize,
-                               final Logger logger) {
-      this.acceptor = new AbstractRSocket() {
-        @Override
-        public Flux<Payload> requestChannel(final Publisher<Payload> payloads) {
-          final RSocketChannelContext context = new RSocketChannelContext(consumerProvider, maxBufferPoolSize, maxMessageSize, logger);
-
-          Flux.from(payloads)
-              .subscribeOn(Schedulers.single())
-              .doOnNext(context::consume)
-              .doOnError((throwable) -> logger.error("Unexpected error when consuming channel request", throwable))
-              .subscribe();
-
-          return Flux.from(context.processor());
-        }
-      };
-    }
-
-    @Override
-    public Mono<RSocket> accept(ConnectionSetupPayload setupPayload, RSocket reactiveSocket) {
-      return Mono.just(acceptor);
-    }
   }
 
   public static class Instantiator implements ActorInstantiator<RSocketServerChannelActor> {
