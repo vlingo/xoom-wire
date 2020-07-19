@@ -6,28 +6,10 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.rsocket;
 
-import java.nio.ByteBuffer;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import io.rsocket.core.RSocketServer;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.reactivestreams.Publisher;
-
-import io.rsocket.AbstractRSocket;
 import io.rsocket.Closeable;
 import io.rsocket.Payload;
-import io.rsocket.RSocket;
+import io.rsocket.SocketAcceptor;
+import io.rsocket.core.RSocketServer;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.ClientTransport;
 import io.rsocket.transport.local.LocalClientTransport;
@@ -39,9 +21,24 @@ import io.vlingo.wire.channel.ResponseChannelConsumer;
 import io.vlingo.wire.node.Address;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Host;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+
+import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class RSocketClientChannelTest {
   private static final Logger LOGGER = Logger.basicLogger();
@@ -77,23 +74,20 @@ public class RSocketClientChannelTest {
 
     Set<String> serverReceivedMessage = new LinkedHashSet<>();
 
-    final RSocket responseHandler = new AbstractRSocket() {
-      @Override
-      public Flux<Payload> requestChannel(final Publisher<Payload> payloads) {
-        countDownLatch.countDown();
-        return Flux.from(payloads)
-                   .doOnNext(payload -> {
-                     serverReceivedMessages.countDown();
-                     serverReceivedMessage.add(payload.getDataUtf8());
-                     payload.release();
-                   })
-                   .zipWith(Flux.range(1, 100), (payload, integer) -> DefaultPayload.create("Reply " + integer));
-      }
-    };
+    final SocketAcceptor socketAcceptor = SocketAcceptor.forRequestChannel(payloads -> {
+      countDownLatch.countDown();
+      return Flux.from(payloads)
+              .doOnNext(payload -> {
+                serverReceivedMessages.countDown();
+                serverReceivedMessage.add(payload.getDataUtf8());
+                payload.release();
+              })
+              .zipWith(Flux.range(1, 100), (payload, integer) -> DefaultPayload.create("Reply " + integer));
+    });
 
     final Closeable server = RSocketServer.create()
                                           .payloadDecoder(PayloadDecoder.ZERO_COPY)
-                                          .acceptor((connectionSetupPayload, rSocket) -> Mono.just(responseHandler))
+                                          .acceptor(socketAcceptor)
                                           .bind(this.serverTransport)
                                           .block();
 
@@ -152,23 +146,20 @@ public class RSocketClientChannelTest {
     final CountDownLatch serverReceivedMessages = new CountDownLatch(100);
     final List<String> receivedMessages = new CopyOnWriteArrayList<>();
 
-    final AbstractRSocket responseHandler = new AbstractRSocket() {
-      @Override
-      public Flux<Payload> requestChannel(final Publisher<Payload> payloads) {
-        countDownLatch.countDown();
-        Flux.from(payloads)
-            .subscribe(payload -> {
-              serverReceivedMessages.countDown();
-              receivedMessages.add(payload.getDataUtf8());
-            });
+    final SocketAcceptor acceptor = SocketAcceptor.forRequestChannel(payloads -> {
+      countDownLatch.countDown();
+      Flux.from(payloads)
+              .subscribe(payload -> {
+                serverReceivedMessages.countDown();
+                receivedMessages.add(payload.getDataUtf8());
+              });
 
-        return Flux.error(new RuntimeException("Server exception"));
-      }
-    };
+      return Flux.error(new RuntimeException("Server exception"));
+    });
 
     final Closeable server = RSocketServer.create()
                                            .payloadDecoder(PayloadDecoder.ZERO_COPY)
-                                           .acceptor((connectionSetupPayload, rSocket) -> Mono.just(responseHandler))
+                                           .acceptor(acceptor)
                                            .bind(this.serverTransport)
                                            .subscribeOn(Schedulers.single())
                                            .block();

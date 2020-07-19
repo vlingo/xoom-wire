@@ -16,7 +16,7 @@ import io.rsocket.core.RSocketConnector;
 import io.rsocket.exceptions.ApplicationErrorException;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.ClientTransport;
-import io.rsocket.util.DefaultPayload;
+import io.rsocket.util.ByteBufPayload;
 import io.vlingo.actors.Logger;
 import io.vlingo.common.pool.ElasticResourcePool;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
@@ -25,7 +25,7 @@ import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBufferPool;
 import io.vlingo.wire.node.Address;
 import reactor.core.publisher.EmitterProcessor;
-import reactor.retry.Retry;
+import reactor.util.retry.Retry;
 
 public class RSocketClientChannel implements ClientRequestResponseChannel {
   private final EmitterProcessor<Payload> publisher;
@@ -72,7 +72,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
       data.put(buffer);
       data.flip();
 
-      this.publisher.onNext(DefaultPayload.create(data));
+      this.publisher.onNext(ByteBufPayload.create(data));
     } else {
       logger.debug("RSocket client channel for {} not ready. Message dropped", this.address);
     }
@@ -96,14 +96,14 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
                                            })
                                            .block();
 
-        // TODO: Replace deprecated method usage
-
         if (this.channelSocket != null) {
           this.channelSocket.requestChannel(this.publisher)
-                            .retryWhen(Retry.anyOf(ApplicationErrorException.class) //We can resume processing on an application error
-                                            .doOnRetry(retryContext -> {
-                                              logger.debug("RSocket client channel for address {} received a retryable error", this.address, retryContext.exception());
-                                            }))
+                            .retryWhen(Retry.indefinitely()
+                                    .filter(throwable -> throwable instanceof ApplicationErrorException)
+                                    .doBeforeRetry(retrySignal -> {
+                                      logger.debug("RSocket client channel for address {} received a retry-able error", this.address, retrySignal.failure());
+                                    })
+                            )
                             .subscribe(responseHandler::handle, //process server response
                                        throwable -> {
                                          logger.error("RSocket client channel for address {} received unrecoverable error", this.address, throwable);

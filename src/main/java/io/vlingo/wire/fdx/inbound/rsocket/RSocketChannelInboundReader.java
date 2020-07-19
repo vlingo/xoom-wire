@@ -6,7 +6,6 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.inbound.rsocket;
 
-import io.rsocket.AbstractRSocket;
 import io.rsocket.Closeable;
 import io.rsocket.ConnectionSetupPayload;
 import io.rsocket.Payload;
@@ -122,8 +121,8 @@ public class RSocketChannelInboundReader implements ChannelReader, ChannelMessag
       return Mono.just(buildAcceptor(rawMessageBuilder));
     }
 
-    private AbstractRSocket buildAcceptor(RawMessageBuilder rawMessageBuilder) {
-      return new AbstractRSocket() {
+    private RSocket buildAcceptor(RawMessageBuilder rawMessageBuilder) {
+      return new RSocket() {
         @Override
         public Mono<Void> fireAndForget(Payload payload) {
           logger.trace("Message received on inbound channel {}", name);

@@ -6,12 +6,11 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.outbound.rsocket;
 
-import io.rsocket.Payload;
 import io.rsocket.RSocket;
 import io.rsocket.core.RSocketConnector;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.ClientTransport;
-import io.rsocket.util.DefaultPayload;
+import io.rsocket.util.ByteBufPayload;
 import io.vlingo.common.Completes;
 import io.vlingo.common.Scheduler;
 import io.vlingo.wire.fdx.outbound.ManagedOutboundChannel;
@@ -77,8 +76,7 @@ public class RSocketOutboundChannel implements ManagedOutboundChannel {
                   logger.warn("RSocket outbound channel for {} is closed. Message dropped", this.address);
                   return Mono.<Void>empty();
                 }
-                final Payload payload = DefaultPayload.create(buffer);
-                return socket.fireAndForget(payload)
+                return socket.fireAndForget(ByteBufPayload.create(buffer))
                              .doFinally(signalType -> {
                                logger.trace("Message sent to {}", this.address);
                              })
