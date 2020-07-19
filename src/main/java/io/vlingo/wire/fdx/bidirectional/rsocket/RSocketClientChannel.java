@@ -16,7 +16,7 @@ import io.rsocket.core.RSocketConnector;
 import io.rsocket.exceptions.ApplicationErrorException;
 import io.rsocket.frame.decoder.PayloadDecoder;
 import io.rsocket.transport.ClientTransport;
-import io.rsocket.util.DefaultPayload;
+import io.rsocket.util.ByteBufPayload;
 import io.vlingo.actors.Logger;
 import io.vlingo.common.pool.ElasticResourcePool;
 import io.vlingo.wire.channel.ResponseChannelConsumer;
@@ -72,7 +72,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
       data.put(buffer);
       data.flip();
 
-      this.publisher.onNext(DefaultPayload.create(data));
+      this.publisher.onNext(ByteBufPayload.create(data));
     } else {
       logger.debug("RSocket client channel for {} not ready. Message dropped", this.address);
     }
