@@ -6,12 +6,6 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.netty.server;
 
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -29,6 +23,11 @@ import io.vlingo.common.Completes;
 import io.vlingo.wire.channel.RequestChannelConsumerProvider;
 import io.vlingo.wire.fdx.bidirectional.ServerRequestResponseChannel;
 import io.vlingo.wire.message.ConsumerByteBufferPool;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Implementation of {@link ServerRequestResponseChannel} based on Netty (https://netty.io/wiki/user-guide-for-4.x.html)
@@ -72,6 +71,7 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
 
     try {
       final ServerBootstrap b = new ServerBootstrap();
+      final NettyInboundHandler inboundHandler = new NettyInboundHandler(provider, maxBufferPoolSize, maxMessageSize);
 
       this.channelFuture = b.group(bossGroup, workerGroup)
                             .channel(serverSocketChannelType())
@@ -80,7 +80,7 @@ public class NettyServerChannelActor extends Actor implements ServerRequestRespo
                               public void initChannel(final SocketChannel channel) throws Exception {
                                 channel
                                   .pipeline()
-                                  .addLast(new NettyInboundHandler(provider, maxBufferPoolSize, maxMessageSize));
+                                  .addLast(inboundHandler);
                               }
                             })
                             .bind(port)
