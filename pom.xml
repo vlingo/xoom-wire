@@ -177,7 +177,7 @@
 
   <profiles>
     <profile>
-      <id>TravisCI</id>
+      <id>CI</id>
       <build>
         <plugins>
           <plugin>
