@@ -19,7 +19,7 @@ Docs: https://docs.vlingo.io/vlingo-wire
     <dependency>
       <groupId>io.vlingo</groupId>
       <artifactId>vlingo-wire</artifactId>
-      <version>1.3.0</version>
+      <version>1.5.0</version>
       <scope>compile</scope>
     </dependency>
   </dependencies>
@@ -27,7 +27,7 @@ Docs: https://docs.vlingo.io/vlingo-wire
 
 ```gradle
 dependencies {
-    compile 'io.vlingo:vlingo-wire:1.3.0'
+    compile 'io.vlingo:vlingo-wire:1.5.0'
 }
 
 repositories {
