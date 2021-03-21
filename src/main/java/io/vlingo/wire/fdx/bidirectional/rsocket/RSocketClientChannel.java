@@ -27,6 +27,7 @@ import io.vlingo.wire.node.Address;
 import reactor.core.publisher.EmitterProcessor;
 import reactor.util.retry.Retry;
 
+@SuppressWarnings("deprecation")
 public class RSocketClientChannel implements ClientRequestResponseChannel {
   private final EmitterProcessor<Payload> publisher;
   private final Logger logger;

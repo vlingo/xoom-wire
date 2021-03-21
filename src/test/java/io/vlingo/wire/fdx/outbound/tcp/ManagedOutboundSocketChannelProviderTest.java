@@ -9,7 +9,6 @@ package io.vlingo.wire.fdx.outbound.tcp;
 
 import io.vlingo.wire.fdx.outbound.AbstractManagedOutboundProviderTest;
 import io.vlingo.wire.fdx.outbound.ManagedOutboundChannelProvider;
-import io.vlingo.wire.fdx.outbound.tcp.ManagedOutboundSocketChannelProvider;
 import io.vlingo.wire.node.AddressType;
 import io.vlingo.wire.node.Configuration;
 import io.vlingo.wire.node.Node;

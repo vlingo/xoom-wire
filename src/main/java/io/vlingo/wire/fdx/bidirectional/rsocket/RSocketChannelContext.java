@@ -19,6 +19,7 @@ import io.vlingo.wire.message.ConsumerByteBufferPool;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.UnicastProcessor;
 
+@SuppressWarnings("deprecation")
 class RSocketChannelContext implements RequestResponseContext<FluxSink<ConsumerByteBuffer>> {
   private final RequestChannelConsumer consumer;
   private final Logger logger;

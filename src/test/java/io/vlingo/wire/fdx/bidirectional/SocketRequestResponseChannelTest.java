@@ -24,6 +24,7 @@ public class SocketRequestResponseChannelTest extends BaseServerChannelTest {
     return TEST_PORT.incrementAndGet();
   }
 
+  @SuppressWarnings("deprecation")
   @Override
   protected Definition getServerDefinition(final RequestChannelConsumerProvider provider, final int port, final int maxBufferPoolSize,
                                            final int maxMessageSize) {

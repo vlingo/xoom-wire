@@ -13,7 +13,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import io.vlingo.actors.testkit.AccessSafely;
-import io.vlingo.actors.testkit.TestUntil;
 import io.vlingo.wire.message.AbstractMessageTool;
 import io.vlingo.wire.message.RawMessage;
 import io.vlingo.wire.node.AddressType;
@@ -22,7 +21,7 @@ public class MockInboundStreamInterest extends AbstractMessageTool implements In
   public TestResults testResults;
 
   public MockInboundStreamInterest() { }
-  
+
   @Override
   public void handleInboundStreamMessage(final AddressType addressType, final RawMessage message) {
     final String textMessage = message.asTextMessage();

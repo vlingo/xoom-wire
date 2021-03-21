@@ -67,6 +67,7 @@ public interface ServerRequestResponseChannel extends Stoppable {
 
   void close();
 
+  @SuppressWarnings("deprecation")
   static class ServerRequestResponseChannelInstantiator implements ActorInstantiator<ServerRequestResponseChannelActor> {
     private static final long serialVersionUID = -198611338719466278L;
 
