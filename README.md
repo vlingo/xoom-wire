@@ -41,3 +41,5 @@ Copyright 2015 Corey Baswell
 Corey's suggestion is to copy his source to your project, which
 we did due to Java version conflicts.
 
+Guava is open source licensed under Apache 2 by The Guava Authors
+https://github.com/google/guava/blob/0d9470c009e7ae3a8f4de8582de832dc8dffb4a4/android/guava/src/com/google/common/base/Utf8.java
