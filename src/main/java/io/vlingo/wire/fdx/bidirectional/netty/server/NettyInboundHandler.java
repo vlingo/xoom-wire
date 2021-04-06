@@ -6,10 +6,20 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.wire.fdx.bidirectional.netty.server;
 
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.EmptyByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.*;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.AttributeKey;
 import io.netty.util.ReferenceCountUtil;
 import io.vlingo.common.pool.ElasticResourcePool;
@@ -20,13 +30,11 @@ import io.vlingo.wire.channel.ResponseSenderChannel;
 import io.vlingo.wire.message.BasicConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBuffer;
 import io.vlingo.wire.message.ConsumerByteBufferPool;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.atomic.AtomicLong;
 
 @ChannelHandler.Sharable
 final class NettyInboundHandler extends ChannelInboundHandlerAdapter implements ResponseSenderChannel {
+  private static final String CONNECTION_RESET = "Connection reset by peer";
+
   private final static Logger logger = LoggerFactory.getLogger(NettyInboundHandler.class);
 
   private static final String WIRE_CONTEXT_NAME = "$WIRE_CONTEXT";
@@ -99,8 +107,12 @@ final class NettyInboundHandler extends ChannelInboundHandlerAdapter implements 
 
   @Override
   public void exceptionCaught(final ChannelHandlerContext context, final Throwable cause) throws Exception {
-    logger.error("Unexpected exception", cause);
-    super.exceptionCaught(context, cause);
+    if (cause.getClass() == java.io.IOException.class && cause.getMessage().contains(CONNECTION_RESET)) {
+      logger.error(CONNECTION_RESET);
+    } else {
+      logger.error("Unexpected exception", cause);
+    }
+    // super.exceptionCaught(context, cause);
   }
 
   @Override
