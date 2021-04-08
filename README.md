@@ -1,18 +1,18 @@
-# vlingo-wire
+# xoom-wire
 
-[![Javadocs](http://javadoc.io/badge/io.vlingo/vlingo-wire.svg?color=brightgreen)](http://javadoc.io/doc/io.vlingo/vlingo-wire) [![Build](https://github.com/vlingo/vlingo-wire/workflows/Build/badge.svg)](https://github.com/vlingo/vlingo-wire/actions?query=workflow%3ABuild) [![Download](https://img.shields.io/maven-central/v/io.vlingo/vlingo-wire?label=maven)](https://search.maven.org/artifact/io.vlingo/vlingo-wire) [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/vlingo-platform-java/community)
+[![Javadocs](http://javadoc.io/badge/io.vlingo.xoom/xoom-wire.svg?color=brightgreen)](http://javadoc.io/doc/io.vlingo.xoom/xoom-wire) [![Build](https://github.com/vlingo/xoom-wire/workflows/Build/badge.svg)](https://github.com/vlingo/xoom-wire/actions?query=workflow%3ABuild) [![Download](https://img.shields.io/maven-central/v/io.vlingo.xoom/xoom-wire?label=maven)](https://search.maven.org/artifact/io.vlingo.xoom/xoom-wire) [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/vlingo-platform-java/community)
 
 The VLINGO XOOM platform SDK wire protocol messaging implementations, such as with full-duplex TCP and UDP multicast, and RSocket, using VLINGO XOOM ACTORS.
 
-Docs: https://docs.vlingo.io/vlingo-wire
+Docs: https://docs.vlingo.io/xoom-wire
 
 ### Installation
 
 ```xml
   <dependencies>
     <dependency>
-      <groupId>io.vlingo</groupId>
-      <artifactId>vlingo-wire</artifactId>
+      <groupId>io.vlingo.xoom</groupId>
+      <artifactId>xoom-wire</artifactId>
       <version>1.6.0</version>
       <scope>compile</scope>
     </dependency>
@@ -21,7 +21,7 @@ Docs: https://docs.vlingo.io/vlingo-wire
 
 ```gradle
 dependencies {
-    compile 'io.vlingo:vlingo-wire:1.6.0'
+    compile 'io.vlingo.xoom:xoom-wire:1.6.0'
 }
 ```
 

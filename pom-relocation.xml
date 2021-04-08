@@ -1,9 +1,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>io.vlingo.xoom</groupId>
-  <artifactId>xoom-wire</artifactId>
+  <groupId>io.vlingo</groupId>
+  <artifactId>vlingo-wire</artifactId>
   <version>1.6.1-SNAPSHOT</version>
-  <name>xoom-wire</name>
+  <name>vlingo-wire</name>
   <description>Wire protocol messaging implementations, such as with full-duplex TCP and UDP multicast, using vlingo/actors.</description>
   <url>https://github.com/vlingo/xoom-wire</url>
   <licenses>
@@ -34,6 +34,12 @@
     <io.projectreactor.bom.version>2020.0.0</io.projectreactor.bom.version>
     <io.projectreactor.version>3.4.0</io.projectreactor.version>
   </properties>
+  <distributionManagement>
+    <relocation>
+      <groupId>io.vlingo.xoom</groupId>
+      <artifactId>xoom-common</artifactId>
+    </relocation>
+  </distributionManagement>
   <build>
     <plugins>
       <plugin>
@@ -206,6 +212,10 @@
         </property>
       </activation>
       <distributionManagement>
+        <relocation>
+          <groupId>io.vlingo.xoom</groupId>
+          <artifactId>xoom-common</artifactId>
+        </relocation>
         <snapshotRepository>
           <id>central-repository-ossrh</id>
           <name>Snapshots Repository OSSRH</name>
@@ -237,6 +247,10 @@
         </property>
       </activation>
       <distributionManagement>
+        <relocation>
+          <groupId>io.vlingo.xoom</groupId>
+          <artifactId>xoom-common</artifactId>
+        </relocation>
         <repository>
           <id>github</id>
           <name>GitHub Packages</name>
