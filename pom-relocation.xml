@@ -4,7 +4,7 @@
   <artifactId>vlingo-wire</artifactId>
   <version>1.6.1-SNAPSHOT</version>
   <name>vlingo-wire</name>
-  <description>Wire protocol messaging implementations, such as with full-duplex TCP and UDP multicast, using vlingo/actors.</description>
+  <description>Wire protocol messaging implementations, such as with full-duplex TCP and UDP multicast, using VLINGO XOOM Actors.</description>
   <url>https://github.com/vlingo/xoom-wire</url>
   <licenses>
     <license>
@@ -15,7 +15,7 @@
   <developers>
     <developer>
       <id>vlingo</id>
-      <name>vlingo/PLATFORM Team</name>
+      <name>VLINGO XOOM Team</name>
       <email>info@vlingo.io</email>
       <organization>vlingo</organization>
       <organizationUrl>https://vlingo.io/contributors/</organizationUrl>
