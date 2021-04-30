@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.vlingo</groupId>
   <artifactId>vlingo-wire</artifactId>
-  <version>1.7.5</version>
+  <version>1.7.6-SNAPSHOT</version>
   <name>vlingo-wire</name>
   <description>Wire protocol messaging implementations, such as with full-duplex TCP and UDP multicast, using VLINGO XOOM Actors.</description>
   <url>https://github.com/vlingo/xoom-wire</url>
