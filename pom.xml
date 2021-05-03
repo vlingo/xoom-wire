@@ -191,8 +191,7 @@
               <imageName>${project.name}</imageName>
               <buildArgs>
                 --no-fallback --shared
-                --initialize-at-build-time=org.slf4j.simple.SimpleLogger
-                --initialize-at-build-time=org.slf4j.LoggerFactory
+                --initialize-at-run-time=io.netty
                 --allow-incomplete-classpath
               </buildArgs>
             </configuration>
