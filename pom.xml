@@ -33,6 +33,7 @@
     <io.rsocket.version>1.1.0</io.rsocket.version>
     <io.projectreactor.bom.version>2020.0.0</io.projectreactor.bom.version>
     <io.projectreactor.version>3.4.0</io.projectreactor.version>
+    <graalvm.version>21.1.0</graalvm.version>
   </properties>
   <build>
     <plugins>
@@ -115,6 +116,12 @@
       <version>4.1.49.Final</version>
     </dependency>
     <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport-native-kqueue</artifactId>
+      <version>4.1.49.Final</version>
+      <classifier>osx-x86_64</classifier>
+    </dependency>
+    <dependency>
       <groupId>io.rsocket</groupId>
       <artifactId>rsocket-core</artifactId>
       <version>${io.rsocket.version}</version>
@@ -135,18 +142,64 @@
       <version>${io.rsocket.version}</version>
       <scope>test</scope>
     </dependency>
+
+    <dependency>
+      <groupId>org.graalvm.sdk</groupId>
+      <artifactId>graal-sdk</artifactId>
+      <version>${graalvm.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.oracle.substratevm</groupId>
+      <artifactId>svm</artifactId>
+      <version>19.2.0</version>
+      <scope>provided</scope>
+    </dependency>
   </dependencies>
 
   <repositories>
     <repository>
       <id>ossrh-snapshots</id>
       <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-      <releases><enabled>false</enabled></releases>
-      <snapshots><enabled>true</enabled></snapshots>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
     </repository>
   </repositories>
 
   <profiles>
+    <profile>
+      <id>native-image</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.graalvm.nativeimage</groupId>
+            <artifactId>native-image-maven-plugin</artifactId>
+            <version>${graalvm.version}</version>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>native-image</goal>
+                </goals>
+                <phase>package</phase>
+              </execution>
+            </executions>
+            <configuration>
+              <imageName>${project.name}</imageName>
+              <buildArgs>
+                --no-fallback --shared
+                --initialize-at-build-time=org.slf4j.simple.SimpleLogger
+                --initialize-at-build-time=org.slf4j.LoggerFactory
+                --allow-incomplete-classpath
+              </buildArgs>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
     <profile>
       <id>sign-artifacts</id>
       <activation>
