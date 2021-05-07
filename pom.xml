@@ -144,12 +144,6 @@
       <version>${graalvm.version}</version>
       <scope>provided</scope>
     </dependency>
-    <dependency>
-      <groupId>com.oracle.substratevm</groupId>
-      <artifactId>svm</artifactId>
-      <version>19.2.0</version>
-      <scope>provided</scope>
-    </dependency>
   </dependencies>
 
   <repositories>
