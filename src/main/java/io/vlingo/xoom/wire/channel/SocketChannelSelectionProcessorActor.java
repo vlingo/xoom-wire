@@ -361,6 +361,16 @@ public class SocketChannelSelectionProcessorActor extends Actor
       return consumer;
     }
 
+    @Override
+    public String remoteAddress() {
+      try {
+        return clientChannel.getRemoteAddress().toString();
+      } catch (final IOException e) {
+        logger().error("Unable to retrieve remote address");
+        return "";
+      }
+    }
+
     void confirmCurrentWritable(final ConsumerByteBuffer buffer) {
       try {
         buffer.release();

@@ -61,6 +61,11 @@ final class NettyServerChannelContext implements RequestResponseContext<Consumer
     this.closingData = data;
   }
 
+  @Override
+  public String remoteAddress() {
+    return nettyChannelContext.channel().remoteAddress().toString();
+  }
+
   ChannelHandlerContext getNettyChannelContext() {
     return nettyChannelContext;
   }
