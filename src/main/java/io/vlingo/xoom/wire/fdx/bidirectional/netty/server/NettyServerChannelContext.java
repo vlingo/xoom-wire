@@ -11,6 +11,8 @@ import io.vlingo.xoom.wire.channel.RequestResponseContext;
 import io.vlingo.xoom.wire.channel.ResponseSenderChannel;
 import io.vlingo.xoom.wire.message.ConsumerByteBuffer;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicLong;
 
 final class NettyServerChannelContext implements RequestResponseContext<ConsumerByteBuffer> {
@@ -59,6 +61,11 @@ final class NettyServerChannelContext implements RequestResponseContext<Consumer
   @Override
   public void whenClosing(final Object data) {
     this.closingData = data;
+  }
+
+  @Override
+  public String remoteAddress() {
+    return ((InetSocketAddress) nettyChannelContext.channel().remoteAddress()).getAddress().getHostAddress();
   }
 
   ChannelHandlerContext getNettyChannelContext() {

@@ -37,4 +37,8 @@ public interface RequestResponseContext<R> {
   default <T> T typed() {
     return (T) this;
   }
+
+  default String remoteAddress() {
+    throw new UnsupportedOperationException("Remote address is unavailable by default");
+  }
 }
