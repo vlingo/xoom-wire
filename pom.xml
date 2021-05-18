@@ -141,7 +141,6 @@
       <version>${io.rsocket.version}</version>
       <scope>test</scope>
     </dependency>
-
     <dependency>
       <groupId>org.graalvm.sdk</groupId>
       <artifactId>graal-sdk</artifactId>
