@@ -1,4 +1,4 @@
-package io.vlingo.xoom.wire.implnative;
+package io.vlingo.xoom.wire.nativebuild;
 
 import io.vlingo.xoom.actors.Logger;
 import io.vlingo.xoom.wire.channel.RefreshableSelector;
