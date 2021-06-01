@@ -7,21 +7,18 @@
 
 package io.vlingo.xoom.wire.multicast;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import org.junit.Ignore;
-import org.junit.Test;
-
 import io.vlingo.xoom.actors.Logger;
 import io.vlingo.xoom.actors.testkit.AccessSafely;
 import io.vlingo.xoom.wire.BaseWireTest;
 import io.vlingo.xoom.wire.channel.MockChannelReaderConsumer;
+import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class MulticastTest extends BaseWireTest {
 
   @Test
-  @Ignore
   public void testMulticastPublishSubscribe() throws Exception {
     final MockChannelReaderConsumer publisherConsumer = new MockChannelReaderConsumer();
     final AccessSafely consumerAccess = publisherConsumer.afterCompleting(0);
