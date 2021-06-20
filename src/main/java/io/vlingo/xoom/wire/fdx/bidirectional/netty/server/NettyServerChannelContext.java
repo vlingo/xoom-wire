@@ -6,14 +6,13 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.xoom.wire.fdx.bidirectional.netty.server;
 
+import java.net.InetSocketAddress;
+import java.util.concurrent.atomic.AtomicLong;
+
 import io.netty.channel.ChannelHandlerContext;
 import io.vlingo.xoom.wire.channel.RequestResponseContext;
 import io.vlingo.xoom.wire.channel.ResponseSenderChannel;
 import io.vlingo.xoom.wire.message.ConsumerByteBuffer;
-
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.util.concurrent.atomic.AtomicLong;
 
 final class NettyServerChannelContext implements RequestResponseContext<ConsumerByteBuffer> {
   private static final AtomicLong contextId = new AtomicLong(0);
