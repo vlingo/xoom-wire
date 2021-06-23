@@ -34,7 +34,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
-    <io.rsocket.version>1.1.0</io.rsocket.version>
+    <io.rsocket.version>1.1.1</io.rsocket.version>
     <io.projectreactor.bom.version>2020.0.6</io.projectreactor.bom.version>
     <io.projectreactor.version>3.4.5</io.projectreactor.version>
     <io.projectreactor.extra.version>3.4.3</io.projectreactor.extra.version>
@@ -118,7 +118,7 @@
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-all</artifactId>
-      <version>4.1.52.Final</version>
+      <version>4.1.65.Final</version>
     </dependency>
     <dependency>
       <groupId>io.rsocket</groupId>
