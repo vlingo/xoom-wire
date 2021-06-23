@@ -35,8 +35,8 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
     <io.rsocket.version>1.1.1</io.rsocket.version>
-    <io.projectreactor.bom.version>2020.0.6</io.projectreactor.bom.version>
-    <io.projectreactor.version>3.4.5</io.projectreactor.version>
+    <io.projectreactor.bom.version>2020.0.8</io.projectreactor.bom.version>
+    <io.projectreactor.version>3.4.7</io.projectreactor.version>
     <io.projectreactor.extra.version>3.4.3</io.projectreactor.extra.version>
     <graalvm.version>21.1.0</graalvm.version>
   </properties>
@@ -96,7 +96,7 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.13.1</version>
+      <version>4.13.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
