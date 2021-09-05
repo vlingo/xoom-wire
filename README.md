@@ -13,7 +13,7 @@ Docs: https://docs.vlingo.io/xoom-wire
     <dependency>
       <groupId>io.vlingo.xoom</groupId>
       <artifactId>xoom-wire</artifactId>
-      <version>1.8.5</version>
+      <version>1.8.6</version>
       <scope>compile</scope>
     </dependency>
   </dependencies>
@@ -21,7 +21,7 @@ Docs: https://docs.vlingo.io/xoom-wire
 
 ```gradle
 dependencies {
-    compile 'io.vlingo.xoom:xoom-wire:1.8.5'
+    compile 'io.vlingo.xoom:xoom-wire:1.8.6'
 }
 ```
 
