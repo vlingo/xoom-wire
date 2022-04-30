@@ -17,7 +17,7 @@ import io.vlingo.xoom.wire.node.Name;
 import io.vlingo.xoom.wire.node.Node;
 
 public class MessagePartsBuilder {
-  public static final Address addressFromRecord(final String record, final AddressType type) {
+  public static Address addressFromRecord(final String record, final AddressType type) {
     final String text = parseField(record, type.field());
 
     if (text == null) {
@@ -27,7 +27,7 @@ public class MessagePartsBuilder {
     return Address.from(text, type);
   }
 
-  public static final Set<Address> addressesFromRecord(final String record, final AddressType type) {
+  public static Set<Address> addressesFromRecord(final String record, final AddressType type) {
     final Set<Address> addresses = new HashSet<>();
 
     final String[] parts = record.split("\n");
@@ -43,8 +43,8 @@ public class MessagePartsBuilder {
     return addresses;
   }
 
-  public static final Set<Node> nodesFrom(String content) {
-    final Set<Node> nodeEntries = new HashSet<Node>();
+  public static Set<Node> nodesFrom(String content) {
+    final Set<Node> nodeEntries = new HashSet<>();
 
     final String[] parts = content.split("\n");
 
@@ -59,7 +59,7 @@ public class MessagePartsBuilder {
     return nodeEntries;
   }
 
-  public static final Node nodeFrom(final String content) {
+  public static Node nodeFrom(final String content) {
     final String[] parts = content.split("\n");
 
     if (parts.length < 2) {
@@ -69,16 +69,16 @@ public class MessagePartsBuilder {
     return nodeFromRecord(parts[1]);
   }
 
-  public static final Node nodeFromRecord(final String record) {
+  public static Node nodeFromRecord(final String record) {
     final Id id = idFromRecord(record);
     final Name name = nameFromRecord(record);
     final Address opAddress = addressFromRecord(record, AddressType.OP);
     final Address appAddress = addressFromRecord(record, AddressType.APP);
 
-    return new Node(id, name, opAddress, appAddress);
+    return new Node(id, name, opAddress, appAddress, false);
   }
 
-  public static final Id idFrom(final String content) {
+  public static Id idFrom(final String content) {
     final String[] parts = content.split("\n");
 
     if (parts.length < 2) {
@@ -88,7 +88,7 @@ public class MessagePartsBuilder {
     return idFromRecord(parts[1]);
   }
 
-  public static final Id idFromRecord(final String record) {
+  public static Id idFromRecord(final String record) {
     final String text = parseField(record, "id=");
 
     if (text == null) {
@@ -98,7 +98,7 @@ public class MessagePartsBuilder {
     return Id.of(Short.parseShort(text));
   }
 
-  public static final Name nameFrom(final String content) {
+  public static Name nameFrom(final String content) {
     final String[] parts = content.split("\n");
 
     if (parts.length < 2) {
@@ -108,7 +108,7 @@ public class MessagePartsBuilder {
     return nameFromRecord(parts[1]);
   }
 
-  public static final Name nameFromRecord(final String record) {
+  public static Name nameFromRecord(final String record) {
     final String text = parseField(record, "nm=");
 
     if (text == null) {
@@ -118,7 +118,7 @@ public class MessagePartsBuilder {
     return new Name(text);
   }
 
-  public static final String parseField(final String record, final String fieldName) {
+  public static String parseField(final String record, final String fieldName) {
     final String skinnyRecord = record.trim();
 
     final int idIndex = skinnyRecord.indexOf(fieldName);

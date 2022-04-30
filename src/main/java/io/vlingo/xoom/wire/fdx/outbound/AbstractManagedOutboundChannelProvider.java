@@ -57,7 +57,7 @@ public abstract class AbstractManagedOutboundChannelProvider implements ManagedO
 
   @Override
   public Map<Id, ManagedOutboundChannel> channelsFor(final Collection<Node> nodes) {
-    final Map<Id, ManagedOutboundChannel> channels = new TreeMap<Id, ManagedOutboundChannel>();
+    final Map<Id, ManagedOutboundChannel> channels = new TreeMap<>();
 
     for (final Node node : nodes) {
       ManagedOutboundChannel channel = nodeChannels.get(node.id());

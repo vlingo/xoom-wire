@@ -23,7 +23,7 @@ public class MockConfiguration implements Configuration {
     final Node node2 = Node.with(Id.of(2), Name.of("node2"), Host.of("localhost"), 37373, 37374);
     final Node node3 = Node.with(Id.of(3), Name.of("node3"), Host.of("localhost"), 37375, 37376);
 
-    this.nodes = new TreeSet<Node>(Arrays.asList(node1, node2, node3));
+    this.nodes = new TreeSet<>(Arrays.asList(node1, node2, node3));
   }
 
   @Override
@@ -33,14 +33,14 @@ public class MockConfiguration implements Configuration {
 
   @Override
   public Set<Node> allNodesOf(final Collection<Id> ids) {
-    final Set<Node> nodes = new TreeSet<Node>();
+    final Set<Node> nodes = new TreeSet<>();
 
     return nodes;
   }
 
   @Override
   public final Set<Node> allOtherNodes(final Id nodeId) {
-    final Set<Node> except = new TreeSet<Node>();
+    final Set<Node> except = new TreeSet<>();
 
     for (final Node node : nodes) {
       if (!node.id().equals(nodeId)) {
@@ -53,7 +53,7 @@ public class MockConfiguration implements Configuration {
 
   @Override
   public Set<Id> allOtherNodesId(final Id nodeId) {
-    final Set<Id> ids = new TreeSet<Id>();
+    final Set<Id> ids = new TreeSet<>();
 
     for (final Node node : allOtherNodes(nodeId)) {
       ids.add(node.id());
@@ -64,7 +64,7 @@ public class MockConfiguration implements Configuration {
 
   @Override
   public final Set<Node> allGreaterNodes(final Id nodeId) {
-    final Set<Node> greater = new TreeSet<Node>();
+    final Set<Node> greater = new TreeSet<>();
 
     for (final Node node : nodes) {
       if (node.id().greaterThan(nodeId)) {
@@ -77,7 +77,7 @@ public class MockConfiguration implements Configuration {
 
   @Override
   public Set<String> allNodeNames() {
-    final Set<String> names = new TreeSet<String>();
+    final Set<String> names = new TreeSet<>();
 
     for (final Node node : nodes) {
       names.add(node.name().value());
