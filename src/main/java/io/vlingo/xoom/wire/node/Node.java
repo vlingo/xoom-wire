@@ -15,31 +15,38 @@ public final class Node implements Comparable<Node> {
           new Node(Id.NO_ID,
                   Name.NO_NODE_NAME,
                   Address.NO_NODE_ADDRESS,
-                  Address.NO_NODE_ADDRESS);
+                  Address.NO_NODE_ADDRESS,
+                  false);
 
   public static Node with(final Id id, final Name name, final Host host, final int operationalPort, final int applicationPort) {
-    final Address operationalAddress = new Address(host, operationalPort, AddressType.OP);
+    return with(id, name, host, operationalPort, applicationPort, false);
+  }
 
+  public static Node with(final Id id, final Name name, final Host host, final int operationalPort, final int applicationPort, final boolean seed) {
+    final Address operationalAddress = new Address(host, operationalPort, AddressType.OP);
     final Address applicationAddress = new Address(host, applicationPort, AddressType.APP);
 
-    return new Node(id, name, operationalAddress, applicationAddress);
+    return new Node(id, name, operationalAddress, applicationAddress, seed);
   }
 
   private final Id id;
   private final Name name;
   private final Address operationalAddress;
   private final Address applicationAddress;
+  private final Boolean seed;
 
   public Node(
       final Id id,
       final Name nodeName,
       final Address operationalAddress,
-      final Address applicationAddress) {
+      final Address applicationAddress,
+      final boolean seed) {
 
     this.id = id;
     this.name = nodeName;
     this.operationalAddress = operationalAddress;
     this.applicationAddress = applicationAddress;
+    this.seed = seed;
   }
 
   public Collection<Node> collected() {
@@ -53,19 +60,23 @@ public final class Node implements Comparable<Node> {
         applicationAddress().hasNoAddress();
   }
 
-  public final Address applicationAddress() {
+  public Address applicationAddress() {
     return applicationAddress;
   }
 
-  public final Address operationalAddress() {
+  public Address operationalAddress() {
     return operationalAddress;
   }
 
-  public final Id id() {
+  public Id id() {
     return id;
   }
 
-  public final Name name() {
+  public boolean isSeed() {
+    return seed;
+  }
+
+  public Name name() {
     return name;
   }
 
@@ -85,21 +96,21 @@ public final class Node implements Comparable<Node> {
 
     final Node node = (Node) other;
 
-    return
-        this.id.equals(node.id) &&
-        this.name.equals(node.name) &&
-        this.operationalAddress.equals(node.operationalAddress) &&
-        this.applicationAddress.equals(node.applicationAddress);
+    return this.id.equals(node.id)
+            && this.name.equals(node.name)
+            && this.operationalAddress.equals(node.operationalAddress)
+            && this.applicationAddress.equals(node.applicationAddress)
+            && this.seed.equals(node.seed);
   }
 
   @Override
   public int hashCode() {
-    return 31 * (id.hashCode() + name.hashCode() + operationalAddress.hashCode() + applicationAddress.hashCode());
+    return 31 * (id.hashCode() + name.hashCode() + operationalAddress.hashCode() + applicationAddress.hashCode() + seed.hashCode());
   }
 
   @Override
   public String toString() {
-    return "Node[" + id + "," + name + "," + operationalAddress + ", " + applicationAddress + "]";
+    return "Node[" + id + "," + name + "," + operationalAddress + ", " + applicationAddress + ", " + seed + "]";
   }
 
   public boolean greaterThan(final Node other) {

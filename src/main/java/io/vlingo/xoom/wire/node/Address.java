@@ -40,11 +40,11 @@ public final class Address {
     return host.name() + ":" + port;
   }
 
-  public final Host host() {
+  public Host host() {
     return host;
   }
 
-  public final String hostName() {
+  public String hostName() {
     return host.name();
   }
 
