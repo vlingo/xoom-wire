@@ -19,5 +19,4 @@ public interface ManagedOutboundChannelProvider {
   Map<Id, ManagedOutboundChannel> channelsFor(final Collection<Node> nodes);
   void close();
   void close(final Id id);
-  void configureKnownChannels();
 }
