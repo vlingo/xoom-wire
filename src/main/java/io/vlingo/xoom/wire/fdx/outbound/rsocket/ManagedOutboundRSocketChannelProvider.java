@@ -9,6 +9,7 @@ package io.vlingo.xoom.wire.fdx.outbound.rsocket;
 
 import io.rsocket.transport.ClientTransport;
 import io.rsocket.transport.netty.client.TcpClientTransport;
+import io.vlingo.xoom.actors.Logger;
 import io.vlingo.xoom.wire.fdx.outbound.AbstractManagedOutboundChannelProvider;
 import io.vlingo.xoom.wire.fdx.outbound.ManagedOutboundChannel;
 import io.vlingo.xoom.wire.node.Address;
@@ -29,7 +30,7 @@ public class ManagedOutboundRSocketChannelProvider extends AbstractManagedOutbou
   }
 
   /**
-   * Build a instance of provider that will create {@link RSocketOutboundChannel} using the default RSocket client transport, {@link TcpClientTransport}.
+   * Build an instance of provider that will create {@link RSocketOutboundChannel} using the default RSocket client transport, {@link TcpClientTransport}.
    *
    * @param node the outbound node to connect to
    * @param type the address type
@@ -59,9 +60,8 @@ public class ManagedOutboundRSocketChannelProvider extends AbstractManagedOutbou
   }
 
   @Override
-  protected ManagedOutboundChannel unopenedChannelFor(final Node node, final Configuration configuration, final AddressType type) {
-    final Address address = addressOf(node, type);
-    return new RSocketOutboundChannel(address, transportFor(address), this.connectionTimeout, configuration.logger());
+  protected ManagedOutboundChannel unopenedChannelFor(final Node node, final Address nodeAddress, final Logger logger) {
+    return new RSocketOutboundChannel(nodeAddress, transportFor(nodeAddress), this.connectionTimeout, logger);
   }
 
 }

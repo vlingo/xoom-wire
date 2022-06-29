@@ -36,8 +36,6 @@ public class Outbound {
 
     this.provider = provider;
     this.pool = byteBufferPool;
-
-    this.provider.configureKnownChannels();
   }
 
   public void broadcast(final RawMessage message) {

@@ -7,8 +7,10 @@
 
 package io.vlingo.xoom.wire.fdx.outbound.tcp;
 
+import io.vlingo.xoom.actors.Logger;
 import io.vlingo.xoom.wire.fdx.outbound.AbstractManagedOutboundChannelProvider;
 import io.vlingo.xoom.wire.fdx.outbound.ManagedOutboundChannel;
+import io.vlingo.xoom.wire.node.Address;
 import io.vlingo.xoom.wire.node.AddressType;
 import io.vlingo.xoom.wire.node.Configuration;
 import io.vlingo.xoom.wire.node.Node;
@@ -19,7 +21,7 @@ public class ManagedOutboundSocketChannelProvider extends AbstractManagedOutboun
   }
 
   @Override
-  protected ManagedOutboundChannel unopenedChannelFor(final Node node, final Configuration configuration, final AddressType type) {
-    return new ManagedOutboundSocketChannel(node, addressOf(node, type), configuration.logger());
+  protected ManagedOutboundChannel unopenedChannelFor(final Node node, final Address nodeAddress, final Logger logger) {
+    return new ManagedOutboundSocketChannel(node, nodeAddress, logger);
   }
 }

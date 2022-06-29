@@ -24,18 +24,17 @@ public abstract class AbstractManagedOutboundProviderTest extends AbstractMessag
   private ManagedOutboundChannelProvider provider;
 
   @Test
-  public void testProviderProvides() throws Exception {
-    assertEquals(2, provider.allOtherNodeChannels().size());
+  public void testProviderProvides() {
+    assertEquals(0, provider.allOtherNodeChannels().size()); // channels are lazily created
 
     assertNotNull(provider.channelFor(Id.of(2)));
-
     assertNotNull(provider.channelFor(Id.of(3)));
 
     assertEquals(2, provider.channelsFor(allOtherNodes).size());
   }
 
   @Test
-  public void testProviderCloseAllReopen() throws Exception {
+  public void testProviderCloseAllReopen() {
     provider.close();
 
     assertNotNull(provider.channelFor(Id.of(3)));
@@ -46,16 +45,19 @@ public abstract class AbstractManagedOutboundProviderTest extends AbstractMessag
   }
 
   @Test
-  public void testProviderCloseOneChannelReopen() throws Exception {
+  public void testProviderCloseOneChannelReopen() {
+    assertNotNull(provider.channelFor(Id.of(3))); // channels are created on demand; create the channel
     provider.close(Id.of(3));
 
     assertNotNull(provider.channelFor(Id.of(3)));
+    assertEquals(1, provider.allOtherNodeChannels().size());
 
+    assertNotNull(provider.channelFor(Id.of(2))); // create the channel
     assertEquals(2, provider.allOtherNodeChannels().size());
   }
 
   @Before
-  public void setUp() throws Exception {
+  public void setUp() {
     allOtherNodes = config.allOtherNodes(Id.of(1));
 
     provider = getProvider(config.nodeMatching(Id.of(1)), AddressType.OP, config);

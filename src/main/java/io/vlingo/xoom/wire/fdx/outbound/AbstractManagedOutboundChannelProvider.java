@@ -6,18 +6,19 @@
 // one at https://mozilla.org/MPL/2.0/.
 package io.vlingo.xoom.wire.fdx.outbound;
 
+import io.vlingo.xoom.actors.Logger;
 import io.vlingo.xoom.wire.node.*;
-import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 public abstract class AbstractManagedOutboundChannelProvider implements ManagedOutboundChannelProvider {
 
-  private static final Logger logger = LoggerFactory.getLogger(AbstractManagedOutboundChannelProvider.class);
+  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractManagedOutboundChannelProvider.class);
 
   protected static Address addressOf(final Node node, final AddressType type) {
     logger.debug("addressOf {}", node);
@@ -25,19 +26,31 @@ public abstract class AbstractManagedOutboundChannelProvider implements ManagedO
   }
 
   private final Configuration configuration;
-  private final Node node;
-  private final Map<Id, ManagedOutboundChannel> nodeChannels = new HashMap<>();
-  private final AddressType type;
+  private final Node localNode;
+  private final Map<Id, Address> allAddresses; // all addresses provided by configuration
+  private final Map<Id, ManagedOutboundChannel> nodeChannels = new HashMap<>(); // live channels created on demand
 
-  protected AbstractManagedOutboundChannelProvider(final Node node, final AddressType type, final Configuration configuration) {
+  protected AbstractManagedOutboundChannelProvider(final Node localNode, final AddressType type, final Configuration configuration) {
     this.configuration = configuration;
-    this.node = node;
-    this.type = type;
+    this.localNode = localNode;
+    this.allAddresses = new HashMap<>();
+    for (final Node node : configuration.allNodes()) { // exclude local node?
+      allAddresses.put(node.id(), addressOf(node, type));
+    }
+  }
+
+  protected AbstractManagedOutboundChannelProvider(final Node localNode, final AddressType type, final Configuration configuration, boolean createEagerly) {
+    this(localNode, type, configuration);
+    if (createEagerly) {
+      allAddresses.keySet().forEach(this::channelFor);
+    }
   }
 
   @Override
   public Map<Id, ManagedOutboundChannel> allOtherNodeChannels() {
-    return channelsFor(configuration.allOtherNodes(node.id()));
+    return nodeChannels.entrySet().stream()
+            .filter(entry -> !entry.getKey().equals(localNode.id()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
   @Override
@@ -48,7 +61,8 @@ public abstract class AbstractManagedOutboundChannelProvider implements ManagedO
       return channel;
     }
 
-    final ManagedOutboundChannel unopenedChannel = unopenedChannelFor(configuration.nodeMatching(id), configuration, type);
+    final Address nodeAddress = this.allAddresses.get(id);
+    final ManagedOutboundChannel unopenedChannel = unopenedChannelFor(configuration.nodeMatching(id), nodeAddress, configuration.logger());
 
     nodeChannels.put(id, unopenedChannel);
 
@@ -63,7 +77,8 @@ public abstract class AbstractManagedOutboundChannelProvider implements ManagedO
       ManagedOutboundChannel channel = nodeChannels.get(node.id());
 
       if (channel == null) {
-        channel = unopenedChannelFor(node, configuration, type);
+        final Address nodeAddress = allAddresses.get(node.id());
+        channel = unopenedChannelFor(node, nodeAddress, configuration.logger());
         nodeChannels.put(node.id(), channel);
       }
 
@@ -91,13 +106,5 @@ public abstract class AbstractManagedOutboundChannelProvider implements ManagedO
     }
   }
 
-  @Override
-  public void configureKnownChannels() {
-    for (final Node node : configuration.allOtherNodes(node.id())) {
-      nodeChannels.put(node.id(), unopenedChannelFor(node, configuration, type));
-    }
-  }
-
-  protected abstract ManagedOutboundChannel unopenedChannelFor(final Node node, final Configuration configuration, final AddressType type);
-
+  protected abstract ManagedOutboundChannel unopenedChannelFor(final Node node, final Address nodeAddress, final Logger logger);
 }
