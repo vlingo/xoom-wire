@@ -30,7 +30,7 @@ public class InboundOutboundIntegrationTests extends BaseWireTest {
     final World world = World.startWithDefaults("rsocket-integration-test-world");
 
     final Stage stage = world.stage();
-    final Configuration configuration = new MockConfiguration();
+    final MockConfiguration configuration = new MockConfiguration();
     final Node node = configuration.nodeMatching(Id.of(1));
 
     final LocalServerTransport serverTransport = LocalServerTransport.createEphemeral();
@@ -56,23 +56,23 @@ public class InboundOutboundIntegrationTests extends BaseWireTest {
 
     final ApplicationOutboundStream outboundStreamNode2 = ApplicationOutboundStream.instance(
         stage,
-        new ManagedOutboundRSocketChannelProvider(node, AddressType.OP, configuration, Duration.ofMillis(1000), address -> serverTransport.clientTransport()),
+        new ManagedOutboundRSocketChannelProvider(node, AddressType.OP, world.defaultLogger(), Duration.ofMillis(1000), address -> serverTransport.clientTransport()),
         new ConsumerByteBufferPool(ElasticResourcePool.Config.of(10), 1024));
 
     final ApplicationOutboundStream outboundStreamNode3 = ApplicationOutboundStream.instance(
             stage,
-            new ManagedOutboundRSocketChannelProvider(node, AddressType.OP, configuration, Duration.ofMillis(1000), address -> serverTransport.clientTransport()),
+            new ManagedOutboundRSocketChannelProvider(node, AddressType.OP, world.defaultLogger(), Duration.ofMillis(1000), address -> serverTransport.clientTransport()),
             new ConsumerByteBufferPool(ElasticResourcePool.Config.of(10), 1024));
 
     try {
       IntStream.range(0, nrMessages).forEach(i -> {
         outboundStreamNode2.sendTo(
                 RawMessage.from(2, -1, "hello world from node2:" + i ),
-                node.id());
+                node);
 
         outboundStreamNode3.sendTo(
                 RawMessage.from(3, -1, "hello world from node3:" + i ),
-                node.id());
+                node);
       });
       Assert.assertTrue(latch.await(5, TimeUnit.SECONDS));
     } finally {

@@ -15,7 +15,7 @@ import java.util.TreeSet;
 
 import io.vlingo.xoom.actors.Logger;
 
-public class MockConfiguration implements Configuration {
+public class MockConfiguration {
   private final Set<Node> nodes;
 
   public MockConfiguration() {
@@ -26,19 +26,16 @@ public class MockConfiguration implements Configuration {
     this.nodes = new TreeSet<>(Arrays.asList(node1, node2, node3));
   }
 
-  @Override
   public Set<Node> allNodes() {
     return Collections.unmodifiableSet(nodes);
   }
 
-  @Override
   public Set<Node> allNodesOf(final Collection<Id> ids) {
     final Set<Node> nodes = new TreeSet<>();
 
     return nodes;
   }
 
-  @Override
   public final Set<Node> allOtherNodes(final Id nodeId) {
     final Set<Node> except = new TreeSet<>();
 
@@ -51,7 +48,6 @@ public class MockConfiguration implements Configuration {
     return except;
   }
 
-  @Override
   public Set<Id> allOtherNodesId(final Id nodeId) {
     final Set<Id> ids = new TreeSet<>();
 
@@ -62,7 +58,6 @@ public class MockConfiguration implements Configuration {
     return ids;
   }
 
-  @Override
   public final Set<Node> allGreaterNodes(final Id nodeId) {
     final Set<Node> greater = new TreeSet<>();
 
@@ -75,7 +70,6 @@ public class MockConfiguration implements Configuration {
     return greater;
   }
 
-  @Override
   public Set<String> allNodeNames() {
     final Set<String> names = new TreeSet<>();
 
@@ -86,7 +80,6 @@ public class MockConfiguration implements Configuration {
     return names;
   }
 
-  @Override
   public final Node nodeMatching(final Id nodeId) {
     for (final Node node : nodes) {
       if (node.id().equals(nodeId)) {
@@ -96,7 +89,6 @@ public class MockConfiguration implements Configuration {
     return Node.NO_NODE;
   }
 
-  @Override
   public final Id greatestNodeId() {
     Id greatest = Id.NO_ID;
 
@@ -109,7 +101,6 @@ public class MockConfiguration implements Configuration {
     return greatest;
   }
 
-  @Override
   public boolean hasNode(final Id nodeId) {
     for (final Node node : nodes) {
       if (node.id().equals(nodeId)) {
@@ -119,32 +110,11 @@ public class MockConfiguration implements Configuration {
     return false;
   }
 
-  @Override
   public int totalNodes() {
     return nodes.size();
   }
 
-  @Override
   public Logger logger() {
     return null;
-  }
-
-  @Override
-  public boolean equals(final Object other) {
-    if (other == null || other.getClass() != MockConfiguration.class) {
-      return false;
-    }
-
-    return this.nodes.equals(((MockConfiguration) other).nodes);
-  }
-
-  @Override
-  public int hashCode() {
-    return 31 * nodes.hashCode();
-  }
-
-  @Override
-  public String toString() {
-    return "MockConfiguration[" + nodes + "]";
   }
 }

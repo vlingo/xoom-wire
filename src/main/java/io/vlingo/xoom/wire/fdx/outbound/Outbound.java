@@ -73,17 +73,17 @@ public class Outbound {
     return pool.acquire("Outbound#lendByteBuffer");
   }
 
-  public void open(final Id id) {
-    provider.channelFor(id);
+  public void open(final Node node) {
+    provider.channelFor(node);
   }
 
-  public void sendTo(final RawMessage message, final Id id) {
-    sendTo(bytesFrom(message, pool.acquire("Outbound#sendTo")), id);
+  public void sendTo(final RawMessage message, final Node targetNode) {
+    sendTo(bytesFrom(message, pool.acquire("Outbound#sendTo")), targetNode);
   }
 
-  public void sendTo(final ConsumerByteBuffer buffer, final Id id) {
-    open(id);
-    provider.channelFor(id).writeAsync(buffer.asByteBuffer())
+  public void sendTo(final ConsumerByteBuffer buffer, final Node targetNode) {
+    open(targetNode);
+    provider.channelFor(targetNode).writeAsync(buffer.asByteBuffer())
         .andFinallyConsume((aVoid) -> buffer.release());
   }
 

@@ -15,7 +15,7 @@ import io.vlingo.xoom.wire.node.Node;
 
 public interface ManagedOutboundChannelProvider {
   Map<Id, ManagedOutboundChannel> allOtherNodeChannels();
-  ManagedOutboundChannel channelFor(final Id id);
+  ManagedOutboundChannel channelFor(final Node node);
   Map<Id, ManagedOutboundChannel> channelsFor(final Collection<Node> nodes);
   void close();
   void close(final Id id);

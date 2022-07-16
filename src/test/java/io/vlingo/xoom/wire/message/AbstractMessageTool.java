@@ -7,10 +7,11 @@
 
 package io.vlingo.xoom.wire.message;
 
+import io.vlingo.xoom.actors.testkit.TestWorld;
 import io.vlingo.xoom.wire.BaseWireTest;
-import io.vlingo.xoom.wire.node.Configuration;
 import io.vlingo.xoom.wire.node.MockConfiguration;
 
 public class AbstractMessageTool extends BaseWireTest {
-  protected Configuration config = new MockConfiguration();
+  protected MockConfiguration config = new MockConfiguration();
+  protected TestWorld testWorld = TestWorld.start("xoom-wire-test");
 }

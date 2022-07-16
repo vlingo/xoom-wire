@@ -12,12 +12,11 @@ import io.vlingo.xoom.wire.fdx.outbound.AbstractManagedOutboundChannelProvider;
 import io.vlingo.xoom.wire.fdx.outbound.ManagedOutboundChannel;
 import io.vlingo.xoom.wire.node.Address;
 import io.vlingo.xoom.wire.node.AddressType;
-import io.vlingo.xoom.wire.node.Configuration;
 import io.vlingo.xoom.wire.node.Node;
 
 public class ManagedOutboundSocketChannelProvider extends AbstractManagedOutboundChannelProvider {
-  public ManagedOutboundSocketChannelProvider(final Node node, final AddressType type, final Configuration configuration) {
-    super(node, type, configuration);
+  public ManagedOutboundSocketChannelProvider(final Node node, final AddressType type, final Logger logger) {
+    super(node, type, logger);
   }
 
   @Override

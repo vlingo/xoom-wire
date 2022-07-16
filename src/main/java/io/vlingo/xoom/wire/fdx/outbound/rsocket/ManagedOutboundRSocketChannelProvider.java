@@ -14,7 +14,6 @@ import io.vlingo.xoom.wire.fdx.outbound.AbstractManagedOutboundChannelProvider;
 import io.vlingo.xoom.wire.fdx.outbound.ManagedOutboundChannel;
 import io.vlingo.xoom.wire.node.Address;
 import io.vlingo.xoom.wire.node.AddressType;
-import io.vlingo.xoom.wire.node.Configuration;
 import io.vlingo.xoom.wire.node.Node;
 
 import java.time.Duration;
@@ -34,10 +33,10 @@ public class ManagedOutboundRSocketChannelProvider extends AbstractManagedOutbou
    *
    * @param node the outbound node to connect to
    * @param type the address type
-   * @param configuration current node configuration
+   * @param logger the logger
    */
-  public ManagedOutboundRSocketChannelProvider(final Node node, final AddressType type, final Configuration configuration) {
-    super(node, type, configuration);
+  public ManagedOutboundRSocketChannelProvider(final Node node, final AddressType type, final Logger logger) {
+    super(node, type, logger);
     this.clientTransportProvider = address -> TcpClientTransport.create(address.hostName(), address.port());
     this.connectionTimeout = Duration.ofMillis(100);
   }
@@ -47,14 +46,14 @@ public class ManagedOutboundRSocketChannelProvider extends AbstractManagedOutbou
    *
    * @param node the outbound node to connect to
    * @param type the address type
-   * @param configuration current node configuration
+   * @param logger the logger
    * @param connectionTimeout connection timeout duration
    * @param clientTransportProvider function that given a remote node address, returns a instance of {@link ClientTransport}
    */
-  public ManagedOutboundRSocketChannelProvider(final Node node, final AddressType type, final Configuration configuration,
+  public ManagedOutboundRSocketChannelProvider(final Node node, final AddressType type, final Logger logger,
                                                final Duration connectionTimeout,
                                                final Function<Address, ClientTransport> clientTransportProvider) {
-    super(node, type, configuration);
+    super(node, type, logger);
     this.connectionTimeout = connectionTimeout;
     this.clientTransportProvider = clientTransportProvider;
   }
