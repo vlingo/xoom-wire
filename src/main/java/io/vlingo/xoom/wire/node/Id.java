@@ -27,6 +27,10 @@ public final class Id implements Comparable<Id>, Serializable {
     return new Id(id);
   }
 
+  public static Id of(final String idString) {
+    return of(Short.parseShort(idString));
+  }
+
   public Id(final short id) {
     this.value = id;
   }
