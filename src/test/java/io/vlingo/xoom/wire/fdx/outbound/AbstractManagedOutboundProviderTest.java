@@ -14,7 +14,8 @@ import io.vlingo.xoom.wire.node.Node;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -26,9 +27,9 @@ public abstract class AbstractManagedOutboundProviderTest extends AbstractMessag
   public void testProviderProvides() {
     assertEquals(0, provider.allOtherNodeChannels().size()); // channels are lazily created
 
-    ArrayList<Node> nodeIds = new ArrayList<>();
-    nodeIds.add(config.nodeMatching(Id.of(2)));
-    nodeIds.add(config.nodeMatching(Id.of(3)));
+    List<Node> nodeIds = Arrays.asList(
+            config.nodeMatching(Id.of(2)),
+            config.nodeMatching(Id.of(3)));
 
     assertNotNull(provider.channelFor(nodeIds.get(0)));
     assertNotNull(provider.channelFor(nodeIds.get(1)));
@@ -40,10 +41,10 @@ public abstract class AbstractManagedOutboundProviderTest extends AbstractMessag
   public void testProviderCloseAllReopen() {
     provider.close();
 
-    ArrayList<Node> nodeIds = new ArrayList<>();
-    nodeIds.add(config.nodeMatching(Id.of(3)));
-    nodeIds.add(config.nodeMatching(Id.of(2)));
-    nodeIds.add(config.nodeMatching(Id.of(1)));
+    List<Node> nodeIds = Arrays.asList(
+            config.nodeMatching(Id.of(3)),
+            config.nodeMatching(Id.of(2)),
+            config.nodeMatching(Id.of(1)));
 
     assertNotNull(provider.channelFor(nodeIds.get(0)));
     assertNotNull(provider.channelFor(nodeIds.get(1)));
@@ -54,9 +55,9 @@ public abstract class AbstractManagedOutboundProviderTest extends AbstractMessag
 
   @Test
   public void testProviderCloseOneChannelReopen() {
-    ArrayList<Node> nodeIds = new ArrayList<>();
-    nodeIds.add(config.nodeMatching(Id.of(3)));
-    nodeIds.add(config.nodeMatching(Id.of(2)));
+    List<Node> nodeIds = Arrays.asList(
+            config.nodeMatching(Id.of(3)),
+            config.nodeMatching(Id.of(2)));
 
     assertNotNull(provider.channelFor(nodeIds.get(0))); // channels are created on demand; create the channel
     provider.close(nodeIds.get(0).id());
