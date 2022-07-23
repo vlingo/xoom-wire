@@ -21,7 +21,7 @@ public class NodeTest {
     final Name name1 = new Name("name1");
     final Address opAddress1 = new Address(Host.of("localhost"), 11111, AddressType.OP);
     final Address appAddress1 = new Address(Host.of("localhost"), 11112, AddressType.APP);
-    final Node node1 = new Node(id1, name1, opAddress1, appAddress1, false);
+    final Node node1 = new Node(id1, name1, false, opAddress1, appAddress1);
     
     assertFalse(node1.hasMissingPart());
     assertTrue(node1.isValid());
@@ -30,7 +30,7 @@ public class NodeTest {
     final Name name2 = new Name("name2");
     final Address opAddress2 = new Address(Host.of("localhost"), 11113, AddressType.OP);
     final Address appAddress2 = new Address(Host.of("localhost"), 11114, AddressType.APP);
-    final Node node2 = new Node(id2, name2, opAddress2, appAddress2, false);
+    final Node node2 = new Node(id2, name2, false, opAddress2, appAddress2);
     
     assertFalse(node2.hasMissingPart());
     assertTrue(node2.isValid());
