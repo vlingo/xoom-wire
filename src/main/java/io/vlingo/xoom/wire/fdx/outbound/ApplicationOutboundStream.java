@@ -15,9 +15,10 @@ import io.vlingo.xoom.common.pool.ResourcePool;
 import io.vlingo.xoom.wire.message.ConsumerByteBuffer;
 import io.vlingo.xoom.wire.message.RawMessage;
 import io.vlingo.xoom.wire.node.Id;
+import io.vlingo.xoom.wire.node.Node;
 
 public interface ApplicationOutboundStream extends Stoppable {
-  public static ApplicationOutboundStream instance(
+  static ApplicationOutboundStream instance(
           final Stage stage,
           final ManagedOutboundChannelProvider provider,
           final ResourcePool<ConsumerByteBuffer, String> byteBufferPool) {
@@ -35,9 +36,9 @@ public interface ApplicationOutboundStream extends Stoppable {
   }
 
   void broadcast(final RawMessage message);
-  void sendTo(final RawMessage message, final Id targetId);
+  void sendTo(final RawMessage message, final Node targetNode);
 
-  static class ApplicationOutboundStreamInstantiator implements ActorInstantiator<ApplicationOutboundStreamActor> {
+  class ApplicationOutboundStreamInstantiator implements ActorInstantiator<ApplicationOutboundStreamActor> {
     private static final long serialVersionUID = 3996997791426073111L;
 
     private final ResourcePool<ConsumerByteBuffer, String> byteBufferPool;

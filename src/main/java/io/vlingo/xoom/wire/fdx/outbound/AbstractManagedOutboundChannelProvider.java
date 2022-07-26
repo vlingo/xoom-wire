@@ -8,7 +8,6 @@ package io.vlingo.xoom.wire.fdx.outbound;
 
 import io.vlingo.xoom.actors.Logger;
 import io.vlingo.xoom.wire.node.*;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -17,33 +16,16 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 public abstract class AbstractManagedOutboundChannelProvider implements ManagedOutboundChannelProvider {
-
-  private static final org.slf4j.Logger logger = LoggerFactory.getLogger(AbstractManagedOutboundChannelProvider.class);
-
-  protected static Address addressOf(final Node node, final AddressType type) {
-    logger.debug("addressOf {}", node);
-    return (type == AddressType.OP ? node.operationalAddress() : node.applicationAddress());
-  }
-
-  private final Configuration configuration;
   private final Node localNode;
-  private final Map<Id, Address> allAddresses; // all addresses provided by configuration
+  private final AddressType addressType;
+  private final Logger logger;
+
   private final Map<Id, ManagedOutboundChannel> nodeChannels = new HashMap<>(); // live channels created on demand
 
-  protected AbstractManagedOutboundChannelProvider(final Node localNode, final AddressType type, final Configuration configuration) {
-    this.configuration = configuration;
+  protected AbstractManagedOutboundChannelProvider(final Node localNode, final AddressType type, final Logger logger) {
     this.localNode = localNode;
-    this.allAddresses = new HashMap<>();
-    for (final Node node : configuration.allNodes()) { // exclude local node?
-      allAddresses.put(node.id(), addressOf(node, type));
-    }
-  }
-
-  protected AbstractManagedOutboundChannelProvider(final Node localNode, final AddressType type, final Configuration configuration, boolean createEagerly) {
-    this(localNode, type, configuration);
-    if (createEagerly) {
-      allAddresses.keySet().forEach(this::channelFor);
-    }
+    this.addressType = type;
+    this.logger = logger;
   }
 
   @Override
@@ -54,17 +36,17 @@ public abstract class AbstractManagedOutboundChannelProvider implements ManagedO
   }
 
   @Override
-  public ManagedOutboundChannel channelFor(final Id id) {
-    final ManagedOutboundChannel channel = nodeChannels.get(id);
+  public ManagedOutboundChannel channelFor(final Node node) {
+    final ManagedOutboundChannel channel = nodeChannels.get(node.id());
 
     if (channel != null) {
       return channel;
     }
 
-    final Address nodeAddress = this.allAddresses.get(id);
-    final ManagedOutboundChannel unopenedChannel = unopenedChannelFor(configuration.nodeMatching(id), nodeAddress, configuration.logger());
+    final Address nodeAddress = addressOf(node, addressType);
+    final ManagedOutboundChannel unopenedChannel = unopenedChannelFor(node, nodeAddress, logger);
 
-    nodeChannels.put(id, unopenedChannel);
+    nodeChannels.put(node.id(), unopenedChannel);
 
     return unopenedChannel;
   }
@@ -77,8 +59,8 @@ public abstract class AbstractManagedOutboundChannelProvider implements ManagedO
       ManagedOutboundChannel channel = nodeChannels.get(node.id());
 
       if (channel == null) {
-        final Address nodeAddress = allAddresses.get(node.id());
-        channel = unopenedChannelFor(node, nodeAddress, configuration.logger());
+        final Address nodeAddress = addressOf(node, addressType);
+        channel = unopenedChannelFor(node, nodeAddress, logger);
         nodeChannels.put(node.id(), channel);
       }
 
@@ -104,6 +86,11 @@ public abstract class AbstractManagedOutboundChannelProvider implements ManagedO
     if (channel != null) {
       channel.close();
     }
+  }
+
+  protected Address addressOf(final Node node, final AddressType type) {
+    logger.debug("addressOf {}", node);
+    return (type == AddressType.OP ? node.operationalAddress() : node.applicationAddress());
   }
 
   protected abstract ManagedOutboundChannel unopenedChannelFor(final Node node, final Address nodeAddress, final Logger logger);

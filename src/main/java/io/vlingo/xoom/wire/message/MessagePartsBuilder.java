@@ -75,7 +75,7 @@ public class MessagePartsBuilder {
     final Address opAddress = addressFromRecord(record, AddressType.OP);
     final Address appAddress = addressFromRecord(record, AddressType.APP);
 
-    return new Node(id, name, opAddress, appAddress, false);
+    return new Node(id, name, false, opAddress, appAddress);
   }
 
   public static Id idFrom(final String content) {

@@ -12,6 +12,7 @@ import io.vlingo.xoom.common.pool.ResourcePool;
 import io.vlingo.xoom.wire.message.ConsumerByteBuffer;
 import io.vlingo.xoom.wire.message.RawMessage;
 import io.vlingo.xoom.wire.node.Id;
+import io.vlingo.xoom.wire.node.Node;
 
 public class ApplicationOutboundStreamActor extends Actor
   implements ApplicationOutboundStream {
@@ -35,8 +36,8 @@ public class ApplicationOutboundStreamActor extends Actor
   }
 
   @Override
-  public void sendTo(final RawMessage message, final Id targetId) {
-    outbound.sendTo(message, targetId);
+  public void sendTo(final RawMessage message, final Node targetNode) {
+    outbound.sendTo(message, targetNode);
   }
 
   //===================================
