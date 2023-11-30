@@ -16,15 +16,15 @@ import io.vlingo.xoom.wire.channel.RequestResponseContext;
 import io.vlingo.xoom.wire.channel.ResponseSenderChannel;
 import io.vlingo.xoom.wire.message.ConsumerByteBuffer;
 import io.vlingo.xoom.wire.message.ConsumerByteBufferPool;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
-import reactor.core.publisher.UnicastProcessor;
+import reactor.core.publisher.Sinks;
 
-@SuppressWarnings("deprecation")
 class RSocketChannelContext implements RequestResponseContext<FluxSink<ConsumerByteBuffer>> {
   private final RequestChannelConsumer consumer;
   private final Logger logger;
   private final ConsumerByteBufferPool readBufferPool;
-  private final UnicastProcessor<Payload> processor;
+  private final Sinks.Many<Payload> sink;
   private Object closingData;
   private Object consumerData;
 
@@ -34,11 +34,11 @@ class RSocketChannelContext implements RequestResponseContext<FluxSink<ConsumerB
     this.readBufferPool = new ConsumerByteBufferPool(
         ElasticResourcePool.Config.of(maxBufferPoolSize), maxMessageSize);
 
-    processor = UnicastProcessor.create();
+    sink = Sinks.many().unicast().onBackpressureBuffer();
   }
 
-  UnicastProcessor<Payload> processor() {
-    return processor;
+  Flux<Payload> flux() {
+    return sink.asFlux();
   }
 
   @Override
@@ -97,11 +97,10 @@ class RSocketChannelContext implements RequestResponseContext<FluxSink<ConsumerB
   @Override
   public void abandon() {
     close();
-    processor.dispose();
   }
 
   @Override
   public void respondWith(final ConsumerByteBuffer buffer) {
-    processor.onNext(ByteBufPayload.create(buffer.asByteBuffer()));
+    sink.emitNext(ByteBufPayload.create(buffer.asByteBuffer()), Sinks.EmitFailureHandler.FAIL_FAST);
   }
 }

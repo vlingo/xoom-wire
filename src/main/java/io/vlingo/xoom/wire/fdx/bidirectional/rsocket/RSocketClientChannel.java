@@ -24,12 +24,11 @@ import io.vlingo.xoom.wire.fdx.bidirectional.ClientRequestResponseChannel;
 import io.vlingo.xoom.wire.message.ConsumerByteBuffer;
 import io.vlingo.xoom.wire.message.ConsumerByteBufferPool;
 import io.vlingo.xoom.wire.node.Address;
-import reactor.core.publisher.EmitterProcessor;
+import reactor.core.publisher.Sinks;
 import reactor.util.retry.Retry;
 
-@SuppressWarnings("deprecation")
 public class RSocketClientChannel implements ClientRequestResponseChannel {
-  private final EmitterProcessor<Payload> publisher;
+  private final Sinks.Many<Payload> sink;
   private final Logger logger;
   private final ChannelResponseHandler responseHandler;
   private final Address address;
@@ -44,7 +43,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
 
   public RSocketClientChannel(final ClientTransport clientTransport, final Address address, final ResponseChannelConsumer consumer, final int maxBufferPoolSize,
                               final int maxMessageSize, final Logger logger, final Duration connectionTimeout) {
-    this.publisher = EmitterProcessor.create();
+    this.sink = Sinks.many().multicast().onBackpressureBuffer();
     this.logger = logger;
     this.address = address;
     this.connectionTimeout = connectionTimeout;
@@ -73,7 +72,7 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
       data.put(buffer);
       data.flip();
 
-      this.publisher.onNext(ByteBufPayload.create(data));
+      this.sink.emitNext(ByteBufPayload.create(data), Sinks.EmitFailureHandler.FAIL_FAST);
     } else {
       logger.debug("RSocket client channel for {} not ready. Message dropped", this.address);
     }
@@ -92,23 +91,17 @@ public class RSocketClientChannel implements ClientRequestResponseChannel {
                                            .payloadDecoder(PayloadDecoder.ZERO_COPY)
                                            .connect(transport)
                                            .timeout(this.connectionTimeout)
-                                           .doOnError(throwable -> {
-                                             logger.error("Failed to create RSocket client channel for address {}", this.address, throwable);
-                                           })
+                                           .doOnError(throwable -> logger.error("Failed to create RSocket client channel for address {}", this.address, throwable))
                                            .block();
 
         if (this.channelSocket != null) {
-          this.channelSocket.requestChannel(this.publisher)
+          this.channelSocket.requestChannel(this.sink.asFlux())
                             .retryWhen(Retry.indefinitely()
                                     .filter(throwable -> throwable instanceof ApplicationErrorException)
-                                    .doBeforeRetry(retrySignal -> {
-                                      logger.debug("RSocket client channel for address {} received a retry-able error", this.address, retrySignal.failure());
-                                    })
+                                    .doBeforeRetry(retrySignal -> logger.debug("RSocket client channel for address {} received a retry-able error", this.address, retrySignal.failure()))
                             )
                             .subscribe(responseHandler::handle, //process server response
-                                       throwable -> {
-                                         logger.error("RSocket client channel for address {} received unrecoverable error", this.address, throwable);
-                                       });
+                                       throwable -> logger.error("RSocket client channel for address {} received unrecoverable error", this.address, throwable));
 
           logger.info("RSocket client channel opened for address {}", this.address);
 

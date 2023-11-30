@@ -42,7 +42,7 @@ public class RSocketServerChannelActor extends Actor implements ServerRequestRes
                                                 .doOnError((throwable) -> logger().error("Unexpected error when consuming channel request", throwable))
                                                 .subscribe();
 
-                                        return Flux.from(context.processor());
+                                        return context.flux();
                                       }))
                                       .bind(serverTransport)
                                       .block();
